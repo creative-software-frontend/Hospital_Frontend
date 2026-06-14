@@ -43,7 +43,7 @@ export default function LoginPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4 py-10 relative"
+      className="min-h-screen flex items-center justify-center px-4 sm:px-6 py-6 sm:py-10 relative"
       style={{
         backgroundImage: "url('/images/hospitalbgimg.jpg')",
         backgroundSize: "cover",
@@ -53,20 +53,20 @@ export default function LoginPage() {
       {/* STRONG OVERLAY (FIX CONTRAST ISSUE) */}
       <div className="absolute inset-0 bg-black/60" />
 
-      <div className="relative z-10 w-full max-w-6xl grid lg:grid-cols-2 gap-8">
+      <div className="relative z-10 w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
 
         {/* LEFT LOGIN */}
         <motion.div
           initial={{ opacity: 0, x: -40 }}
           animate={{ opacity: 1, x: 0 }}
-          className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-8 text-white"
+          className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-5 sm:p-8 text-white"
         >
           {/* HEADER */}
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-[var(--primary)] flex items-center justify-center font-bold text-white">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[var(--primary)] flex items-center justify-center font-bold text-white shrink-0">
               H
             </div>
-            <h2 className="text-2xl font-bold text-white">
+            <h2 className="text-xl sm:text-2xl font-bold text-white">
               Smart Hospital Login
             </h2>
           </div>
@@ -76,12 +76,12 @@ export default function LoginPage() {
           </p>
 
           {/* ROLE GRID */}
-          <div className="grid grid-cols-2 gap-2 mt-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-6">
             {roles.map((role) => (
               <button
                 key={role}
                 onClick={() => setSelectedRole(role)}
-                className="px-3 py-2 rounded-lg text-sm border transition"
+                className="px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm border transition-all duration-200 hover:scale-[1.03] hover:border-[var(--primary)]"
                 style={{
                   background:
                     selectedRole === role
@@ -93,6 +93,16 @@ export default function LoginPage() {
                       : "rgba(255,255,255,0.2)",
                   color: "white",
                 }}
+                onMouseEnter={(e) => {
+                  if (selectedRole !== role) {
+                    e.currentTarget.style.background = "rgba(255,255,255,0.12)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (selectedRole !== role) {
+                    e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+                  }
+                }}
               >
                 {role}
               </button>
@@ -103,32 +113,26 @@ export default function LoginPage() {
           <div className="mt-6 space-y-4">
             <input
               placeholder="Email"
-              className="w-full px-4 py-3 rounded-lg bg-white text-black border border-gray-300 outline-none"
+              className="w-full px-4 py-3 rounded-lg bg-white text-black border border-gray-300 outline-none text-sm sm:text-base transition-colors duration-200 focus:border-[var(--primary)]"
             />
 
             <input
               type="password"
               placeholder="Password"
-              className="w-full px-4 py-3 rounded-lg bg-white text-black border border-gray-300 outline-none"
+              className="w-full px-4 py-3 rounded-lg bg-white text-black border border-gray-300 outline-none text-sm sm:text-base transition-colors duration-200 focus:border-[var(--primary)]"
             />
 
             {/* BUTTON */}
             <button
-              className="w-full py-3 rounded-lg font-semibold text-white transition"
+              className="w-full py-3 rounded-lg font-semibold text-white transition-all duration-200 hover:opacity-90 hover:scale-[1.01] hover:shadow-md"
               style={{ background: "var(--primary)" }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.opacity = "0.9")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.opacity = "1")
-              }
             >
               Login as {selectedRole}
             </button>
 
             {/* FORGOT */}
             <div className="text-right text-sm text-white">
-              <span className="opacity-80 hover:opacity-100 cursor-pointer">
+              <span className="opacity-80 hover:opacity-100 hover:text-[var(--primary-soft)] cursor-pointer transition-colors duration-200">
                 Forgot Password?
               </span>
             </div>
@@ -139,24 +143,24 @@ export default function LoginPage() {
         <motion.div
           initial={{ opacity: 0, x: 40 }}
           animate={{ opacity: 1, x: 0 }}
-          className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 text-white"
+          className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-5 sm:p-6 text-white"
         >
-          <h2 className="text-2xl font-bold mb-4">
-            What’s New
+          <h2 className="text-xl sm:text-2xl font-bold mb-4">
+            What's New
           </h2>
 
           {/* SCROLL AREA */}
-         <div className="h-[420px] overflow-y-auto space-y-4 pr-2 news-scroll">
+          <div className="h-[280px] sm:h-[340px] lg:h-[420px] overflow-y-auto space-y-4 pr-2 news-scroll">
             {news.map((item, i) => (
               <div
                 key={i}
-                className="p-4 rounded-xl bg-white/10 border border-white/20 hover:bg-white/15 transition"
+                className="p-3 sm:p-4 rounded-xl bg-white/10 border border-white/20 hover:bg-white/15 hover:border-white/30 transition-all duration-200"
               >
-                <h3 className="font-semibold">{item.title}</h3>
-                <p className="text-sm text-white/80 mt-1">
+                <h3 className="font-semibold text-sm sm:text-base">{item.title}</h3>
+                <p className="text-xs sm:text-sm text-white/80 mt-1">
                   {item.desc}
                 </p>
-                <span className="text-xs text-emerald-300 hover:underline cursor-pointer">
+                <span className="text-xs text-emerald-300 hover:text-emerald-200 hover:underline cursor-pointer transition-colors duration-200">
                   Read More
                 </span>
               </div>
