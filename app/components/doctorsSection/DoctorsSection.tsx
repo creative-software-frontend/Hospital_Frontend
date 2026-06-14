@@ -7,22 +7,22 @@ const doctors = [
     {
         name: "Dr. Sarah Ahmed",
         specialty: "Cardiologist",
-        image: "../../../public/images/doctor.jpg",
+        image: "/images/doctor.jpg",
     },
     {
         name: "Dr. John Smith",
         specialty: "Neurologist",
-        image: "/doctors/doc2.jpg",
+        image: "/images/doctor.jpg",
     },
     {
         name: "Dr. Emily Rose",
         specialty: "Orthopedic Surgeon",
-        image: "/doctors/doc3.jpg",
+        image: "/images/doctor.jpg",
     },
     {
         name: "Dr. Michael Lee",
         specialty: "General Physician",
-        image: "/doctors/doc4.jpg",
+        image: "/images/doctor.jpg",
     },
 ];
 
