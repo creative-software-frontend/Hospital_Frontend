@@ -1,11 +1,13 @@
-import Image from "next/image";
-import LoginPage from "./login/page";
+
+import Hero from "./components/hero/Hero";
 import Navbar from "./components/navbar/Navbar";
+
 
 export default function Home() {
   return (
     <main>
       <Navbar />
+      <Hero />
 
     </main>
 
@@ -19,8 +21,8 @@ export default function Home() {
 
 
 
-     
-    
- 
+
+
+
   );
 }
