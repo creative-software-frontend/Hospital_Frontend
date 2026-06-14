@@ -2,20 +2,58 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiMenu, FiX } from "react-icons/fi";
+import { FiMenu, FiX, FiChevronDown } from "react-icons/fi";
 import Link from "next/link";
 
 const navLinks = [
   { name: "Home", href: "#home" },
-  { name: "Appointment", href: "#appointment" },
   { name: "About Us", href: "#about" },
-  { name: "Notice", href: "#notice" },
-  { name: "Contact us", href: "#contact" },
+  { name: "Doctors", href: "#doctors" },
+
+  {
+    name: "Departments",
+    dropdown: [
+      { name: "Cardiology", href: "#cardiology" },
+      { name: "Neurology", href: "#neurology" },
+      { name: "Orthopedics", href: "#orthopedics" },
+    ],
+  },
+
+  {
+    name: "Services",
+    dropdown: [
+      { name: "Online Services", href: "#services" },
+      { name: "Appointment", href: "#appointment" },
+      { name: "Emergency", href: "#emergency" },
+    ],
+  },
+
+  {
+    name: "Centers of Excellence",
+    dropdown: [
+      { name: "Liver Care Center", href: "#liver-care" },
+      { name: "Colorectal & Biofeedback Center", href: "#colorectal" },
+      { name: "Mother Care Unit", href: "#mother-care" },
+    ],
+  },
+
+  {
+    name: "Media",
+    dropdown: [
+      { name: "News", href: "#news" },
+      { name: "Gallery", href: "#gallery" },
+      { name: "Events", href: "#events" },
+    ],
+  },
+
+  { name: "Cafeteria", href: "#cafeteria" },
+  { name: "Contact Us", href: "#contact" },
 ];
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -30,11 +68,9 @@ export default function Navbar() {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-40 px-6 md:px-12 transition-all text-main ${
-          isScrolled ? "py-3 shadow-sm" : "py-5"
-        }`}
+        className={`fixed top-0 left-0 right-0 z-40 px-6 md:px-12 transition-all text-main ${isScrolled ? "py-3 shadow-sm" : "py-5"
+          }`}
         style={{
-          /* ✅ FIX: always visible background */
           background: isScrolled
             ? "rgba(255,255,255,0.85)"
             : "rgba(255,255,255,0.6)",
@@ -50,12 +86,6 @@ export default function Navbar() {
               className="lg:hidden p-2 rounded-md transition"
               style={{ color: "var(--primary)" }}
               onClick={() => setMobileMenuOpen(true)}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.background = "var(--primary-soft)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.background = "transparent")
-              }
             >
               <FiMenu size={24} />
             </button>
@@ -63,27 +93,55 @@ export default function Navbar() {
 
           {/* CENTER */}
           <nav className="hidden lg:flex items-center gap-10">
-            {navLinks.map((link) => (
-              <a
-                key={link.name}
-                href={link.href}
-                className="text-sm font-medium relative group transition-colors"
-                style={{ color: "var(--text)" }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.color = "var(--primary)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.color = "var(--text)")
-                }
-              >
-                {link.name}
+            {navLinks.map((link) => {
+              const hasDropdown = !!link.dropdown;
 
-                <span
-                  className="absolute left-0 -bottom-1 h-[2px] w-0 group-hover:w-full transition-all"
-                  style={{ background: "var(--primary)" }}
-                />
-              </a>
-            ))}
+              return (
+                <div
+                  key={link.name}
+                  className="relative group"
+                  onMouseEnter={() =>
+                    hasDropdown && setOpenDropdown(link.name)
+                  }
+                  onMouseLeave={() => setOpenDropdown(null)}
+                >
+                  <a
+                    href={link.href || "#"}
+                    className="text-sm font-medium flex items-center gap-1 relative"
+                    style={{ color: "var(--text)" }}
+                  >
+                    {link.name}
+
+                    {/* DROPDOWN ARROW */}
+                    {hasDropdown && (
+                      <FiChevronDown size={14} />
+                    )}
+
+                    <span
+                      className="absolute left-0 -bottom-1 h-[2px] w-0 group-hover:w-full transition-all"
+                      style={{ background: "var(--primary)" }}
+                    />
+                  </a>
+
+                  {/* DROPDOWN MENU */}
+                  {hasDropdown &&
+                    openDropdown === link.name && (
+                      <div className="absolute top-full left-0 mt-2 w-56 bg-white border border-[var(--border)] rounded-lg shadow-lg overflow-hidden z-50">
+                        {link.dropdown.map((item) => (
+                          <a
+                            key={item.name}
+                            href={item.href}
+                            className="block px-4 py-2 text-sm hover:bg-[var(--primary-soft)] transition"
+                            style={{ color: "var(--text)" }}
+                          >
+                            {item.name}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                </div>
+              );
+            })}
           </nav>
 
           {/* RIGHT */}
@@ -95,19 +153,10 @@ export default function Navbar() {
                 borderColor: "var(--primary)",
                 color: "var(--primary)",
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "var(--primary)";
-                e.currentTarget.style.color = "white";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.color = "var(--primary)";
-              }}
             >
               Login
             </Link>
           </div>
-
         </div>
       </header>
 
@@ -142,16 +191,10 @@ export default function Navbar() {
                 {navLinks.map((link) => (
                   <a
                     key={link.name}
-                    href={link.href}
-                    className="text-lg transition-colors"
+                    href={link.href || "#"}
+                    className="text-lg"
                     style={{ color: "var(--text)" }}
                     onClick={() => setMobileMenuOpen(false)}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.color = "var(--primary)")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.color = "var(--text)")
-                    }
                   >
                     {link.name}
                   </a>
