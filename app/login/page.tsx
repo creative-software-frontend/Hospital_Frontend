@@ -146,7 +146,7 @@ export default function LoginPage() {
           </h2>
 
           {/* SCROLL AREA */}
-          <div className="h-[420px] overflow-y-auto space-y-4 pr-2">
+         <div className="h-[420px] overflow-y-auto space-y-4 pr-2 news-scroll">
             {news.map((item, i) => (
               <div
                 key={i}

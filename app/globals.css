@@ -81,12 +81,30 @@ body {
 }
 
 /* =========================
-   SCROLLBAR (CLEAN PRO UI)
+   SCROLLBAR (MODERN UNIQUE)
 ========================= */
 .news-scroll {
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary-soft) transparent;
 }
 
 .news-scroll::-webkit-scrollbar {
-  width: 0px;
+  width: 6px;
+}
+
+.news-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 8px 0;
+}
+
+.news-scroll::-webkit-scrollbar-thumb {
+  background: var(--primary-soft);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.news-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+  background-clip: content-box;
 }
