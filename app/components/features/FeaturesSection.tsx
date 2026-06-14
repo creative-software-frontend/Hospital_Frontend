@@ -39,22 +39,25 @@ const features: FeatureItem[] = [
 
 const accentMap: Record<AccentType, any> = {
     blue: {
-        bg: "bg-blue-50 dark:bg-blue-950/40",
-        icon: "text-blue-600 dark:text-blue-400",
-        link: "text-blue-600 dark:text-blue-400",
-        blob: "bg-blue-100 dark:bg-blue-900/30",
+        bg: "bg-blue-50",
+        icon: "text-blue-600",
+        border: "hover:border-blue-300",
+        shadow: "hover:shadow-blue-100/50",
+        blob: "bg-blue-100",
     },
     green: {
-        bg: "bg-green-50 dark:bg-green-950/40",
-        icon: "text-green-600 dark:text-green-400",
-        link: "text-green-600 dark:text-green-400",
-        blob: "bg-green-100 dark:bg-green-900/30",
+        bg: "bg-green-50",
+        icon: "text-green-600",
+        border: "hover:border-green-300",
+        shadow: "hover:shadow-green-100/50",
+        blob: "bg-green-100",
     },
     red: {
-        bg: "bg-red-50 dark:bg-red-950/40",
-        icon: "text-red-600 dark:text-red-400",
-        link: "text-red-600 dark:text-red-400",
-        blob: "bg-red-100 dark:bg-red-900/30",
+        bg: "bg-red-50",
+        icon: "text-red-600",
+        border: "hover:border-red-300",
+        shadow: "hover:shadow-red-100/50",
+        blob: "bg-red-100",
     },
 };
 
@@ -63,7 +66,7 @@ export default function FeaturesSection() {
         <section className="py-16 px-6 md:px-12 bg-[var(--bg)]">
             <div className="max-w-7xl mx-auto grid gap-6 md:grid-cols-4">
 
-                {/* LEFT FEATURE CARDS */}
+                {/* CARDS */}
                 <div className="md:col-span-3 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
 
                     {features.map((item, i) => {
@@ -73,16 +76,24 @@ export default function FeaturesSection() {
                         return (
                             <div
                                 key={i}
-                                className="relative p-6 rounded-2xl border border-[var(--border)] bg-white shadow-sm transition hover:shadow-md hover:-translate-y-1 overflow-hidden"
+                                className={`
+                                    relative p-6 rounded-2xl border border-[var(--border)]
+                                    bg-white shadow-sm
+                                    transition-all duration-300
+                                    hover:-translate-y-2
+                                    hover:shadow-xl
+                                    ${accent.border}
+                                    ${accent.shadow}
+                                `}
                             >
-                                {/* Decorative blob */}
+                                {/* decorative blob */}
                                 <div
-                                    className={`absolute -top-5 -right-5 w-20 h-20 rounded-full ${accent.blob}`}
+                                    className={`absolute -top-6 -right-6 w-24 h-24 rounded-full ${accent.blob} opacity-60`}
                                 />
 
-                                {/* Icon */}
+                                {/* icon */}
                                 <div
-                                    className={`relative w-11 h-11 rounded-xl ${accent.bg} flex items-center justify-center mb-4`}
+                                    className={`relative w-12 h-12 rounded-xl ${accent.bg} flex items-center justify-center mb-5`}
                                 >
                                     <Icon className={`w-5 h-5 ${accent.icon}`} />
                                 </div>
@@ -96,7 +107,13 @@ export default function FeaturesSection() {
                                 </p>
 
                                 <button
-                                    className={`mt-5 inline-flex items-center gap-1 text-sm font-medium ${accent.link} hover:underline`}
+                                    className="
+                                        mt-5 inline-flex items-center gap-1 text-sm font-medium
+                                        text-[var(--primary)]
+                                        transition-all
+                                        hover:gap-2
+                                        hover:opacity-80
+                                    "
                                 >
                                     Read More
                                     <FiArrowRight className="w-4 h-4" />
@@ -107,8 +124,8 @@ export default function FeaturesSection() {
 
                 </div>
 
-                {/* RIGHT SIDEBAR - OPENING HOURS */}
-                <div className="p-6 rounded-2xl bg-[var(--primary)] text-white shadow-md">
+                {/* SIDEBAR */}
+                <div className="p-6 rounded-2xl bg-[var(--primary)] text-white shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
 
                     <h3 className="text-lg font-semibold border-b border-white/20 pb-3">
                         Opening Hours
@@ -131,7 +148,7 @@ export default function FeaturesSection() {
                         </div>
                     </div>
 
-                    <button className="mt-6 w-full py-2 rounded-lg bg-white text-[var(--primary)] font-semibold hover:opacity-90 transition">
+                    <button className="mt-6 w-full py-2 rounded-lg bg-white text-[var(--primary)] font-semibold transition hover:scale-[1.02] hover:shadow-md">
                         Book Appointment
                     </button>
 
