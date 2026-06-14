@@ -1,6 +1,7 @@
 
 import DoctorsSection from "./components/doctorsSection/DoctorsSection";
 import FeaturesSection from "./components/features/FeaturesSection";
+import FloatingCallButton from "./components/floatingcallbutton/FloatingCallButton";
 import Footer from "./components/footer/Footer";
 import Hero from "./components/hero/Hero";
 import Navbar from "./components/navbar/Navbar";
@@ -14,6 +15,8 @@ export default function Home() {
       <FeaturesSection />
       <DoctorsSection />
       <Footer />
+      <FloatingCallButton />
+
 
     </main>
 
