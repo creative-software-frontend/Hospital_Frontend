@@ -5,6 +5,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { FiMenu, FiX, FiChevronDown } from "react-icons/fi";
 import Link from "next/link";
 
+// 👉 ADD YOUR LOGO PATH HERE
+import logo from "../../../public/images/hospitalogo.png";
+
 const navLinks = [
   { name: "Home", href: "#home" },
   { name: "About Us", href: "#about" },
@@ -80,8 +83,9 @@ export default function Navbar() {
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
 
-          {/* LEFT */}
+          {/* LEFT (LOGO + MENU BUTTON) */}
           <div className="flex items-center gap-3">
+
             <button
               className="lg:hidden p-2 rounded-md transition"
               style={{ color: "var(--primary)" }}
@@ -89,6 +93,16 @@ export default function Navbar() {
             >
               <FiMenu size={24} />
             </button>
+
+            {/* ✅ LOGO ADDED HERE */}
+            <Link href="/" className="flex items-center gap-2">
+              <img
+                src={logo.src}
+                alt="Logo"
+                className="h-10 md:h-12 object-contain"
+              />
+            </Link>
+
           </div>
 
           {/* CENTER */}
@@ -112,10 +126,7 @@ export default function Navbar() {
                   >
                     {link.name}
 
-                    {/* DROPDOWN ARROW */}
-                    {hasDropdown && (
-                      <FiChevronDown size={14} />
-                    )}
+                    {hasDropdown && <FiChevronDown size={14} />}
 
                     <span
                       className="absolute left-0 -bottom-1 h-[2px] w-0 group-hover:w-full transition-all"
@@ -123,7 +134,6 @@ export default function Navbar() {
                     />
                   </a>
 
-                  {/* DROPDOWN MENU */}
                   {hasDropdown &&
                     openDropdown === link.name && (
                       <div className="absolute top-full left-0 mt-2 w-56 bg-white border border-[var(--border)] rounded-lg shadow-lg overflow-hidden z-50">
@@ -157,6 +167,7 @@ export default function Navbar() {
               Login
             </Link>
           </div>
+
         </div>
       </header>
 
