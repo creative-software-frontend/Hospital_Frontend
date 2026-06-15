@@ -62,28 +62,24 @@ export default function LoginPage() {
   const [password, setPassword] = useState<string>("");
   const [message, setMessage] = useState<string>("");
 
-  const handleLogin = () => {
-    if (!email || !password) {
-      setMessage("Please enter email and password");
-      return;
-    }
+  // app/login/page.tsx (partial)
+  const handleLogin = (role: string) => {
+    localStorage.setItem("role", role);
 
-    if (email !== DEFAULT_EMAIL || password !== DEFAULT_PASSWORD) {
-      setMessage("Invalid email or password");
-      return;
-    }
+    // Role-based routing
+    const roleRoutes: Record<string, string> = {
+      'super-admin': '/dashboard/super-admin',
+      'admin': '/dashboard/admin',
+      'doctor': '/dashboard/doctor',
+      'pharmacist': '/dashboard/pharmacist',
+      'pathologist': '/dashboard/pathologist',
+      'radiologist': '/dashboard/radiologist',
+      'accountant': '/dashboard/accountant',
+      'receptionist': '/dashboard/receptionist',
+      'nurse': '/dashboard/nurse',
+    };
 
-    const route = roleRoutes[selectedRole];
-
-    if (!route) {
-      alert("Invalid role");
-      return;
-    }
-
-    localStorage.setItem("role", selectedRole);
-    setMessage(""); // Clear any previous error message
-
-    router.push(`/dashboard/${route}`);
+    router.push(roleRoutes[role]);
   };
 
   return (
@@ -158,7 +154,7 @@ export default function LoginPage() {
             />
 
             <button
-              onClick={handleLogin}
+              onClick={() => handleLogin(roleRoutes[selectedRole])}
               className="w-full py-3 rounded-lg font-semibold text-white"
               style={{ background: "var(--primary)" }}
             >
