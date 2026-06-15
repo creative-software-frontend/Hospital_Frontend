@@ -1,25 +1,47 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiMenu, FiX, FiChevronDown } from "react-icons/fi";
 import Link from "next/link";
 
-// 👉 ADD YOUR LOGO PATH HERE
 import logo from "../../../public/images/hospitalogo.png";
+
+/* ================= DATA ================= */
+
+const departments = [
+  "Cardiology", "Neurology", "Orthopedics", "Dermatology", "Gastroenterology",
+  "Nephrology", "Pulmonology", "Rheumatology", "Hematology", "Oncology",
+  "Endocrinology", "Psychiatry", "Radiology", "Pathology",
+
+  "General Surgery", "Neurosurgery", "Cardiac Surgery", "Plastic Surgery",
+  "Orthopedic Surgery", "Urology Surgery", "Vascular Surgery", "GI Surgery",
+  "ENT Surgery", "Trauma Surgery", "Burn Surgery", "Laparoscopic Surgery",
+  "Transplant Surgery", "Pediatric Surgery",
+
+  "ICU", "CCU", "NICU", "Emergency", "Dialysis",
+  "Physiotherapy", "Rehabilitation", "Laboratory", "Blood Bank",
+  "Ambulance", "Health Checkup", "Pharmacy", "Nutrition", "Ophthalmology"
+];
 
 const navLinks = [
   { name: "Home", href: "#home" },
-  { name: "About Us", href: "#about" },
+
+  {
+    name: "About Us",
+    dropdown: [
+      { name: "Mission & Vision", href: "#mission-vision" },
+      { name: "What We Have", href: "#what-we-have" },
+      { name: "Message From Chairman", href: "#chairman-message" },
+      { name: "Message From Managing Director", href: "#md-message" },
+    ],
+  },
+
   { name: "Doctors", href: "#doctors" },
 
   {
     name: "Departments",
-    dropdown: [
-      { name: "Cardiology", href: "#cardiology" },
-      { name: "Neurology", href: "#neurology" },
-      { name: "Orthopedics", href: "#orthopedics" },
-    ],
+    mega: true,
   },
 
   {
@@ -49,14 +71,22 @@ const navLinks = [
     ],
   },
 
-  { name: "Cafeteria", href: "#cafeteria" },
   { name: "Contact Us", href: "#contact" },
 ];
+
+/* ================= NAVBAR ================= */
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+
+  const closeTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const chunkSize = Math.ceil(departments.length / 3);
+  const col1 = departments.slice(0, chunkSize);
+  const col2 = departments.slice(chunkSize, chunkSize * 2);
+  const col3 = departments.slice(chunkSize * 2);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -71,7 +101,7 @@ export default function Navbar() {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-40 px-6 md:px-12 transition-all text-main ${isScrolled ? "py-3 shadow-sm" : "py-5"
+        className={`fixed top-0 left-0 right-0 z-40 px-6 md:px-12 transition-all ${isScrolled ? "py-3 shadow-sm" : "py-5"
           }`}
         style={{
           background: isScrolled
@@ -83,137 +113,159 @@ export default function Navbar() {
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
 
-          {/* LEFT (LOGO + MENU BUTTON) */}
+          {/* LEFT */}
           <div className="flex items-center gap-3">
-
             <button
-              className="lg:hidden p-2 rounded-md transition"
-              style={{ color: "var(--primary)" }}
+              className="lg:hidden p-2"
               onClick={() => setMobileMenuOpen(true)}
             >
               <FiMenu size={24} />
             </button>
 
-            {/* ✅ LOGO ADDED HERE */}
-            <Link href="/" className="flex items-center gap-2">
-              <img
-                src={logo.src}
-                alt="Logo"
-                className="h-10 md:h-12 object-contain"
-              />
+            <Link href="/" className="flex items-center">
+              <img src={logo.src} alt="logo" className="h-11 object-contain" />
             </Link>
-
           </div>
 
-          {/* CENTER */}
+          {/* ================= CENTER NAV ================= */}
           <nav className="hidden lg:flex items-center gap-10">
+
             {navLinks.map((link) => {
               const hasDropdown = !!link.dropdown;
+              const isMega = link.mega;
 
               return (
                 <div
                   key={link.name}
-                  className="relative group"
-                  onMouseEnter={() =>
-                    hasDropdown && setOpenDropdown(link.name)
-                  }
-                  onMouseLeave={() => setOpenDropdown(null)}
+                  className="relative"
+                  onMouseEnter={() => {
+                    if (closeTimeout.current) clearTimeout(closeTimeout.current);
+                    setOpenDropdown(link.name);
+                  }}
+                  onMouseLeave={() => {
+                    closeTimeout.current = setTimeout(() => {
+                      setOpenDropdown(null);
+                    }, 120);
+                  }}
                 >
-                  <a
-                    href={link.href || "#"}
-                    className="text-sm font-medium flex items-center gap-1 relative"
-                    style={{ color: "var(--text)" }}
-                  >
+                  <button className="flex items-center gap-1 text-sm font-medium">
                     {link.name}
+                    {(hasDropdown || isMega) && <FiChevronDown size={14} />}
+                  </button>
 
-                    {hasDropdown && <FiChevronDown size={14} />}
+                  {/* NORMAL DROPDOWN */}
+                  {hasDropdown && openDropdown === link.name && (
+                    <div
+                      className="absolute top-full left-0 mt-2 w-56 bg-white z-50"
+                      onMouseEnter={() => {
+                        if (closeTimeout.current) clearTimeout(closeTimeout.current);
+                        setOpenDropdown(link.name);
+                      }}
+                      onMouseLeave={() => {
+                        closeTimeout.current = setTimeout(() => {
+                          setOpenDropdown(null);
+                        }, 120);
+                      }}
+                    >
+                      {link.dropdown.map((item) => (
+                        <a
+                          key={item.name}
+                          href={item.href}
+                          className="dropdown-item"
+                        >
+                          {item.name}
+                        </a>
+                      ))}
+                    </div>
+                  )}
 
-                    <span
-                      className="absolute left-0 -bottom-1 h-[2px] w-0 group-hover:w-full transition-all"
-                      style={{ background: "var(--primary)" }}
-                    />
-                  </a>
+                  {/* MEGA MENU */}
+                  {isMega && openDropdown === link.name && (
+                    <div
+                      className="fixed left-0 top-[70px] w-full bg-white border-t border-gray-200 shadow-xl p-8 z-50"
+                      style={{ boxShadow: "0 10px 30px rgba(0,0,0,0.08)" }}
+                      onMouseEnter={() => {
+                        if (closeTimeout.current) clearTimeout(closeTimeout.current);
+                        setOpenDropdown(link.name);
+                      }}
+                      onMouseLeave={() => {
+                        closeTimeout.current = setTimeout(() => {
+                          setOpenDropdown(null);
+                        }, 120);
+                      }}
+                    >
+                      <div className="max-w-7xl mx-auto grid grid-cols-3 gap-10 text-sm">
 
-                  {hasDropdown &&
-                    openDropdown === link.name && (
-                      <div className="absolute top-full left-0 mt-2 w-56 bg-white border border-[var(--border)] rounded-lg shadow-lg overflow-hidden z-50">
-                        {link.dropdown.map((item) => (
-                          <a
-                            key={item.name}
-                            href={item.href}
-                            className="block px-4 py-2 text-sm hover:bg-[var(--primary-soft)] transition"
-                            style={{ color: "var(--text)" }}
-                          >
-                            {item.name}
-                          </a>
-                        ))}
+                        <div className="space-y-2">
+                          {col1.map((item) => (
+                            <a key={item} href="#" className="dropdown-item">
+                              {item}
+                            </a>
+                          ))}
+                        </div>
+
+                        <div className="space-y-2">
+                          {col2.map((item) => (
+                            <a key={item} href="#" className="dropdown-item ">
+                              {item}
+                            </a>
+                          ))}
+                        </div>
+
+                        <div className="space-y-2">
+                          {col3.map((item) => (
+                            <a key={item} href="#" className="dropdown-item">
+                              {item}
+                            </a>
+                          ))}
+                        </div>
+
                       </div>
-                    )}
+                    </div>
+                  )}
                 </div>
               );
             })}
           </nav>
 
           {/* RIGHT */}
-          <div className="hidden lg:flex gap-3">
-            <Link
-              href="/login"
-              className="px-4 py-2 border rounded-lg transition"
-              style={{
-                borderColor: "var(--primary)",
-                color: "var(--primary)",
-              }}
-            >
-              Login
-            </Link>
-          </div>
+          <Link
+            href="/login"
+            className="hidden lg:block px-4 py-2 border rounded-lg transition hover:bg-[var(--primary)] hover:text-white"
+          >
+            Login
+          </Link>
 
         </div>
       </header>
 
-      {/* MOBILE */}
+      {/* MOBILE (UNCHANGED) */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <>
             <motion.div
-              className="fixed inset-0 z-50"
-              style={{ background: "rgba(0,0,0,0.4)" }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-50"
               onClick={() => setMobileMenuOpen(false)}
             />
 
             <motion.div
-              className="fixed left-0 top-0 bottom-0 w-72 z-50 shadow-xl"
-              style={{ background: "var(--card)" }}
+              className="fixed left-0 top-0 bottom-0 w-72 bg-white z-50 p-6"
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
             >
-              <div className="p-6 flex justify-between">
-                <FiX
-                  onClick={() => setMobileMenuOpen(false)}
-                  style={{ color: "var(--text)", cursor: "pointer" }}
-                />
-              </div>
+              <button onClick={() => setMobileMenuOpen(false)}>
+                <FiX size={22} />
+              </button>
 
-              <div className="p-6 flex flex-col gap-4">
+              <div className="mt-6 flex flex-col gap-4">
                 {navLinks.map((link) => (
-                  <a
-                    key={link.name}
-                    href={link.href || "#"}
-                    className="text-lg"
-                    style={{ color: "var(--text)" }}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
+                  <a key={link.name} href={link.href || "#"}>
                     {link.name}
                   </a>
                 ))}
 
-                <Link href="/login" className="btn-primary text-center">
-                  Login
-                </Link>
+                <Link href="/login">Login</Link>
               </div>
             </motion.div>
           </>
