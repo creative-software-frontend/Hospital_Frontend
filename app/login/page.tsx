@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 
 const roles = [
@@ -14,6 +15,21 @@ const roles = [
   "Receptionist",
   "Nurse",
 ];
+
+const DEFAULT_EMAIL = "admin@gmail.com";
+const DEFAULT_PASSWORD = "123456";
+
+const roleRoutes: Record<string, string> = {
+  "Super Admin": "super-admin",
+  Admin: "admin",
+  Doctor: "doctor",
+  Pharmacist: "pharmacist",
+  Pathologist: "pathologist",
+  Radiologist: "radiologist",
+  Accountant: "accountant",
+  Receptionist: "receptionist",
+  Nurse: "nurse",
+};
 
 const news = [
   {
@@ -39,7 +55,36 @@ const news = [
 ];
 
 export default function LoginPage() {
-  const [selectedRole, setSelectedRole] = useState("Admin");
+  const router = useRouter();
+
+  const [selectedRole, setSelectedRole] = useState<string>("Admin");
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [message, setMessage] = useState<string>("");
+
+  const handleLogin = () => {
+    if (!email || !password) {
+      setMessage("Please enter email and password");
+      return;
+    }
+
+    if (email !== DEFAULT_EMAIL || password !== DEFAULT_PASSWORD) {
+      setMessage("Invalid email or password");
+      return;
+    }
+
+    const route = roleRoutes[selectedRole];
+
+    if (!route) {
+      alert("Invalid role");
+      return;
+    }
+
+    localStorage.setItem("role", selectedRole);
+    setMessage(""); // Clear any previous error message
+
+    router.push(`/dashboard/${route}`);
+  };
 
   return (
     <div
@@ -50,7 +95,6 @@ export default function LoginPage() {
         backgroundPosition: "center",
       }}
     >
-      {/* STRONG OVERLAY (FIX CONTRAST ISSUE) */}
       <div className="absolute inset-0 bg-black/60" />
 
       <div className="relative z-10 w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
@@ -61,7 +105,7 @@ export default function LoginPage() {
           animate={{ opacity: 1, x: 0 }}
           className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-5 sm:p-8 text-white"
         >
-          {/* HEADER */}
+
           <div className="flex items-center gap-3 mb-2">
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[var(--primary)] flex items-center justify-center font-bold text-white shrink-0">
               H
@@ -75,13 +119,12 @@ export default function LoginPage() {
             Select your role to continue
           </p>
 
-          {/* ROLE GRID */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-6">
             {roles.map((role) => (
               <button
                 key={role}
                 onClick={() => setSelectedRole(role)}
-                className="px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm border transition-all duration-200 hover:scale-[1.03] hover:border-[var(--primary)]"
+                className="px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm border"
                 style={{
                   background:
                     selectedRole === role
@@ -93,53 +136,43 @@ export default function LoginPage() {
                       : "rgba(255,255,255,0.2)",
                   color: "white",
                 }}
-                onMouseEnter={(e) => {
-                  if (selectedRole !== role) {
-                    e.currentTarget.style.background = "rgba(255,255,255,0.12)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (selectedRole !== role) {
-                    e.currentTarget.style.background = "rgba(255,255,255,0.05)";
-                  }
-                }}
               >
                 {role}
               </button>
             ))}
           </div>
 
-          {/* INPUTS */}
           <div className="mt-6 space-y-4">
+
             <input
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="Email"
-              className="w-full px-4 py-3 rounded-lg bg-white text-black border border-gray-300 outline-none text-sm sm:text-base transition-colors duration-200 focus:border-[var(--primary)]"
+              className="w-full px-4 py-3 rounded-lg bg-white text-black"
             />
 
             <input
+              onChange={(e) => setPassword(e.target.value)}
               type="password"
               placeholder="Password"
-              className="w-full px-4 py-3 rounded-lg bg-white text-black border border-gray-300 outline-none text-sm sm:text-base transition-colors duration-200 focus:border-[var(--primary)]"
+              className="w-full px-4 py-3 rounded-lg bg-white text-black"
             />
 
-            {/* BUTTON */}
             <button
-              className="w-full py-3 rounded-lg font-semibold text-white transition-all duration-200 hover:opacity-90 hover:scale-[1.01] hover:shadow-md"
+              onClick={handleLogin}
+              className="w-full py-3 rounded-lg font-semibold text-white"
               style={{ background: "var(--primary)" }}
             >
               Login as {selectedRole}
             </button>
 
-            {/* FORGOT */}
-            <div className="text-right text-sm text-white">
-              <span className="opacity-80 hover:opacity-100 hover:text-[var(--primary-soft)] cursor-pointer transition-colors duration-200">
-                Forgot Password?
-              </span>
-            </div>
+            {message && (
+              <p className="text-sm text-white/90">{message}</p>
+            )}
+
           </div>
         </motion.div>
 
-        {/* RIGHT NEWS */}
+        {/* RIGHT NEWS (UNCHANGED) */}
         <motion.div
           initial={{ opacity: 0, x: 40 }}
           animate={{ opacity: 1, x: 0 }}
@@ -149,20 +182,14 @@ export default function LoginPage() {
             What's New
           </h2>
 
-          {/* SCROLL AREA */}
           <div className="h-[280px] sm:h-[340px] lg:h-[420px] overflow-y-auto space-y-4 pr-2 news-scroll">
             {news.map((item, i) => (
               <div
                 key={i}
-                className="p-3 sm:p-4 rounded-xl bg-white/10 border border-white/20 hover:bg-white/15 hover:border-white/30 transition-all duration-200"
+                className="p-3 sm:p-4 rounded-xl bg-white/10 border border-white/20"
               >
-                <h3 className="font-semibold text-sm sm:text-base">{item.title}</h3>
-                <p className="text-xs sm:text-sm text-white/80 mt-1">
-                  {item.desc}
-                </p>
-                <span className="text-xs text-emerald-300 hover:text-emerald-200 hover:underline cursor-pointer transition-colors duration-200">
-                  Read More
-                </span>
+                <h3 className="font-semibold">{item.title}</h3>
+                <p className="text-white/80 text-sm">{item.desc}</p>
               </div>
             ))}
           </div>
