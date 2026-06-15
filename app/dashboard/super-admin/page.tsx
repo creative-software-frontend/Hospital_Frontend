@@ -30,8 +30,8 @@ export default function SuperAdminDashboard() {
   const [activeSection, setActiveSection] = useState<string>("overview"); // overview, role-permissions, or feature id string
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
 
-  // State to track expanded sections in the features accordion
-  const [expandedFeatures, setExpandedFeatures] = useState<Record<number, boolean>>({});
+  // Single expanded feature ID — null means all closed (auto-close accordion)
+  const [expandedFeature, setExpandedFeature] = useState<number | null>(null);
 
   useEffect(() => {
     const savedRole = localStorage.getItem("role");
@@ -43,12 +43,9 @@ export default function SuperAdminDashboard() {
     router.push("/login");
   };
 
-  // Toggle single feature collapse/expand
+  // Click same item → close it; click different item → close previous, open new
   const toggleFeature = (id: number) => {
-    setExpandedFeatures(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
+    setExpandedFeature(prev => (prev === id ? null : id));
   };
 
   const keyFeatures: Feature[] = [
@@ -366,16 +363,16 @@ export default function SuperAdminDashboard() {
             <div className="space-y-2.5">
               {keyFeatures.map((feat) => {
                 const Icon = feat.icon;
-                const isExpanded = !!expandedFeatures[feat.id];
+                const isExpanded = expandedFeature === feat.id;
                 const isActive = activeSection === "feature-detail" && selectedFeature?.id === feat.id;
 
                 return (
-                  <div key={feat.id} className="rounded-xl overflow-hidden border border-[var(--border)] shadow-sm">
-                    {/* Collapsible Content Trigger (Numbering content) */}
+                  <div key={feat.id}>
+                    {/* Row trigger — flat nav style, no card border */}
                     <div
-                      className={`flex items-center justify-between px-4 py-3.5 cursor-pointer transition-all duration-200 ${isActive
-                        ? "bg-[var(--primary)] text-white shadow-md"
-                        : "bg-[var(--bg)] hover:bg-[var(--primary-soft)]/30 text-[var(--text)] hover:scale-[1.01]"
+                      className={`flex items-center justify-between px-3.5 py-3 rounded-xl cursor-pointer transition-all duration-200 ${isActive
+                        ? "bg-[var(--primary)] text-white"
+                        : "text-[var(--muted)] hover:bg-[var(--primary-soft)]/20 hover:text-[var(--primary-dark)]"
                         }`}
                       onClick={() => {
                         handleSelectFeature(feat);
@@ -383,10 +380,10 @@ export default function SuperAdminDashboard() {
                       }}
                     >
                       <div className="flex items-center gap-3 overflow-hidden">
-                        <div className={`p-1.5 rounded-lg shrink-0 ${isActive ? "bg-white/25 text-white" : "bg-[var(--primary-soft)]/45 text-[var(--primary)]"}`}>
+                        <div className={`p-1.5 rounded-lg shrink-0 ${isActive ? "bg-white/25 text-white" : "bg-[var(--primary-soft)]/40 text-[var(--primary)]"}`}>
                           <Icon className="w-4 h-4 shrink-0" />
                         </div>
-                        <span className="text-xs font-bold truncate text-left tracking-wide">
+                        <span className="text-xs font-semibold truncate text-left">
                           {feat.id}. {feat.englishTitle}
                         </span>
                       </div>
@@ -395,15 +392,15 @@ export default function SuperAdminDashboard() {
                       </div>
                     </div>
 
-                    {/* Sub Content Area */}
+                    {/* Dropdown sub-items — hover only */}
                     {isExpanded && (
-                      <div className="bg-[var(--card)] border-t border-[var(--border)] px-3 py-2.5 space-y-1.5">
+                      <div className="mt-1 mb-2 ml-6 space-y-0.5">
                         {feat.subFeatures.map((sub, sIdx) => (
                           <div
                             key={sIdx}
-                            className="dropdown-item py-2"
+                            className="px-3 py-2 rounded-lg cursor-pointer text-[11px] font-medium text-[var(--muted)] hover:bg-[var(--primary)]/10 hover:text-[var(--primary-dark)] hover:pl-4 transition-all duration-200"
                           >
-                            <span className="truncate">{sub}</span>
+                            {sub}
                           </div>
                         ))}
                       </div>
@@ -653,8 +650,8 @@ export default function SuperAdminDashboard() {
                   else if (r.name === "HR Manager") RoleIcon = FiBriefcase;
 
                   return (
-                    <div 
-                      key={idx} 
+                    <div
+                      key={idx}
                       className="bg-[var(--card)] border border-[var(--border)] p-6 rounded-2xl shadow-sm hover:shadow-md hover:border-[var(--primary)] transition-all duration-200 flex flex-col justify-between space-y-4 group"
                     >
                       <div className="space-y-3">
