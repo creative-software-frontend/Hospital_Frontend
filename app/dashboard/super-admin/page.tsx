@@ -27,8 +27,9 @@ export default function SuperAdminDashboard() {
   const router = useRouter();
   const [role, setRole] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeSection, setActiveSection] = useState<string>("overview"); // overview, role-permissions, or feature id string
+  const [activeSection, setActiveSection] = useState<string>("overview");
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Single expanded feature ID — null means all closed (auto-close accordion)
   const [expandedFeature, setExpandedFeature] = useState<number | null>(null);
@@ -42,6 +43,9 @@ export default function SuperAdminDashboard() {
     localStorage.removeItem("role");
     router.push("/login");
   };
+
+  const openLogoutModal = () => setShowLogoutModal(true);
+  const closeLogoutModal = () => setShowLogoutModal(false);
 
   // Click same item → close it; click different item → close previous, open new
   const toggleFeature = (id: number) => {
@@ -294,11 +298,10 @@ export default function SuperAdminDashboard() {
       {/* SIDEBAR */}
       <aside
         className={`${sidebarOpen ? "w-80" : "w-0 -translate-x-full"
-          } lg:w-80 lg:translate-x-0 shrink-0 bg-[var(--card)] border-r border-[var(--border)] flex flex-col transition-all duration-300 z-30 h-full`}
+          } shrink-0 bg-[var(--card)] border-r border-[var(--border)] flex flex-col transition-all duration-300 ease-in-out z-30 h-full overflow-hidden`}
       >
         {/* Sidebar Header */}
-        <div className="p-6 border-b border-[var(--border)] flex items-center justify-between bg-[var(--primary)] text-white">
-          <div className="flex items-center gap-3">
+        <div className="p-6 border-b border-[var(--border)] flex items-center gap-3 bg-[var(--primary)] text-white">
             <img
               src="/images/hospitalogo.png"
               alt="Dhaka Central Hospital Logo"
@@ -308,13 +311,6 @@ export default function SuperAdminDashboard() {
               <h1 className="font-extrabold text-base leading-none tracking-tight text-white uppercase">Management</h1>
               <span className="text-[10px] text-white/70 tracking-wider font-semibold block uppercase mt-1">Super Admin Portal</span>
             </div>
-          </div>
-          <button
-            className="lg:hidden text-white hover:bg-white/10 p-1.5 rounded-lg transition-colors"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <FiX className="w-5 h-5" />
-          </button>
         </div>
 
         {/* Sidebar Nav Items */}
@@ -426,7 +422,7 @@ export default function SuperAdminDashboard() {
             </div>
           </div>
           <button
-            onClick={handleLogout}
+            onClick={openLogoutModal}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[var(--danger)]/10 text-[var(--danger)] rounded-xl text-xs font-bold hover:bg-[var(--danger)]/15 transition-colors"
           >
             <FiLogOut className="w-3.5 h-3.5" />
@@ -442,10 +438,11 @@ export default function SuperAdminDashboard() {
         <header className="h-16 shrink-0 bg-[var(--card)] border-b border-[var(--border)] flex items-center justify-between px-6 z-20">
           <div className="flex items-center gap-4">
             <button
-              className="lg:hidden text-[var(--primary-dark)] p-1.5 rounded-lg hover:bg-[var(--primary-soft)]/25 transition-colors"
+              className="text-[var(--primary-dark)] p-2 rounded-xl hover:bg-[var(--primary-soft)]/25 transition-all duration-200 active:scale-95"
               onClick={() => setSidebarOpen(!sidebarOpen)}
+              title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
             >
-              <FiMenu className="w-6 h-6" />
+              {sidebarOpen ? <FiX className="w-5 h-5" /> : <FiMenu className="w-5 h-5" />}
             </button>
             <h2 className="font-bold text-lg text-[var(--primary-dark)]">
               {activeSection === "overview" && "Dashboard Analytics Overview"}
@@ -781,6 +778,75 @@ export default function SuperAdminDashboard() {
 
         </main>
       </div>
+
+      {/* LOGOUT CONFIRMATION MODAL */}
+      {showLogoutModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={closeLogoutModal}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" />
+
+          {/* Modal Card */}
+          <div
+            className="relative bg-[var(--card)] border border-[var(--border)] rounded-3xl shadow-2xl w-full max-w-sm p-8 animate-[scaleIn_0.25s_ease-out]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <button
+              onClick={closeLogoutModal}
+              className="absolute top-4 right-4 p-1.5 rounded-xl text-[var(--muted)] hover:bg-[var(--bg)] hover:text-[var(--text)] transition-colors"
+            >
+              <FiX className="w-4 h-4" />
+            </button>
+
+            {/* Icon */}
+            <div className="flex justify-center mb-5">
+              <div className="w-16 h-16 rounded-2xl bg-red-50 border-2 border-red-100 flex items-center justify-center">
+                <FiLogOut className="w-7 h-7 text-red-500" />
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="text-center mb-6">
+              <h3 className="text-lg font-extrabold text-[var(--text)] mb-2">Logout Confirmation</h3>
+              <p className="text-xs text-[var(--muted)] leading-relaxed">
+                Are you sure you want to log out of your Super Admin account? You will need to sign in again to access the dashboard.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-bold transition-all duration-200 shadow-lg shadow-red-500/20 hover:shadow-red-500/30 active:scale-[0.98]"
+              >
+                <FiLogOut className="w-4 h-4" />
+                <span>Yes, Logout</span>
+              </button>
+              <button
+                onClick={closeLogoutModal}
+                className="w-full px-4 py-3 bg-[var(--bg)] hover:bg-[var(--primary-soft)]/20 border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)] rounded-xl text-sm font-bold transition-all duration-200"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Keyframe animations for modal */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+          from { opacity: 0; transform: scale(0.9) translateY(10px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      `}</style>
 
     </div>
   );
