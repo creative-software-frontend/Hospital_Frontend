@@ -59,7 +59,7 @@ export const Sidebar = ({
                         Key Features
                     </div>
                     <div className="space-y-2.5">
-                        {accessibleFeatures.map((feat: any) => {
+                        {accessibleFeatures.map((feat: any, index: number) => {
                             const Icon = feat.icon;
                             const isExpanded = expandedFeature === feat.id;
                             const isActive = activeSection === "feature-detail" && selectedFeature?.id === feat.id;
@@ -73,7 +73,7 @@ export const Sidebar = ({
                                                 <Icon className="w-4 h-4 shrink-0" />
                                             </div>
                                             <span className="text-xs font-semibold truncate text-left">
-                                                {feat.id}. {feat.englishTitle}
+                                                {index + 1}. {feat.englishTitle}
                                             </span>
                                         </div>
                                         <div className={`shrink-0 pl-1 ${isActive ? "text-white/80" : "text-[var(--muted)]"}`}>

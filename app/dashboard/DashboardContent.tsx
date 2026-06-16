@@ -316,7 +316,9 @@ export const DashboardContent = ({
                   </div>
                   <div>
                     <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">Core System Module</span>
-                    <h3 className="font-black text-xl text-[var(--primary-dark)]">{selectedFeature.id}. {selectedFeature.englishTitle}</h3>
+                    <h3 className="font-black text-xl text-[var(--primary-dark)]">
+                      {accessibleFeatures.findIndex((f: any) => f.id === selectedFeature.id) + 1}. {selectedFeature.englishTitle}
+                    </h3>
                   </div>
                 </div>
 
