@@ -1,223 +1,302 @@
 // data/features.ts
-import { FiUser, FiActivity, FiCalendar, FiPlusSquare, FiHome, FiHeart, FiLayers, FiFileText, FiBriefcase, FiDatabase, FiUserCheck, FiDollarSign, FiTrendingUp, FiFolder, FiTruck, FiMessageSquare, FiPieChart } from "react-icons/fi";
+import {
+    FiUser, FiActivity, FiCalendar, FiPlusSquare, FiHome, FiHeart, FiLayers, FiFileText, FiBriefcase,
+    FiDatabase, FiUserCheck, FiDollarSign, FiTrendingUp, FiFolder, FiTruck, FiMessageSquare, FiPieChart,
+    FiClipboard, FiEdit, FiAlertCircle, FiClock, FiPrinter, FiMail, FiBarChart2, FiTag, FiPackage,
+    FiShoppingCart, FiRefreshCcw, FiMapPin, FiAlertTriangle, FiCreditCard, FiCheckSquare, FiBell, FiSettings,
+    FiUsers, FiNavigation, FiToggleRight, FiDroplet, FiThermometer, FiBookOpen,
+    FiStar, FiRepeat, FiPhone, FiGlobe, FiZap, FiLock
+} from "react-icons/fi";
+
+export interface SubFeatureItem {
+    label: string;
+    icon: any;
+}
 
 export interface Feature {
     id: number;
-    banglaTitle: string;
     englishTitle: string;
     icon: any;
-    subFeatures: string[];
+    subFeatures: SubFeatureItem[];
 }
 
 export const keyFeatures: Feature[] = [
     {
         id: 1,
-        banglaTitle: "১. Patient Management",
         englishTitle: "Patient Management",
         icon: FiUser,
         subFeatures: [
-            "Patient Registration", "Patient Profile Management", "Unique Patient ID",
-            "Patient History Tracking", "Previous Treatment Records", "Medical Documents Upload",
-            "Patient Visit History", "Emergency Patient Registration"
+            { label: "Patient Registration", icon: FiClipboard },
+            { label: "Patient Profile Management", icon: FiUser },
+            { label: "Unique Patient ID", icon: FiTag },
+            { label: "Patient History Tracking", icon: FiActivity },
+            { label: "Previous Treatment Records", icon: FiFileText },
+            { label: "Medical Documents Upload", icon: FiBookOpen },
+            { label: "Patient Visit History", icon: FiClock },
+            { label: "Emergency Patient Registration", icon: FiAlertCircle },
         ]
     },
     {
         id: 2,
-        banglaTitle: "২. Doctor Management",
         englishTitle: "Doctor Management",
         icon: FiActivity,
         subFeatures: [
-            "Doctor Profile Management", "Department Assignment", "Doctor Schedule Management",
-            "Chamber Management", "Doctor Attendance", "Commission Setup",
-            "Appointment Management", "Doctor Performance Report"
+            { label: "Doctor Profile Management", icon: FiUser },
+            { label: "Department Assignment", icon: FiFolder },
+            { label: "Doctor Schedule Management", icon: FiCalendar },
+            { label: "Chamber Management", icon: FiHome },
+            { label: "Doctor Attendance", icon: FiCheckSquare },
+            { label: "Commission Setup", icon: FiDollarSign },
+            { label: "Appointment Management", icon: FiCalendar },
+            { label: "Doctor Performance Report", icon: FiBarChart2 },
         ]
     },
     {
         id: 3,
-        banglaTitle: "৩. Appointment Management",
         englishTitle: "Appointment Management",
         icon: FiCalendar,
         subFeatures: [
-            "Online Appointment Booking", "Walk-in Appointment", "Doctor-wise Appointment",
-            "SMS Confirmation", "Appointment Rescheduling", "Appointment Cancellation",
-            "Queue Management", "Daily Appointment Report"
+            { label: "Online Appointment Booking", icon: FiGlobe },
+            { label: "Walk-in Appointment", icon: FiUser },
+            { label: "Doctor-wise Appointment", icon: FiActivity },
+            { label: "SMS Confirmation", icon: FiPhone },
+            { label: "Appointment Rescheduling", icon: FiRepeat },
+            { label: "Appointment Cancellation", icon: FiAlertCircle },
+            { label: "Queue Management", icon: FiUsers },
+            { label: "Daily Appointment Report", icon: FiFileText },
         ]
     },
     {
         id: 4,
-        banglaTitle: "৪. OPD Management (Out Patient)",
         englishTitle: "OPD Management",
         icon: FiPlusSquare,
         subFeatures: [
-            "OPD Registration", "Consultation Records", "Diagnosis Management",
-            "Prescription Management", "Follow-up Schedule", "OPD Billing", "Doctor Notes"
+            { label: "OPD Registration", icon: FiClipboard },
+            { label: "Consultation Records", icon: FiFileText },
+            { label: "Diagnosis Management", icon: FiActivity },
+            { label: "Prescription Management", icon: FiEdit },
+            { label: "Follow-up Schedule", icon: FiCalendar },
+            { label: "OPD Billing", icon: FiDollarSign },
+            { label: "Doctor Notes", icon: FiBookOpen },
         ]
     },
     {
         id: 5,
-        banglaTitle: "৫. IPD Management (Indoor Patient)",
         englishTitle: "IPD Management",
         icon: FiHome,
         subFeatures: [
-            "Patient Admission", "Bed Allocation", "Ward Management",
-            "Cabin Management", "Nursing Notes", "Treatment Management",
-            "Daily Monitoring", "Discharge Management", "Discharge Certificate"
+            { label: "Patient Admission", icon: FiClipboard },
+            { label: "Bed Allocation", icon: FiLayers },
+            { label: "Ward Management", icon: FiHome },
+            { label: "Cabin Management", icon: FiLock },
+            { label: "Nursing Notes", icon: FiEdit },
+            { label: "Treatment Management", icon: FiActivity },
+            { label: "Daily Monitoring", icon: FiThermometer },
+            { label: "Discharge Management", icon: FiNavigation },
+            { label: "Discharge Certificate", icon: FiFileText },
         ]
     },
     {
         id: 6,
-        banglaTitle: "৬. Emergency Management",
         englishTitle: "Emergency Management",
         icon: FiHeart,
         subFeatures: [
-            "Emergency Registration", "Triage Management", "Emergency Doctor Assignment",
-            "Emergency Billing", "Critical Patient Monitoring"
+            { label: "Emergency Registration", icon: FiAlertCircle },
+            { label: "Triage Management", icon: FiAlertTriangle },
+            { label: "Emergency Doctor Assignment", icon: FiActivity },
+            { label: "Emergency Billing", icon: FiDollarSign },
+            { label: "Critical Patient Monitoring", icon: FiThermometer },
         ]
     },
     {
         id: 7,
-        banglaTitle: "৭. Bed & Ward Management",
         englishTitle: "Bed & Ward Management",
         icon: FiLayers,
         subFeatures: [
-            "Bed Allocation", "Bed Transfer", "Cabin Management",
-            "Ward Status Monitoring", "Occupancy Report", "Available Bed Report"
+            { label: "Bed Allocation", icon: FiLayers },
+            { label: "Bed Transfer", icon: FiRepeat },
+            { label: "Cabin Management", icon: FiHome },
+            { label: "Ward Status Monitoring", icon: FiActivity },
+            { label: "Occupancy Report", icon: FiBarChart2 },
+            { label: "Available Bed Report", icon: FiFileText },
         ]
     },
     {
         id: 8,
-        banglaTitle: "৮. Prescription Management",
         englishTitle: "Prescription Management",
         icon: FiFileText,
         subFeatures: [
-            "Digital Prescription", "Doctor Signature", "Medicine Recommendation",
-            "Diagnosis Notes", "Follow-up Instructions", "Print Prescription", "Email Prescription"
+            { label: "Digital Prescription", icon: FiEdit },
+            { label: "Doctor Signature", icon: FiCheckSquare },
+            { label: "Medicine Recommendation", icon: FiBriefcase },
+            { label: "Diagnosis Notes", icon: FiClipboard },
+            { label: "Follow-up Instructions", icon: FiCalendar },
+            { label: "Print Prescription", icon: FiPrinter },
+            { label: "Email Prescription", icon: FiMail },
         ]
     },
     {
         id: 9,
-        banglaTitle: "৯. Pharmacy Management",
         englishTitle: "Pharmacy Management",
         icon: FiBriefcase,
         subFeatures: [
-            "Medicine Purchase", "Medicine Sales", "Stock Management",
-            "Expiry Tracking", "Batch Management", "Supplier Management",
-            "Barcode System", "Pharmacy Billing"
+            { label: "Medicine Purchase", icon: FiShoppingCart },
+            { label: "Medicine Sales", icon: FiDollarSign },
+            { label: "Stock Management", icon: FiPackage },
+            { label: "Expiry Tracking", icon: FiClock },
+            { label: "Batch Management", icon: FiTag },
+            { label: "Supplier Management", icon: FiUsers },
+            { label: "Barcode System", icon: FiToggleRight },
+            { label: "Pharmacy Billing", icon: FiCreditCard },
         ]
     },
     {
         id: 10,
-        banglaTitle: "১০. Laboratory Management",
         englishTitle: "Laboratory Management",
         icon: FiDatabase,
         subFeatures: [
-            "Test Booking", "Sample Collection", "Test Processing",
-            "Report Generation", "Pathology Management", "Radiology Management",
-            "Online Report Delivery", "Lab Billing"
+            { label: "Test Booking", icon: FiCalendar },
+            { label: "Sample Collection", icon: FiDroplet },
+            { label: "Test Processing", icon: FiActivity },
+            { label: "Report Generation", icon: FiFileText },
+            { label: "Pathology Management", icon: FiDatabase },
+            { label: "Radiology Management", icon: FiZap },
+            { label: "Online Report Delivery", icon: FiGlobe },
+            { label: "Lab Billing", icon: FiCreditCard },
         ]
     },
     {
         id: 11,
-        banglaTitle: "১১. Operation Theatre (OT) Management",
         englishTitle: "OT Management",
         icon: FiActivity,
         subFeatures: [
-            "Surgery Scheduling", "OT Booking", "Surgeon Assignment",
-            "Operation Records", "OT Expense Tracking", "Surgery Reports"
+            { label: "Surgery Scheduling", icon: FiCalendar },
+            { label: "OT Booking", icon: FiClipboard },
+            { label: "Surgeon Assignment", icon: FiActivity },
+            { label: "Operation Records", icon: FiFileText },
+            { label: "OT Expense Tracking", icon: FiDollarSign },
+            { label: "Surgery Reports", icon: FiBarChart2 },
         ]
     },
     {
         id: 12,
-        banglaTitle: "১২. Blood Bank Management",
         englishTitle: "Blood Bank Management",
         icon: FiHeart,
         subFeatures: [
-            "Donor Management", "Blood Collection", "Blood Issue",
-            "Blood Stock Monitoring", "Blood Group Tracking", "Blood Expiry Alert"
+            { label: "Donor Management", icon: FiUsers },
+            { label: "Blood Collection", icon: FiDroplet },
+            { label: "Blood Issue", icon: FiPackage },
+            { label: "Blood Stock Monitoring", icon: FiActivity },
+            { label: "Blood Group Tracking", icon: FiTag },
+            { label: "Blood Expiry Alert", icon: FiAlertTriangle },
         ]
     },
     {
         id: 13,
-        banglaTitle: "১৩. Nursing Management",
         englishTitle: "Nursing Management",
         icon: FiUserCheck,
         subFeatures: [
-            "Nurse Assignment", "Nursing Notes", "Patient Monitoring",
-            "Medication Tracking", "Shift Management"
+            { label: "Nurse Assignment", icon: FiUsers },
+            { label: "Nursing Notes", icon: FiEdit },
+            { label: "Patient Monitoring", icon: FiThermometer },
+            { label: "Medication Tracking", icon: FiBriefcase },
+            { label: "Shift Management", icon: FiClock },
         ]
     },
     {
         id: 14,
-        banglaTitle: "১৪. Billing & Accounts Management",
         englishTitle: "Billing & Accounts Management",
         icon: FiDollarSign,
         subFeatures: [
-            "Patient Billing", "OPD Billing", "IPD Billing",
-            "Pharmacy Billing", "Lab Billing", "Service Billing",
-            "Advance Payment", "Due Collection", "Refund Management"
+            { label: "Patient Billing", icon: FiCreditCard },
+            { label: "OPD Billing", icon: FiPlusSquare },
+            { label: "IPD Billing", icon: FiHome },
+            { label: "Pharmacy Billing", icon: FiBriefcase },
+            { label: "Lab Billing", icon: FiDatabase },
+            { label: "Service Billing", icon: FiTag },
+            { label: "Advance Payment", icon: FiDollarSign },
+            { label: "Due Collection", icon: FiRefreshCcw },
+            { label: "Refund Management", icon: FiRepeat },
         ]
     },
     {
         id: 15,
-        banglaTitle: "১৫. Financial Accounting",
         englishTitle: "Financial Accounting",
         icon: FiTrendingUp,
         subFeatures: [
-            "Income Management", "Expense Management", "General Ledger",
-            "Cash Book", "Bank Book", "Trial Balance",
-            "Profit & Loss", "Balance Sheet"
+            { label: "Income Management", icon: FiTrendingUp },
+            { label: "Expense Management", icon: FiBarChart2 },
+            { label: "General Ledger", icon: FiBookOpen },
+            { label: "Cash Book", icon: FiDollarSign },
+            { label: "Bank Book", icon: FiCreditCard },
+            { label: "Trial Balance", icon: FiCheckSquare },
+            { label: "Profit & Loss", icon: FiPieChart },
+            { label: "Balance Sheet", icon: FiFileText },
         ]
     },
     {
         id: 16,
-        banglaTitle: "১৬. Human Resource Management (HRM)",
         englishTitle: "Human Resource Management",
         icon: FiBriefcase,
         subFeatures: [
-            "Employee Management", "Attendance Management", "Payroll Management",
-            "Leave Management", "Shift Management", "Employee Evaluation"
+            { label: "Employee Management", icon: FiUsers },
+            { label: "Attendance Management", icon: FiCheckSquare },
+            { label: "Payroll Management", icon: FiDollarSign },
+            { label: "Leave Management", icon: FiCalendar },
+            { label: "Shift Management", icon: FiClock },
+            { label: "Employee Evaluation", icon: FiStar },
         ]
     },
     {
         id: 17,
-        banglaTitle: "১৭. Inventory Management",
         englishTitle: "Inventory Management",
         icon: FiFolder,
         subFeatures: [
-            "Medical Equipment Management", "Asset Management", "Inventory Tracking",
-            "Purchase Management", "Stock Transfer", "Reorder Alert"
+            { label: "Medical Equipment Management", icon: FiSettings },
+            { label: "Asset Management", icon: FiPackage },
+            { label: "Inventory Tracking", icon: FiActivity },
+            { label: "Purchase Management", icon: FiShoppingCart },
+            { label: "Stock Transfer", icon: FiRepeat },
+            { label: "Reorder Alert", icon: FiAlertTriangle },
         ]
     },
     {
         id: 18,
-        banglaTitle: "১৮. Ambulance Management",
         englishTitle: "Ambulance Management",
         icon: FiTruck,
         subFeatures: [
-            "Ambulance Booking", "Driver Management", "Trip Tracking",
-            "Fuel Expense Tracking", "Emergency Dispatch"
+            { label: "Ambulance Booking", icon: FiPhone },
+            { label: "Driver Management", icon: FiUser },
+            { label: "Trip Tracking", icon: FiMapPin },
+            { label: "Fuel Expense Tracking", icon: FiDollarSign },
+            { label: "Emergency Dispatch", icon: FiNavigation },
         ]
     },
     {
         id: 19,
-        banglaTitle: "১৯. SMS & Notification System",
         englishTitle: "SMS & Notification System",
         icon: FiMessageSquare,
         subFeatures: [
-            "Appointment Reminder", "Bill Notification", "Medicine Reminder",
-            "Follow-up Reminder", "Promotional SMS"
+            { label: "Appointment Reminder", icon: FiBell },
+            { label: "Bill Notification", icon: FiCreditCard },
+            { label: "Medicine Reminder", icon: FiBriefcase },
+            { label: "Follow-up Reminder", icon: FiCalendar },
+            { label: "Promotional SMS", icon: FiMessageSquare },
         ]
     },
     {
         id: 20,
-        banglaTitle: "২০. Reports & Analytics",
         englishTitle: "Reports & Analytics",
         icon: FiPieChart,
         subFeatures: [
-            "Daily Collection Report", "Patient Report", "Doctor Report",
-            "Appointment Report", "Pharmacy Sales Report", "Lab Income Report",
-            "Financial Report", "Management Dashboard"
+            { label: "Daily Collection Report", icon: FiDollarSign },
+            { label: "Patient Report", icon: FiUser },
+            { label: "Doctor Report", icon: FiActivity },
+            { label: "Appointment Report", icon: FiCalendar },
+            { label: "Pharmacy Sales Report", icon: FiBriefcase },
+            { label: "Lab Income Report", icon: FiDatabase },
+            { label: "Financial Report", icon: FiTrendingUp },
+            { label: "Management Dashboard", icon: FiPieChart },
         ]
-    }
-
+    },
 ];

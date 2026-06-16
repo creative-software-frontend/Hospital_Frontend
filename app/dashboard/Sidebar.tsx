@@ -1,5 +1,5 @@
 // components/Dashboard/Sidebar.tsx
-import { FiPieChart, FiShield, FiLogOut, FiMenu, FiX, FiChevronDown, FiChevronUp } from "react-icons/fi";
+import { FiPieChart, FiShield, FiLogOut, FiChevronDown, FiChevronUp } from "react-icons/fi";
 
 export const Sidebar = ({
     sidebarOpen, role, permissions, accessibleFeatures,
@@ -19,7 +19,7 @@ export const Sidebar = ({
 
     return (
         <aside className={`${sidebarOpen ? "w-80" : "w-0 -translate-x-full"} shrink-0 bg-[var(--card)] border-r border-[var(--border)] flex flex-col transition-all duration-300 ease-in-out z-30 h-full overflow-hidden`}>
-            {/* Sidebar Header - Same as your code */}
+            {/* Sidebar Header */}
             <div className="p-6 border-b border-[var(--border)] flex items-center gap-3 bg-[var(--primary)] text-white">
                 <img src="/images/hospitalogo.png" alt="Hospital Logo" className="w-10 h-10 object-contain bg-white rounded-xl p-1 shadow-md" />
                 <div>
@@ -31,7 +31,7 @@ export const Sidebar = ({
             </div>
 
             {/* Sidebar Nav Items */}
-            <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+            <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 news-scroll">
                 {/* General Group */}
                 <div>
                     <div className="text-[11px] font-bold tracking-wider text-[var(--muted)] uppercase mb-3 px-2">General</div>
@@ -55,11 +55,9 @@ export const Sidebar = ({
 
                 {/* Key Features - Filtered by role permissions */}
                 <div>
-                    <div className="text-[11px] font-bold tracking-wider text-[var(--muted)] uppercase mb-3 px-2">
-                        Key Features
-                    </div>
+
                     <div className="space-y-2.5">
-                        {accessibleFeatures.map((feat: any, index: number) => {
+                        {accessibleFeatures.map((feat: any) => {
                             const Icon = feat.icon;
                             const isExpanded = expandedFeature === feat.id;
                             const isActive = activeSection === "feature-detail" && selectedFeature?.id === feat.id;
@@ -73,7 +71,7 @@ export const Sidebar = ({
                                                 <Icon className="w-4 h-4 shrink-0" />
                                             </div>
                                             <span className="text-xs font-semibold truncate text-left">
-                                                {index + 1}. {feat.englishTitle}
+                                                {feat.englishTitle}
                                             </span>
                                         </div>
                                         <div className={`shrink-0 pl-1 ${isActive ? "text-white/80" : "text-[var(--muted)]"}`}>
@@ -83,11 +81,15 @@ export const Sidebar = ({
 
                                     {isExpanded && (
                                         <div className="mt-1 mb-2 ml-6 space-y-0.5">
-                                            {feat.subFeatures.map((sub: any, sIdx: any) => (
-                                                <div key={sIdx} className="px-3 py-2 rounded-lg cursor-pointer text-[11px] font-medium text-[var(--muted)] hover:bg-[var(--primary)]/10 hover:text-[var(--primary-dark)] hover:pl-4 transition-all duration-200">
-                                                    {sub}
-                                                </div>
-                                            ))}
+                                            {feat.subFeatures.map((sub: any, sIdx: any) => {
+                                                const SubIcon = sub.icon;
+                                                return (
+                                                    <div key={sIdx} className="flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer text-[11px] font-medium text-[var(--muted)] hover:bg-[var(--primary)]/10 hover:text-[var(--primary-dark)] hover:pl-4 transition-all duration-200">
+                                                        <SubIcon className="w-3 h-3 shrink-0 text-[var(--primary)]/60" />
+                                                        <span>{sub.label}</span>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </div>

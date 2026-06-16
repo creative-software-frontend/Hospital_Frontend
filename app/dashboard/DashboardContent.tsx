@@ -216,7 +216,7 @@ export const DashboardContent = ({
                         <span className="text-xs font-bold text-[var(--text)] group-hover:text-[var(--primary-dark)] transition-colors">{feat.englishTitle}</span>
                       </div>
                       <p className="text-[9px] text-[var(--muted)] mt-3 line-clamp-2 leading-relaxed">
-                        Features: {feat.subFeatures.join(", ")}
+                        {feat.subFeatures.map((s: any) => s.label).join(", ")}
                       </p>
                     </div>
                   );
@@ -316,30 +316,31 @@ export const DashboardContent = ({
                   </div>
                   <div>
                     <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">Core System Module</span>
-                    <h3 className="font-black text-xl text-[var(--primary-dark)]">
-                      {accessibleFeatures.findIndex((f: any) => f.id === selectedFeature.id) + 1}. {selectedFeature.englishTitle}
-                    </h3>
+                    <h3 className="font-black text-xl text-[var(--primary-dark)]">{selectedFeature.englishTitle}</h3>
                   </div>
                 </div>
 
                 <div>
                   <h4 className="text-xs font-extrabold text-[var(--text)] mb-3 uppercase tracking-wider">
-                    সুবিধাসমূহ / Sub-Features Available:
+                    Sub-Features Available
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {selectedFeature.subFeatures.map((sub: string, sIdx: number) => (
-                      <div
-                        key={sIdx}
-                        className="card flex items-center gap-3 p-3 rounded-xl group"
-                      >
-                        <div className="w-5 h-5 rounded-full bg-[var(--primary-soft)]/35 flex items-center justify-center text-[10px] font-bold text-[var(--primary-dark)] group-hover:bg-[var(--primary)] group-hover:text-white transition-colors shrink-0">
-                          {sIdx + 1}
+                    {selectedFeature.subFeatures.map((sub: any, sIdx: number) => {
+                      const SubIcon = sub.icon;
+                      return (
+                        <div
+                          key={sIdx}
+                          className="card flex items-center gap-3 p-3 rounded-xl group"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-[var(--primary-soft)]/35 flex items-center justify-center text-[var(--primary-dark)] group-hover:bg-[var(--primary)] group-hover:text-white transition-colors shrink-0">
+                            <SubIcon className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="text-xs font-bold text-[var(--muted)] group-hover:text-[var(--text)] transition-colors">
+                            {sub.label}
+                          </span>
                         </div>
-                        <span className="text-xs font-bold text-[var(--muted)] group-hover:text-[var(--text)] transition-colors">
-                          {sub}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
