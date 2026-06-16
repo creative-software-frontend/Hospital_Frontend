@@ -85,6 +85,12 @@ export const getRoleStats = (role: UserRole) => {
             { label: "Today's Revenue", value: "$18,250", icon: "FiDollarSign" },
             { label: "Available Beds", value: "48 / 150", icon: "FiLayers" },
         ],
+        'admin': [
+            { label: "Active Staff", value: "142", icon: "FiUserCheck" },
+            { label: "Doctors on Duty", value: "35", icon: "FiActivity" },
+            { label: "Daily Revenue", value: "$12,400", icon: "FiDollarSign" },
+            { label: "Pending Approvals", value: "8", icon: "FiSettings" },
+        ],
         'doctor': [
             { label: "Today's Patients", value: "24", icon: "FiUser" },
             { label: "Pending Reports", value: "12", icon: "FiFileText" },
@@ -95,7 +101,31 @@ export const getRoleStats = (role: UserRole) => {
             { label: "Low Stock Items", value: "5", icon: "FiBriefcase" },
             { label: "Expiring Soon", value: "3", icon: "FiClock" },
         ],
-        // Add more role-specific stats as needed
+        'pathologist': [
+            { label: "Pending Samples", value: "18", icon: "FiDatabase" },
+            { label: "Reports Generated", value: "45", icon: "FiFileText" },
+            { label: "Critical Results", value: "2", icon: "FiActivity" },
+        ],
+        'radiologist': [
+            { label: "Scheduled Scans", value: "14", icon: "FiCalendar" },
+            { label: "Pending Reports", value: "6", icon: "FiFileText" },
+            { label: "Equipment Status", value: "All Active", icon: "FiSettings" },
+        ],
+        'accountant': [
+            { label: "Total Revenue Today", value: "$15,300", icon: "FiDollarSign" },
+            { label: "Pending Bills", value: "24", icon: "FiFileText" },
+            { label: "Expenses Today", value: "$2,100", icon: "FiTrendingUp" },
+        ],
+        'receptionist': [
+            { label: "New Registrations", value: "45", icon: "FiUserPlus" },
+            { label: "Waiting Patients", value: "12", icon: "FiClock" },
+            { label: "Total Bookings", value: "89", icon: "FiCalendar" },
+        ],
+        'nurse': [
+            { label: "Admitted Patients", value: "38", icon: "FiUsers" },
+            { label: "Medicine Rounds", value: "15 Pending", icon: "FiClock" },
+            { label: "Available Beds", value: "12", icon: "FiLayers" },
+        ],
     };
 
     return (baseStats as any)[role] || baseStats['super-admin'];
