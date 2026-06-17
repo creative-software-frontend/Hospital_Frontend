@@ -109,9 +109,12 @@ export const DashboardContent = ({
     },
   ];
 
+  console.log("DashboardContent selectedFeature.id:", selectedFeature?.id);
+
   const table = selectedFeature?.id
     ? ADMIN_TABLE_BY_FEATURE_ID[selectedFeature.id]
     : null;
+
 
   const filteredTable = useMemo(() => {
     if (!table) return null;

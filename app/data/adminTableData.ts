@@ -110,6 +110,29 @@ export const APPOINTMENT_TABLE: AdminTableData = {
   ],
 };
 
+// Bed & Ward management (feature id = 7)
+export const BED_WARD_TABLE: AdminTableData = {
+  columns: ["Ward", "Bed", "Patient", "Status", "Admission ID", "Expected Discharge"],
+  rows: Array.from({ length: 1000 }).map((_, i) => {
+    const ward = i % 3 === 0 ? "Ward-1" : i % 3 === 1 ? "Ward-2" : "Ward-3";
+    const bed = i % 2 === 0 ? "B-12" : "C-03";
+    const patient = i % 2 === 0 ? "John Doe" : "Jane Smith";
+    const status = i % 2 === 0 ? "Occupied" : "Available";
+    const admissionId = i % 2 === 0 ? `IPD-${501 + i}` : "N/A";
+    const expected = i % 2 === 0 ? (i % 4 === 0 ? "Jun 25, 2026" : "Jun 27, 2026") : "N/A";
+
+    return {
+      Ward: ward,
+      Bed: bed,
+      Patient: patient,
+      Status: status,
+      "Admission ID": admissionId,
+      "Expected Discharge": expected,
+    };
+  }),
+};
+
+
 // Billing & accounts (feature id = 14)
 export const BILLING_TABLE: AdminTableData = {
   columns: ["Invoice ID", "Patient", "Amount", "Paid", "Due", "Method"],
@@ -503,6 +526,7 @@ export const ADMIN_TABLE_BY_FEATURE_ID: Record<number, AdminTableData> = {
   4: OPD_TABLE,
   5: IPD_TABLE,
   6: EMERGENCY_TABLE,
+  7: BED_WARD_TABLE,
   8: PRESCRIPTION_TABLE,
   9: PHARMACY_TABLE,
   10: LAB_TABLE,
@@ -517,6 +541,7 @@ export const ADMIN_TABLE_BY_FEATURE_ID: Record<number, AdminTableData> = {
   19: SMS_TABLE,
   20: REPORTS_TABLE,
 };
+
 
 
 
