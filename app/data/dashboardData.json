@@ -1,0 +1,116 @@
+{
+  "categories": [
+    { "id": "overview", "label": "Dashboard Overview", "menuKey": "overview", "icon": "FiPieChart" },
+    { "id": "role-permissions", "label": "Roles & Permissions", "menuKey": "role-permissions", "icon": "FiShield" },
+    { "id": "feature-detail", "label": "Module Detail", "menuKey": "feature-detail", "icon": "FiActivity" }
+  ],
+  "dashboards": {
+    "super-admin": {
+      "overview": {
+        "stats": [
+          { "label": "Total Patients", "value": "12,840", "icon": "FiUser" },
+          { "label": "Today's Appointments", "value": "342", "icon": "FiCalendar" },
+          { "label": "Today's Revenue", "value": "$18,250", "icon": "FiDollarSign" },
+          { "label": "Available Beds", "value": "48 / 150", "icon": "FiLayers" }
+        ],
+        "cards": [
+          { "title": "Weekly Patient Admissions", "subtitle": "Real-time telemetry showing occupancy dynamics", "type": "chart" },
+          { "title": "Security & Roles Log", "subtitle": "Recent administrative activity", "type": "list" },
+          { "title": "System Operations Quick Links", "subtitle": "Use sidebar to browse all modules", "type": "feature-tiles" }
+        ]
+      },
+      "role-permissions": {
+        "rolesGrid": true,
+        "header": {
+          "title": "Hospital Roles & Access Matrix",
+          "description": "Review and configure authorization levels mapped to departments."
+        }
+      }
+    },
+    "admin": {
+      "overview": {
+        "stats": [
+          { "label": "Active Staff", "value": "142", "icon": "FiUserCheck" },
+          { "label": "Doctors on Duty", "value": "35", "icon": "FiActivity" },
+          { "label": "Daily Revenue", "value": "$12,400", "icon": "FiDollarSign" },
+          { "label": "Pending Approvals", "value": "8", "icon": "FiSettings" }
+        ],
+        "cards": [
+          { "title": "Weekly Patient Admissions", "subtitle": "Real-time telemetry showing occupancy dynamics", "type": "chart" },
+          { "title": "Security & Roles Log", "subtitle": "Admin approval queue", "type": "list" },
+          { "title": "System Operations Quick Links", "subtitle": "Use sidebar to browse all modules", "type": "feature-tiles" }
+        ]
+      },
+      "role-permissions": {
+        "rolesGrid": true,
+        "header": {
+          "title": "Hospital Roles & Access Matrix",
+          "description": "Admin view of access scope for each staff role."
+        }
+      }
+    },
+    "doctor": {
+      "overview": {
+        "stats": [
+          { "label": "Today's Patients", "value": "24", "icon": "FiUser" },
+          { "label": "Pending Reports", "value": "12", "icon": "FiFileText" },
+          { "label": "Upcoming Appointments", "value": "8", "icon": "FiCalendar" }
+        ]
+      }
+    },
+    "pharmacist": {
+      "overview": {
+        "stats": [
+          { "label": "Today's Sales", "value": "$1,240", "icon": "FiDollarSign" },
+          { "label": "Low Stock Items", "value": "5", "icon": "FiBriefcase" },
+          { "label": "Expiring Soon", "value": "3", "icon": "FiClock" }
+        ]
+      }
+    },
+    "pathologist": {
+      "overview": {
+        "stats": [
+          { "label": "Pending Samples", "value": "18", "icon": "FiDatabase" },
+          { "label": "Reports Generated", "value": "45", "icon": "FiFileText" },
+          { "label": "Critical Results", "value": "2", "icon": "FiActivity" }
+        ]
+      }
+    },
+    "radiologist": {
+      "overview": {
+        "stats": [
+          { "label": "Scheduled Scans", "value": "14", "icon": "FiCalendar" },
+          { "label": "Pending Reports", "value": "6", "icon": "FiFileText" },
+          { "label": "Equipment Status", "value": "All Active", "icon": "FiSettings" }
+        ]
+      }
+    },
+    "accountant": {
+      "overview": {
+        "stats": [
+          { "label": "Total Revenue Today", "value": "$15,300", "icon": "FiDollarSign" },
+          { "label": "Pending Bills", "value": "24", "icon": "FiFileText" },
+          { "label": "Expenses Today", "value": "$2,100", "icon": "FiTrendingUp" }
+        ]
+      }
+    },
+    "receptionist": {
+      "overview": {
+        "stats": [
+          { "label": "New Registrations", "value": "45", "icon": "FiUserPlus" },
+          { "label": "Waiting Patients", "value": "12", "icon": "FiClock" },
+          { "label": "Total Bookings", "value": "89", "icon": "FiCalendar" }
+        ]
+      }
+    },
+    "nurse": {
+      "overview": {
+        "stats": [
+          { "label": "Admitted Patients", "value": "38", "icon": "FiUsers" },
+          { "label": "Medicine Rounds", "value": "15 Pending", "icon": "FiClock" },
+          { "label": "Available Beds", "value": "12", "icon": "FiLayers" }
+        ]
+      }
+    }
+  }
+}

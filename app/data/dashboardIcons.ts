@@ -1,0 +1,36 @@
+import {
+  FiUser,
+  FiCalendar,
+  FiDollarSign,
+  FiLayers,
+  FiHome,
+  FiActivity,
+  FiDatabase,
+  FiBriefcase,
+  FiFileText,
+  FiClock,
+  FiArrowRight,
+  FiShield,
+  FiSettings,
+  FiUserCheck,
+  FiPieChart,
+} from 'react-icons/fi';
+
+export const iconByName: Record<string, any> = {
+  FiUser,
+  FiCalendar,
+  FiDollarSign,
+  FiLayers,
+  FiHome,
+  FiActivity,
+  FiDatabase,
+  FiBriefcase,
+  FiFileText,
+  FiClock,
+  FiArrowRight,
+  FiShield,
+  FiSettings,
+  FiUserCheck,
+  FiPieChart,
+};
+
