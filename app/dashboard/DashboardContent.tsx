@@ -18,7 +18,12 @@ import {
   FiX,
   FiMenu,
   FiPieChart,
+  FiSearch,
+  FiX as FiXIcon,
 } from "react-icons/fi";
+
+import { useMemo, useState } from "react";
+
 
 import { ADMIN_TABLE_BY_FEATURE_ID } from "@/app/data/adminTableData";
 
@@ -51,6 +56,11 @@ export const DashboardContent = ({
   setActiveSection,
   setSelectedFeature,
 }: any) => {
+  const [tableSearch, setTableSearch] = useState<string>("");
+  const [pageSize, setPageSize] = useState<number>(50);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+
   const roles = [
     {
       name: "Super Admin",
@@ -102,6 +112,43 @@ export const DashboardContent = ({
   const table = selectedFeature?.id
     ? ADMIN_TABLE_BY_FEATURE_ID[selectedFeature.id]
     : null;
+
+  const filteredTable = useMemo(() => {
+    if (!table) return null;
+    const q = tableSearch.trim().toLowerCase();
+    if (!q) return table;
+
+    const filteredRows = table.rows.filter((row: any) => {
+      return table.columns.some((col) => {
+        const val = row?.[col];
+        return String(val ?? "").toLowerCase().includes(q);
+      });
+    });
+
+    return {
+      ...table,
+      rows: filteredRows,
+    };
+  }, [table, tableSearch]);
+
+  // Pagination (fix: avoid dumping 1000 rows in the UI)
+  const totalRows = filteredTable?.rows?.length ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
+  const paginatedRows = useMemo(() => {
+    if (!filteredTable) return [];
+    const start = (safeCurrentPage - 1) * pageSize;
+    const end = start + pageSize;
+    return filteredTable.rows.slice(start, end);
+  }, [filteredTable, safeCurrentPage, pageSize]);
+
+  // Reset to page 1 when search text changes
+  // (prevents showing an empty page after filtering)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+
+
+
 
   const titleById: Record<number, { section: string; heading: string }> = {
     1: { section: "Patient Management", heading: "Patients" },
@@ -348,7 +395,8 @@ export const DashboardContent = ({
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 card p-6 rounded-2xl shadow-sm space-y-6">
-                {table ? (
+                {filteredTable ? (
+
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
@@ -357,11 +405,25 @@ export const DashboardContent = ({
                       </div>
                     </div>
 
-                    <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="text-xs text-[var(--muted)]">Showing mock table data for selected module.</div>
+                    <div className="w-full max-w-sm">
+                      <input
+                        type="text"
+                        value={tableSearch}
+                        onChange={(e) => setTableSearch(e.target.value)}
+                        placeholder="Search in this table..."
+                        className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
                       <table className="min-w-[800px] w-full">
                         <thead>
                           <tr className="bg-[var(--bg)]">
-                            {table.columns.map((col: string) => (
+                            {filteredTable.columns.map((col: string) => (
+
                               <th
                                 key={col}
                                 className="text-left text-[11px] font-bold text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]"
@@ -372,9 +434,9 @@ export const DashboardContent = ({
                           </tr>
                         </thead>
                         <tbody>
-                          {table.rows.map((row: any, idx: number) => (
+                          {paginatedRows.map((row: any, idx: number) => (
                             <tr key={idx} className="hover:bg-[var(--primary-soft)]/10 transition-colors">
-                              {table.columns.map((col: string) => (
+                              {filteredTable.columns.map((col: string) => (
                                 <td
                                   key={col}
                                   className="text-[12px] text-[var(--text)] px-4 py-3 border-b border-[var(--border)]"
@@ -388,9 +450,46 @@ export const DashboardContent = ({
                       </table>
                     </div>
 
-                    <div className="text-xs text-[var(--muted)]">Showing mock table data for selected module.</div>
+                    <div className="flex items-center justify-between gap-3 pt-3">
+                      <div className="text-xs text-[var(--muted)]">
+                        Showing {paginatedRows.length} of {totalRows} rows
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                          disabled={safeCurrentPage <= 1}
+                          className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors ${
+                            safeCurrentPage <= 1
+                              ? "bg-[var(--bg)] text-[var(--muted)] border-[var(--border)] cursor-not-allowed"
+                              : "bg-[var(--bg)] hover:bg-[var(--primary-soft)]/20 text-[var(--muted)] hover:text-[var(--text)] border-[var(--border)] cursor-pointer"
+                          }`}
+                        >
+                          Previous
+                        </button>
+
+                        <span className="text-xs font-bold text-[var(--muted)]">
+                          Page {safeCurrentPage} / {totalPages}
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                          disabled={safeCurrentPage >= totalPages}
+                          className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors ${
+                            safeCurrentPage >= totalPages
+                              ? "bg-[var(--bg)] text-[var(--muted)] border-[var(--border)] cursor-not-allowed"
+                              : "bg-[var(--bg)] hover:bg-[var(--primary-soft)]/20 text-[var(--muted)] hover:text-[var(--text)] border-[var(--border)] cursor-pointer"
+                          }`}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ) : (
+
                   <>
                     <div className="flex items-center gap-4 border-b border-[var(--border)] pb-4">
                       <div className="p-3 bg-[var(--primary-soft)]/30 text-[var(--primary-dark)] rounded-xl">

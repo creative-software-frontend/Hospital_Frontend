@@ -1,4 +1,6 @@
 // components/Dashboard/Sidebar.tsx
+"use client";
+
 import { FiPieChart, FiShield, FiLogOut, FiChevronDown, FiChevronUp } from "react-icons/fi";
 
 export const Sidebar = ({
@@ -7,6 +9,11 @@ export const Sidebar = ({
     setSelectedFeature, expandedFeature, setExpandedFeature,
     setSidebarOpen, openLogoutModal
 }: any) => {
+
+
+    // Search removed (table search remains in DashboardContent)
+
+
 
     const toggleFeature = (id: number) => {
         setExpandedFeature((prev: number | null) => (prev === id ? null : id));
@@ -55,46 +62,73 @@ export const Sidebar = ({
 
                 {/* Key Features - Filtered by role permissions */}
                 <div>
-
                     <div className="space-y-2.5">
-                        {accessibleFeatures.map((feat: any) => {
-                            const Icon = feat.icon;
-                            const isExpanded = expandedFeature === feat.id;
-                            const isActive = activeSection === "feature-detail" && selectedFeature?.id === feat.id;
+                        {accessibleFeatures.length === 0 ? (
+                            <div className="px-3 py-3 text-xs font-semibold text-[var(--muted)]">
+                                No modules found.
+                            </div>
+                        ) : (
+                            accessibleFeatures.map((feat: any) => {
+                                const Icon = feat.icon;
+                                const isExpanded = expandedFeature === feat.id;
+                                const isActive = activeSection === "feature-detail" && selectedFeature?.id === feat.id;
 
-                            return (
-                                <div key={feat.id}>
-                                    <div className={`flex items-center justify-between px-3.5 py-3 rounded-xl cursor-pointer transition-all duration-200 ${isActive ? "bg-[var(--primary)] text-white" : "text-[var(--muted)] hover:bg-[var(--primary-soft)]/20"}`}
-                                        onClick={() => { handleSelectFeature(feat); toggleFeature(feat.id); }}>
-                                        <div className="flex items-center gap-3 overflow-hidden">
-                                            <div className={`p-1.5 rounded-lg shrink-0 ${isActive ? "bg-white/25 text-white" : "bg-[var(--primary-soft)]/40 text-[var(--primary)]"}`}>
-                                                <Icon className="w-4 h-4 shrink-0" />
+                                return (
+                                    <div key={feat.id}>
+                                        <div
+                                            className={`flex items-center justify-between px-3.5 py-3 rounded-xl cursor-pointer transition-all duration-200 ${
+                                                isActive
+                                                    ? "bg-[var(--primary)] text-white"
+                                                    : "text-[var(--muted)] hover:bg-[var(--primary-soft)]/20"
+                                            }`}
+                                            onClick={() => {
+                                                handleSelectFeature(feat);
+                                                toggleFeature(feat.id);
+                                            }}
+                                        >
+                                            <div className="flex items-center gap-3 overflow-hidden">
+                                                <div
+                                                    className={`p-1.5 rounded-lg shrink-0 ${
+                                                        isActive
+                                                            ? "bg-white/25 text-white"
+                                                            : "bg-[var(--primary-soft)]/40 text-[var(--primary)]"
+                                                    }`}
+                                                >
+                                                    <Icon className="w-4 h-4 shrink-0" />
+                                                </div>
+                                                <span className="text-xs font-semibold truncate text-left">
+                                                    {feat.englishTitle}
+                                                </span>
                                             </div>
-                                            <span className="text-xs font-semibold truncate text-left">
-                                                {feat.englishTitle}
-                                            </span>
+                                            <div className={`shrink-0 pl-1 ${isActive ? "text-white/80" : "text-[var(--muted)]"}`}>
+                                                {isExpanded ? (
+                                                    <FiChevronUp className="w-3.5 h-3.5" />
+                                                ) : (
+                                                    <FiChevronDown className="w-3.5 h-3.5" />
+                                                )}
+                                            </div>
                                         </div>
-                                        <div className={`shrink-0 pl-1 ${isActive ? "text-white/80" : "text-[var(--muted)]"}`}>
-                                            {isExpanded ? <FiChevronUp className="w-3.5 h-3.5" /> : <FiChevronDown className="w-3.5 h-3.5" />}
-                                        </div>
-                                    </div>
 
-                                    {isExpanded && (
-                                        <div className="mt-1 mb-2 ml-6 space-y-0.5">
-                                            {feat.subFeatures.map((sub: any, sIdx: any) => {
-                                                const SubIcon = sub.icon;
-                                                return (
-                                                    <div key={sIdx} className="flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer text-[11px] font-medium text-[var(--muted)] hover:bg-[var(--primary)]/10 hover:text-[var(--primary-dark)] hover:pl-4 transition-all duration-200">
-                                                        <SubIcon className="w-3 h-3 shrink-0 text-[var(--primary)]/60" />
-                                                        <span>{sub.label}</span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
+                                        {isExpanded && (
+                                            <div className="mt-1 mb-2 ml-6 space-y-0.5">
+                                                {feat.subFeatures.map((sub: any, sIdx: any) => {
+                                                    const SubIcon = sub.icon;
+                                                    return (
+                                                        <div
+                                                            key={sIdx}
+                                                            className="flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer text-[11px] font-medium text-[var(--muted)] hover:bg-[var(--primary)]/10 hover:text-[var(--primary-dark)] hover:pl-4 transition-all duration-200"
+                                                        >
+                                                            <SubIcon className="w-3 h-3 shrink-0 text-[var(--primary)]/60" />
+                                                            <span>{sub.label}</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })
+                        )}
                     </div>
                 </div>
             </div>
