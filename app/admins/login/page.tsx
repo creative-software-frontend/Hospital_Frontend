@@ -5,6 +5,30 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
+const roles = [
+  "Super Admin",
+  "Admin",
+  "Doctor",
+  "Pharmacist",
+  "Pathologist",
+  "Radiologist",
+  "Accountant",
+  "Receptionist",
+  "Nurse",
+];
+
+const roleRoutes: Record<string, string> = {
+  "Super Admin": "super-admin",
+  Admin: "admin",
+  Doctor: "doctor",
+  Pharmacist: "pharmacist",
+  Pathologist: "pathologist",
+  Radiologist: "radiologist",
+  Accountant: "accountant",
+  Receptionist: "receptionist",
+  Nurse: "nurse",
+};
+
 const news = [
   {
     title: "National Pharmacist Day",
@@ -28,22 +52,32 @@ const news = [
   },
 ];
 
-export default function UserLoginPage() {
+export default function AdminLoginPage() {
   const router = useRouter();
 
+  const [selectedRole, setSelectedRole] = useState<string>("Admin");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [message, setMessage] = useState<string>("");
 
   const handleLogin = () => {
-    if (!email || !password) {
-      setMessage("Please enter your email and password.");
-      return;
-    }
-    setMessage("");
-    localStorage.setItem("userType", "user");
-    localStorage.setItem("userEmail", email);
-    router.push("/dashboard/user");
+    const role = roleRoutes[selectedRole];
+    localStorage.setItem("role", role);
+    localStorage.setItem("userType", "admin");
+
+    const adminRoutes: Record<string, string> = {
+      "super-admin": "/dashboard/super-admin",
+      admin: "/dashboard/admin",
+      doctor: "/dashboard/doctor",
+      pharmacist: "/dashboard/pharmacist",
+      pathologist: "/dashboard/pathologist",
+      radiologist: "/dashboard/radiologist",
+      accountant: "/dashboard/accountant",
+      receptionist: "/dashboard/receptionist",
+      nurse: "/dashboard/nurse",
+    };
+
+    router.push(adminRoutes[role]);
   };
 
   return (
@@ -71,20 +105,42 @@ export default function UserLoginPage() {
               H
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-white">
-              Patient Login
+              Smart Hospital Login
             </h2>
           </div>
 
           <p className="text-white/80 text-sm">
-            Sign in to access your health dashboard
+            Select your role to continue
           </p>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-6">
+            {roles.map((role) => (
+              <button
+                key={role}
+                onClick={() => setSelectedRole(role)}
+                className="px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm border"
+                style={{
+                  background:
+                    selectedRole === role
+                      ? "var(--primary)"
+                      : "rgba(255,255,255,0.05)",
+                  borderColor:
+                    selectedRole === role
+                      ? "var(--primary)"
+                      : "rgba(255,255,255,0.2)",
+                  color: "white",
+                }}
+              >
+                {role}
+              </button>
+            ))}
+          </div>
 
           <div className="mt-6 space-y-4">
 
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
               placeholder="Email"
               className="w-full px-4 py-3 rounded-lg bg-white text-black"
             />
@@ -92,7 +148,6 @@ export default function UserLoginPage() {
             <input
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
               type="password"
               placeholder="Password"
               className="w-full px-4 py-3 rounded-lg bg-white text-black"
@@ -103,7 +158,7 @@ export default function UserLoginPage() {
               className="w-full py-3 rounded-lg font-semibold text-white"
               style={{ background: "var(--primary)" }}
             >
-              Login
+              Login as {selectedRole}
             </button>
 
             {message && (
@@ -114,12 +169,12 @@ export default function UserLoginPage() {
 
           <div className="mt-6 pt-5 border-t border-white/15 text-center">
             <p className="text-white/50 text-xs">
-              Hospital staff?{" "}
+              Not hospital staff?{" "}
               <Link
-                href="/admins/login"
+                href="/login"
                 className="text-[var(--primary-soft)] font-semibold hover:underline"
               >
-                Staff / Admin Login →
+                Patient / User Login →
               </Link>
             </p>
           </div>

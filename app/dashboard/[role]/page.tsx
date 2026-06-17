@@ -11,14 +11,16 @@ export default function RoleDashboard() {
     const role = params.role as string;
 
     useEffect(() => {
-        // Validate if role is valid
-        const validRoles = ['super-admin', 'admin', 'doctor', 'pharmacist', 'pathologist', 'radiologist', 'accountant', 'receptionist', 'nurse'];
+        // Valid admin/staff roles only — 'user' is handled by /dashboard/user separately
+        const validAdminRoles = ['super-admin', 'admin', 'doctor', 'pharmacist', 'pathologist', 'radiologist', 'accountant', 'receptionist', 'nurse'];
 
-        if (!validRoles.includes(role)) {
-            router.push('/login');
+        if (!validAdminRoles.includes(role)) {
+            // Invalid role → redirect to admin login
+            router.push('/admins/login');
         } else {
             // Set role in localStorage
             localStorage.setItem("role", role);
+            localStorage.setItem("userType", "admin");
         }
     }, [role, router]);
 
