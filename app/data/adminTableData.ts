@@ -90,25 +90,49 @@ export const DOCTOR_TABLE: AdminTableData = {
 // Appointment management (feature id = 3)
 export const APPOINTMENT_TABLE: AdminTableData = {
   columns: ["Appointment ID", "Patient", "Doctor", "Date", "Time", "Status"],
-  rows: [
-    {
-      "Appointment ID": "APT-1001",
-      Patient: "John Doe",
-      Doctor: "Dr. Sarah Khan",
-      Date: "Jun 20, 2026",
-      Time: "10:30 AM",
-      Status: "confirmed",
-    },
-    {
-      "Appointment ID": "APT-1002",
-      Patient: "Jane Smith",
-      Doctor: "Dr. Imran Hossain",
-      Date: "Jun 24, 2026",
-      Time: "02:00 PM",
-      Status: "pending",
-    },
-  ],
+  rows: Array.from({ length: 1000 }).map((_, i) => {
+    const idx = i + 1001;
+
+    const patients = ["John Doe", "Jane Smith", "Rahim Khan", "Karim Hasan", "Ayesha Doe", "Nusrat Jahan"];
+    const doctors = ["Dr. Sarah Khan", "Dr. Imran Hossain", "Dr. Rahim Ahmed", "Dr. Nusrat Jahan"];
+    const statuses = ["confirmed", "pending", "cancelled", "completed"];
+
+    const patient = patients[i % patients.length];
+    const doctor = doctors[(i + 1) % doctors.length];
+    const status = statuses[i % statuses.length];
+
+    // Spread dates across June 2026
+    const day = 18 + (i % 20); // 18..37
+    const dateMonth = "Jun";
+
+    // Spread times across a typical clinic window
+    const timeSlots = [
+      "09:00 AM",
+      "09:30 AM",
+      "10:00 AM",
+      "10:30 AM",
+      "11:00 AM",
+      "11:30 AM",
+      "01:00 PM",
+      "01:30 PM",
+      "02:00 PM",
+      "02:30 PM",
+      "03:00 PM",
+      "03:30 PM",
+    ];
+    const time = timeSlots[i % timeSlots.length];
+
+    return {
+      "Appointment ID": `APT-${idx}`,
+      Patient: patient,
+      Doctor: doctor,
+      Date: `${dateMonth} ${day}, 2026`,
+      Time: time,
+      Status: status,
+    };
+  }),
 };
+
 
 // Bed & Ward management (feature id = 7)
 export const BED_WARD_TABLE: AdminTableData = {
