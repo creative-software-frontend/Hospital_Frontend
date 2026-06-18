@@ -20,6 +20,8 @@ import {
   FiPieChart,
   FiSearch,
   FiX as FiXIcon,
+  FiDownload,
+  FiFile
 } from "react-icons/fi";
 
 import { useMemo, useState } from "react";
@@ -462,7 +464,6 @@ ${tbody}
             <div className="grid grid-cols-1 gap-6">
               <div className="card p-6 rounded-2xl shadow-sm space-y-6 w-full">
                 {filteredTable ? (
-
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
@@ -471,55 +472,55 @@ ${tbody}
                       </div>
                     </div>
 
-                  <div className="flex items-center justify-between gap-4 flex-wrap">
-                    <div className="text-xs text-[var(--muted)]">Showing mock table data for selected module.</div>
+                    <div className="flex items-center justify-between gap-4 flex-wrap">
+                      <div className="w-full max-w-sm">
+                        <input
+                          type="text"
+                          value={tableSearch}
+                          onChange={(e) => setTableSearch(e.target.value)}
+                          placeholder="Search in this table..."
+                          className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15"
+                        />
+                      </div>
 
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!filteredTable) return;
-                          const moduleTitle = computedTitle.heading || "table";
-                          const date = new Date().toISOString().slice(0, 10);
-                          const filename = `${moduleTitle}-page-${safeCurrentPage}-${date}.csv`;
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!filteredTable) return;
+                            const moduleTitle = computedTitle.heading || "table";
+                            const date = new Date().toISOString().slice(0, 10);
+                            const filename = `${moduleTitle}-all-pages-${date}.csv`;
 
-                          const csv = toCsv(filteredTable.columns, paginatedRows);
-                          downloadTextFile(filename, "text/csv;charset=utf-8", csv);
-                        }}
-                        className="px-3 py-2 rounded-xl text-xs font-bold border bg-[var(--bg)] hover:bg-[var(--primary-soft)]/20 text-[var(--muted)] hover:text-[var(--text)] border-[var(--border)] cursor-pointer transition-colors"
-                        disabled={!filteredTable}
-                      >
-                        Download CSV (Current Page)
-                      </button>
+                            const csv = toCsv(filteredTable.columns, filteredTable.rows);
+                            downloadTextFile(filename, "text/csv;charset=utf-8", csv);
+                          }}
+                          className="p-2.5 rounded-xl text-xs font-bold border bg-[var(--bg)] hover:bg-[var(--primary-soft)]/20 text-[var(--muted)] hover:text-[var(--text)] border-[var(--border)] cursor-pointer transition-colors inline-flex items-center justify-center"
+                          disabled={!filteredTable}
+                          title="Download CSV (All pages)"
+                        >
+                          <FiDownload className="w-4 h-4" />
+                        </button>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!filteredTable) return;
-                          const moduleTitle = computedTitle.heading || "table";
-                          const date = new Date().toISOString().slice(0, 10);
-                          const filename = `${moduleTitle}-page-${safeCurrentPage}-${date}.xls`;
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!filteredTable) return;
+                            const moduleTitle = computedTitle.heading || "table";
+                            const date = new Date().toISOString().slice(0, 10);
+                            const filename = `${moduleTitle}-all-pages-${date}.xls`;
 
-                          const html = toExcelHtml(filteredTable.columns, paginatedRows);
-                          downloadTextFile(filename, "application/vnd.ms-excel;charset=utf-8", html);
-                        }}
-                        className="px-3 py-2 rounded-xl text-xs font-bold border bg-[var(--bg)] hover:bg-[var(--primary-soft)]/20 text-[var(--muted)] hover:text-[var(--text)] border-[var(--border)] cursor-pointer transition-colors"
-                        disabled={!filteredTable}
-                      >
-                        Download Excel (.xls) (Current Page)
-                      </button>
+                            const html = toExcelHtml(filteredTable.columns, filteredTable.rows);
+                            downloadTextFile(filename, "application/vnd.ms-excel;charset=utf-8", html);
+                          }}
+                          className="p-2.5 rounded-xl text-xs font-bold border bg-[var(--bg)] hover:bg-[var(--primary-soft)]/20 text-[var(--muted)] hover:text-[var(--text)] border-[var(--border)] cursor-pointer transition-colors inline-flex items-center justify-center"
+                          disabled={!filteredTable}
+                          title="Download Excel (.xls) (All pages)"
+                        >
+                          <FiFile className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-
-                    <div className="w-full max-w-sm">
-                      <input
-                        type="text"
-                        value={tableSearch}
-                        onChange={(e) => setTableSearch(e.target.value)}
-                        placeholder="Search in this table..."
-                        className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15"
-                      />
-                    </div>
-                  </div>
 
                   <div className="overflow-x-auto rounded-xl border border-[var(--border)] w-full">
                       <table className="min-w-[800px] w-full">
