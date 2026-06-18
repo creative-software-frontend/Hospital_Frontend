@@ -396,8 +396,8 @@ export const DashboardContent = ({
               <span>← Back to Dashboard Overview</span>
             </button>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 card p-6 rounded-2xl shadow-sm space-y-6">
+            <div className="grid grid-cols-1 gap-6">
+              <div className="card p-6 rounded-2xl shadow-sm space-y-6 w-full">
                 {filteredTable ? (
 
                   <div className="space-y-4">
@@ -421,7 +421,7 @@ export const DashboardContent = ({
                     </div>
                   </div>
 
-                  <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+                  <div className="overflow-x-auto rounded-xl border border-[var(--border)] w-full">
                       <table className="min-w-[800px] w-full">
                         <thead>
                           <tr className="bg-[var(--bg)]">
@@ -525,33 +525,6 @@ export const DashboardContent = ({
                     </div>
                   </>
                 )}
-              </div>
-
-              <div className="card p-6 rounded-2xl shadow-sm flex flex-col justify-between">
-                <div className="space-y-4">
-                  <h3 className="font-extrabold text-[var(--primary-dark)] text-base border-b border-[var(--border)] pb-3">Module Status</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-[var(--muted)] font-medium">Integration Status:</span>
-                      <span className="text-[var(--primary-dark)] font-bold bg-[var(--primary-soft)]/30 px-2 py-0.5 rounded border border-[var(--primary)]/25">Active</span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-[var(--muted)] font-medium">Permissions Level:</span>
-                      <span className="text-[var(--primary-dark)] font-bold bg-[var(--primary-soft)]/30 px-2 py-0.5 rounded border border-[var(--primary)]/25">Full Control</span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-[var(--muted)] font-medium">Sub-components:</span>
-                      <span className="font-bold">{selectedFeature.subFeatures.length} Modules</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-6 border-t border-[var(--border)] mt-6 space-y-2">
-                  <button className="btn-primary w-full text-xs cursor-pointer">Configure Module Settings</button>
-                  <button className="w-full py-2.5 bg-[var(--bg)] hover:bg-[var(--primary-soft)]/20 border border-[var(--border)] text-[var(--muted)] rounded-xl text-xs font-bold transition-colors cursor-pointer">
-                    View Audits / Logs
-                  </button>
-                </div>
               </div>
             </div>
           </div>
