@@ -60,6 +60,7 @@ export const DashboardContent = ({
   const [tableSearch, setTableSearch] = useState<string>("");
   const [pageSize, setPageSize] = useState<number>(50);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [uploadedFileName, setUploadedFileName] = useState<string>("");
 
 
   const roles = [
@@ -484,24 +485,94 @@ ${tbody}
                       </div>
 
                       <div className="flex items-center gap-2">
+                        {/* Print */}
                         <button
                           type="button"
                           onClick={() => {
                             if (!filteredTable) return;
-                            const moduleTitle = computedTitle.heading || "table";
-                            const date = new Date().toISOString().slice(0, 10);
-                            const filename = `${moduleTitle}-all-pages-${date}.csv`;
 
-                            const csv = toCsv(filteredTable.columns, filteredTable.rows);
-                            downloadTextFile(filename, "text/csv;charset=utf-8", csv);
+                            const moduleTitle = computedTitle.heading || "table";
+                            const safeTitle = moduleTitle.replace(/[<>]/g, "");
+                            const rows = filteredTable.rows ?? [];
+                            const columns = filteredTable.columns ?? [];
+
+                            const thead = columns
+                              .map((c: string) => `<th>${String(c ?? "")}</th>`)
+                              .join("");
+
+                            const tbody = rows
+                              .map((row: any) => {
+                                const tds = columns
+                                  .map((c: string) => `<td>${String(row?.[c] ?? "")}</td>`)
+                                  .join("");
+                                return `<tr>${tds}</tr>`;
+                              })
+                              .join("");
+
+                            const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>${safeTitle} - Print</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 16px; }
+  h2 { margin: 0 0 12px 0; font-size: 16px; }
+  table { width: 100%; border-collapse: collapse; table-layout: auto; }
+  th, td { border: 1px solid #ddd; padding: 6px; font-size: 12px; }
+  th { background: #f3f4f6; text-align: left; }
+  @media print {
+    body { padding: 0; }
+    h2 { font-size: 14px; margin: 0 0 10px 0; }
+  }
+</style>
+</head>
+<body>
+  <h2>${safeTitle}</h2>
+  <table>
+    <thead><tr>${thead}</tr></thead>
+    <tbody>${tbody}</tbody>
+  </table>
+</body>
+</html>`;
+
+                            const w = window.open("", "_blank");
+                            if (!w) return;
+
+                            w.document.open();
+                            w.document.write(html);
+                            w.document.close();
+                            w.focus();
+                            w.print();
                           }}
                           className="p-2.5 rounded-xl text-xs font-bold border bg-[var(--bg)] hover:bg-[var(--primary-soft)]/20 text-[var(--muted)] hover:text-[var(--text)] border-[var(--border)] cursor-pointer transition-colors inline-flex items-center justify-center"
                           disabled={!filteredTable}
-                          title="Download CSV (All pages)"
+                          title="Print (All filtered pages)"
                         >
-                          <FiDownload className="w-4 h-4" />
+                          {/* simple text/icon fallback */}
+                          <span className="text-[11px] leading-none font-black">Print</span>
                         </button>
 
+                        {/* Upload */}
+                        <label
+                          className="p-2.5 rounded-xl text-xs font-bold border bg-[var(--bg)] hover:bg-[var(--primary-soft)]/20 text-[var(--muted)] hover:text-[var(--text)] border-[var(--border)] cursor-pointer transition-colors inline-flex items-center justify-center"
+                          title="Upload"
+                        >
+                          <span className="text-[11px] leading-none font-black">Upload</span>
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept="*/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              // store filename without changing table data (as requested unclear about parsing)
+                              if (file) {
+                                console.log("Upload selected file:", file.name);
+                              }
+                            }}
+                          />
+                        </label>
+
+                        {/* Excel stays same */}
                         <button
                           type="button"
                           onClick={() => {
