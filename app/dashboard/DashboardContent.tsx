@@ -24,7 +24,6 @@ import {
 
 import { useMemo, useState } from "react";
 
-
 import { ADMIN_TABLE_BY_FEATURE_ID } from "@/app/data/adminTableData";
 
 const iconMap: Record<string, any> = {
@@ -89,7 +88,7 @@ export const DashboardContent = ({
     },
     {
       name: "Pharmacist",
-      access: "Medicine Management",
+      access: "Medicine M anagement",
       desc: "Manages drug inventory, stock checks, expiry details, and sales.",
     },
     {
@@ -168,6 +167,70 @@ export const DashboardContent = ({
           section: selectedFeature?.englishTitle ?? "Module",
           heading: selectedFeature?.englishTitle ?? "Module",
         };
+
+  const downloadTextFile = (filename: string, mime: string, content: string) => {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const toCsv = (columns: string[], rows: any[]) => {
+    const escapeCell = (val: any) => {
+      const str = String(val ?? "");
+      // Escape quotes and wrap if needed
+      const needsQuotes = /[",\r\n]/.test(str);
+      const escaped = str.replace(/"/g, '""');
+      return needsQuotes ? `"${escaped}"` : escaped;
+    };
+
+    const header = columns.map(escapeCell).join(",");
+    const body = rows
+      .map((row) => columns.map((col) => escapeCell(row?.[col])).join(","))
+      .join("\r\n");
+
+    return `${header}\r\n${body}\r\n`;
+  };
+
+  const toExcelHtml = (columns: string[], rows: any[]) => {
+    const escapeHtml = (val: any) => {
+      const str = String(val ?? "");
+      return str
+       .replace(/&/g, "&amp;")
+  .replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;")
+  .replace(/'/g, "&#039;");
+    };
+
+    const thead = `<tr>${columns.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}</tr>`;
+
+    const tbody = rows
+      .map((row) => {
+        const tds = columns.map((c) => `<td>${escapeHtml(row?.[c])}</td>`).join("");
+        return `<tr>${tds}</tr>`;
+      })
+      .join("");
+
+    // Excel can open HTML tables when downloaded with .xls
+    return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+</head>
+<body>
+<table border="1">
+${thead}
+${tbody}
+</table>
+</body>
+</html>`;
+  };
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
@@ -408,8 +471,45 @@ export const DashboardContent = ({
                       </div>
                     </div>
 
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div className="text-xs text-[var(--muted)]">Showing mock table data for selected module.</div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!filteredTable) return;
+                          const moduleTitle = computedTitle.heading || "table";
+                          const date = new Date().toISOString().slice(0, 10);
+                          const filename = `${moduleTitle}-page-${safeCurrentPage}-${date}.csv`;
+
+                          const csv = toCsv(filteredTable.columns, paginatedRows);
+                          downloadTextFile(filename, "text/csv;charset=utf-8", csv);
+                        }}
+                        className="px-3 py-2 rounded-xl text-xs font-bold border bg-[var(--bg)] hover:bg-[var(--primary-soft)]/20 text-[var(--muted)] hover:text-[var(--text)] border-[var(--border)] cursor-pointer transition-colors"
+                        disabled={!filteredTable}
+                      >
+                        Download CSV (Current Page)
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!filteredTable) return;
+                          const moduleTitle = computedTitle.heading || "table";
+                          const date = new Date().toISOString().slice(0, 10);
+                          const filename = `${moduleTitle}-page-${safeCurrentPage}-${date}.xls`;
+
+                          const html = toExcelHtml(filteredTable.columns, paginatedRows);
+                          downloadTextFile(filename, "application/vnd.ms-excel;charset=utf-8", html);
+                        }}
+                        className="px-3 py-2 rounded-xl text-xs font-bold border bg-[var(--bg)] hover:bg-[var(--primary-soft)]/20 text-[var(--muted)] hover:text-[var(--text)] border-[var(--border)] cursor-pointer transition-colors"
+                        disabled={!filteredTable}
+                      >
+                        Download Excel (.xls) (Current Page)
+                      </button>
+                    </div>
+
                     <div className="w-full max-w-sm">
                       <input
                         type="text"
