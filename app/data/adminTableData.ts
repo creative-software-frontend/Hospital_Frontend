@@ -13,6 +13,7 @@ export type AdminTableData = {
 
 export const PATIENT_TABLE: AdminTableData = {
   columns: [
+    "Patient ID",
     "Patient Name",
     "Age",
     "Gender",
@@ -22,7 +23,8 @@ export const PATIENT_TABLE: AdminTableData = {
     "Dead",
   ],
   rows: Array.from({ length: 1000 }).map((_, i) => {
-    const idx = i + 1;
+    const patientId = `PT-${i + 1}`;
+
     const genders = ["Male", "Female"];
     const gender = genders[i % genders.length];
 
@@ -31,7 +33,7 @@ export const PATIENT_TABLE: AdminTableData = {
     const patientName = `${firstNames[i % firstNames.length]} ${lastNames[(i + 3) % lastNames.length]}`;
     const age = String(18 + (i % 70));
 
-    const phone = `+8801-000${String(idx).padStart(4, "0")}`;
+    const phone = `+8801-000${String(i + 1).padStart(4, "0")}`;
 
     const guardianNames = ["Ayesha Doe", "Robert Smith", "Rahim Khan", "Mariam Hossain", "Abdul Rahman", "Tania Akter"];
     const guardianName = guardianNames[i % guardianNames.length];
@@ -42,6 +44,7 @@ export const PATIENT_TABLE: AdminTableData = {
     const dead = i % 50 === 0 ? "Yes" : "No";
 
     return {
+      "Patient ID": patientId,
       "Patient Name": patientName,
       Age: age,
       Gender: gender,
@@ -89,7 +92,7 @@ export const DOCTOR_TABLE: AdminTableData = {
 
 // Appointment management (feature id = 3)
 export const APPOINTMENT_TABLE: AdminTableData = {
-  columns: ["Appointment ID", "Patient", "Doctor", "Date", "Time", "Status"],
+  columns: ["Appointment ID", "Patient", "Patient ID", "Patient Name", "Phone", "Doctor", "Date", "Time", "Status"],
   rows: Array.from({ length: 1000 }).map((_, i) => {
     const idx = i + 1001;
 
@@ -97,7 +100,10 @@ export const APPOINTMENT_TABLE: AdminTableData = {
     const doctors = ["Dr. Sarah Khan", "Dr. Imran Hossain", "Dr. Rahim Ahmed", "Dr. Nusrat Jahan"];
     const statuses = ["confirmed", "pending", "cancelled", "completed"];
 
-    const patient = patients[i % patients.length];
+    const patientName = patients[i % patients.length];
+    const patientId = `PT-${i + 1}`;
+    const phone = `+8801-000${String(i + 1).padStart(4, "0")}`;
+
     const doctor = doctors[(i + 1) % doctors.length];
     const status = statuses[i % statuses.length];
 
@@ -124,7 +130,10 @@ export const APPOINTMENT_TABLE: AdminTableData = {
 
     return {
       "Appointment ID": `APT-${idx}`,
-      Patient: patient,
+      Patient: patientName,
+      "Patient ID": patientId,
+      "Patient Name": patientName,
+      Phone: phone,
       Doctor: doctor,
       Date: `${dateMonth} ${day}, 2026`,
       Time: time,
@@ -136,11 +145,25 @@ export const APPOINTMENT_TABLE: AdminTableData = {
 
 // Bed & Ward management (feature id = 7)
 export const BED_WARD_TABLE: AdminTableData = {
-  columns: ["Ward", "Bed", "Patient", "Status", "Admission ID", "Expected Discharge"],
+  columns: [
+    "Ward",
+    "Bed",
+    "Patient",
+    "Patient ID",
+    "Patient Name",
+    "Phone",
+    "Status",
+    "Admission ID",
+    "Expected Discharge",
+  ],
   rows: Array.from({ length: 1000 }).map((_, i) => {
     const ward = i % 3 === 0 ? "Ward-1" : i % 3 === 1 ? "Ward-2" : "Ward-3";
     const bed = i % 2 === 0 ? "B-12" : "C-03";
-    const patient = i % 2 === 0 ? "John Doe" : "Jane Smith";
+
+    const patientName = i % 2 === 0 ? "John Doe" : "Jane Smith";
+    const patientId = `PT-${i + 1}`;
+    const phone = `+8801-000${String(i + 1).padStart(4, "0")}`;
+
     const status = i % 2 === 0 ? "Occupied" : "Available";
     const admissionId = i % 2 === 0 ? `IPD-${501 + i}` : "N/A";
     const expected = i % 2 === 0 ? (i % 4 === 0 ? "Jun 25, 2026" : "Jun 27, 2026") : "N/A";
@@ -148,7 +171,10 @@ export const BED_WARD_TABLE: AdminTableData = {
     return {
       Ward: ward,
       Bed: bed,
-      Patient: patient,
+      Patient: patientName,
+      "Patient ID": patientId,
+      "Patient Name": patientName,
+      Phone: phone,
       Status: status,
       "Admission ID": admissionId,
       "Expected Discharge": expected,
@@ -218,17 +244,23 @@ export const INVENTORY_TABLE: AdminTableData = {
 // HR=16, Inventory=17, Ambulance=18, SMS=19, Reports=20)
 
 export const OPD_TABLE: AdminTableData = {
-  columns: ["OPD Visit ID", "Patient", "Doctor", "Diagnosis", "Prescription", "Date"],
+  columns: ["OPD Visit ID", "Patient", "Patient ID", "Patient Name", "Phone", "Doctor", "Diagnosis", "Prescription", "Date"],
   rows: Array.from({ length: 1000 }).map((_, i) => {
     const idx = i + 301;
-    const patient = i % 2 === 0 ? "John Doe" : "Jane Smith";
+    const patientName = i % 2 === 0 ? "John Doe" : "Jane Smith";
+    const patientId = `PT-${i + 1}`;
+    const phone = `+8801-000${String(i + 1).padStart(4, "0")}`;
+
     const doctor = i % 2 === 0 ? "Dr. Sarah Khan" : "Dr. Imran Hossain";
     const diagnosis = i % 2 === 0 ? "Hypertension" : "Diabetes";
     const prescription = i % 2 === 0 ? "Amlodipine" : "Metformin";
     const date = i % 2 === 0 ? "Jun 18, 2026" : "Jun 19, 2026";
     return {
       "OPD Visit ID": `OPD-${idx}`,
-      Patient: patient,
+      Patient: patientName,
+      "Patient ID": patientId,
+      "Patient Name": patientName,
+      Phone: phone,
       Doctor: doctor,
       Diagnosis: diagnosis,
       Prescription: prescription,
@@ -239,17 +271,23 @@ export const OPD_TABLE: AdminTableData = {
 
 
 export const IPD_TABLE: AdminTableData = {
-  columns: ["Admission ID", "Patient", "Ward", "Bed", "Status", "Expected Discharge"],
+  columns: ["Admission ID", "Patient", "Patient ID", "Patient Name", "Phone", "Ward", "Bed", "Status", "Expected Discharge"],
   rows: Array.from({ length: 1000 }).map((_, i) => {
     const idx = i + 501;
-    const patient = i % 2 === 0 ? "John Doe" : "Jane Smith";
+    const patientName = i % 2 === 0 ? "John Doe" : "Jane Smith";
+    const patientId = `PT-${i + 1}`;
+    const phone = `+8801-000${String(i + 1).padStart(4, "0")}`;
+
     const ward = i % 3 === 0 ? "Ward-1" : i % 3 === 1 ? "Ward-2" : "Ward-3";
     const bed = i % 2 === 0 ? "B-12" : "C-03";
     const status = i % 2 === 0 ? "Admitted" : "Under Treatment";
     const expected = i % 2 === 0 ? "Jun 25, 2026" : "Jun 27, 2026";
     return {
       "Admission ID": `IPD-${idx}`,
-      Patient: patient,
+      Patient: patientName,
+      "Patient ID": patientId,
+      "Patient Name": patientName,
+      Phone: phone,
       Ward: ward,
       Bed: bed,
       Status: status,
@@ -260,17 +298,23 @@ export const IPD_TABLE: AdminTableData = {
 
 
 export const EMERGENCY_TABLE: AdminTableData = {
-  columns: ["Emergency ID", "Patient", "Triage", "Assigned Doctor", "Condition", "Time"],
+  columns: ["Emergency ID", "Patient", "Patient ID", "Patient Name", "Phone", "Triage", "Assigned Doctor", "Condition", "Time"],
   rows: Array.from({ length: 1000 }).map((_, i) => {
     const idx = i + 701;
-    const patient = i % 2 === 0 ? "Patient A" : "Patient B";
+    const patientName = i % 2 === 0 ? "Patient A" : "Patient B";
+    const patientId = `PT-${i + 1}`;
+    const phone = `+8801-000${String(i + 1).padStart(4, "0")}`;
+
     const triage = i % 2 === 0 ? "High" : "Medium";
     const assigned = i % 2 === 0 ? "Dr. Sarah Khan" : "Dr. Imran Hossain";
     const condition = i % 2 === 0 ? "Critical" : "Stable";
     const time = i % 2 === 0 ? "09:15 AM" : "10:05 AM";
     return {
       "Emergency ID": `EMG-${idx}`,
-      Patient: patient,
+      Patient: patientName,
+      "Patient ID": patientId,
+      "Patient Name": patientName,
+      Phone: phone,
       Triage: triage,
       "Assigned Doctor": assigned,
       Condition: condition,
@@ -281,17 +325,23 @@ export const EMERGENCY_TABLE: AdminTableData = {
 
 
 export const PRESCRIPTION_TABLE: AdminTableData = {
-  columns: ["Prescription ID", "Patient", "Doctor", "Medication", "Instructions", "Date"],
+  columns: ["Prescription ID", "Patient", "Patient ID", "Patient Name", "Phone", "Doctor", "Medication", "Instructions", "Date"],
   rows: Array.from({ length: 1000 }).map((_, i) => {
     const idx = i + 8001;
-    const patient = i % 2 === 0 ? "John Doe" : "Jane Smith";
+    const patientName = i % 2 === 0 ? "John Doe" : "Jane Smith";
+    const patientId = `PT-${i + 1}`;
+    const phone = `+8801-000${String(i + 1).padStart(4, "0")}`;
+
     const doctor = i % 2 === 0 ? "Dr. Sarah Khan" : "Dr. Imran Hossain";
     const medication = i % 2 === 0 ? "Amlodipine 5mg" : "Metformin 500mg";
     const instructions = i % 2 === 0 ? "Once daily" : "Twice daily";
     const date = i % 2 === 0 ? "Jun 18, 2026" : "Jun 19, 2026";
     return {
       "Prescription ID": `RX-${idx}`,
-      Patient: patient,
+      Patient: patientName,
+      "Patient ID": patientId,
+      "Patient Name": patientName,
+      Phone: phone,
       Doctor: doctor,
       Medication: medication,
       Instructions: instructions,
