@@ -1,7 +1,8 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { FiCalendar, FiUser } from "react-icons/fi";
+import Image from "next/image";
 
 const doctors = [
     {
@@ -59,10 +60,12 @@ export default function DoctorsSection() {
 
                         {/* IMAGE */}
                         <div className="relative h-72 overflow-hidden">
-                            <img
+                            <Image
                                 src={doc.image}
                                 alt={doc.name}
-                                className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
+                                fill
+                                className="object-cover group-hover:scale-110 transition duration-500"
+                                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                             />
 
                             {/* DARK OVERLAY */}

@@ -7,16 +7,17 @@ import {
     FiUsers, FiNavigation, FiToggleRight, FiDroplet, FiThermometer, FiBookOpen,
     FiStar, FiRepeat, FiPhone, FiGlobe, FiZap, FiLock
 } from "react-icons/fi";
+import type { IconType } from "react-icons";
 
 export interface SubFeatureItem {
     label: string;
-    icon: any;
+    icon: IconType;
 }
 
 export interface Feature {
     id: number;
     englishTitle: string;
-    icon: any;
+    icon: IconType;
     subFeatures: SubFeatureItem[];
 }
 

@@ -1,17 +1,19 @@
 // hooks/useRoleData.ts
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { UserRole, ROLE_PERMISSIONS, getRoleStats } from '@/app/config/roleConfig';
-import { keyFeatures } from '@/app/data/features'; // Move your keyFeatures array to separate file
+import { keyFeatures } from '@/app/data/features';
+import { authStorage } from '@/app/lib/auth';
 
-export const useRoleData = () => {
-    const [role, setRole] = useState<UserRole | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const savedRole = localStorage.getItem("role") as UserRole;
-        setRole(savedRole);
-        setLoading(false);
-    }, []);
+/**
+ * Resolves the current role. When a role is passed explicitly (e.g. from the
+ * dynamic /dashboard/[role] route) it takes precedence; otherwise it falls back
+ * to the persisted session.
+ */
+export const useRoleData = (initialRole?: UserRole) => {
+    const [role, setRole] = useState<UserRole | null>(() => {
+        if (initialRole) return initialRole;
+        return authStorage.getRole();
+    });
 
     const permissions = role ? ROLE_PERMISSIONS[role] : null;
 
@@ -23,10 +25,11 @@ export const useRoleData = () => {
 
     return {
         role,
-        loading,
+        loading: false,
         permissions,
         accessibleFeatures,
         roleStats,
         isSuperAdmin: role === 'super-admin',
+        setRole,
     };
 };

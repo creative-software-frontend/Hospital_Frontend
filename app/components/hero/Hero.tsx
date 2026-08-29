@@ -1,7 +1,7 @@
 "use client";
 
 
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { useLottie } from "lottie-react";
 import financeAnimation from "../../lottie/finance.json";
 

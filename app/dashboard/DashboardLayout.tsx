@@ -3,23 +3,25 @@
 
 import { useState } from "react";
 import { useRoleData } from "@/app/hooks/useRoleData";
-import { keyFeatures } from "@/app/data/features";
 import { Sidebar } from "@/app/dashboard/Sidebar";
 import { DashboardContent } from "@/app/dashboard/DashboardContent";
 import { useRouter } from "next/navigation";
 import { FiX, FiLogOut } from "react-icons/fi";
+import type { Feature } from "@/app/data/features";
+import type { UserRole } from "@/app/config/roleConfig";
+import { authStorage } from "@/app/lib/auth";
 
-export default function DashboardLayout() {
+export default function DashboardLayout({ role: initialRole }: { role?: UserRole }) {
     const router = useRouter();
-    const { role, loading, permissions, accessibleFeatures, roleStats } = useRoleData();
+    const { role, loading, permissions, accessibleFeatures, roleStats } = useRoleData(initialRole);
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [activeSection, setActiveSection] = useState<string>("overview");
-    const [selectedFeature, setSelectedFeature] = useState<any>(null);
+    const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
     const [expandedFeature, setExpandedFeature] = useState<number | null>(null);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
 
     const handleLogout = () => {
-        localStorage.removeItem("role");
+        authStorage.clearSession();
         router.push("/login");
     };
 
@@ -60,7 +62,6 @@ export default function DashboardLayout() {
                 setSelectedFeature={setSelectedFeature}
                 expandedFeature={expandedFeature}
                 setExpandedFeature={setExpandedFeature}
-                setSidebarOpen={setSidebarOpen}
                 openLogoutModal={openLogoutModal}
             />
 
@@ -69,7 +70,6 @@ export default function DashboardLayout() {
                 setSidebarOpen={setSidebarOpen}
                 activeSection={activeSection}
                 selectedFeature={selectedFeature}
-                role={role}
                 permissions={permissions}
                 roleStats={roleStats}
                 accessibleFeatures={accessibleFeatures}

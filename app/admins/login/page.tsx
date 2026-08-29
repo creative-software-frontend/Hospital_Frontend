@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import Link from "next/link";
+import { authStorage } from "@/app/lib/auth";
+import type { UserRole } from "@/app/config/roleConfig";
 
 const roles = [
   "Super Admin",
@@ -58,12 +60,10 @@ export default function AdminLoginPage() {
   const [selectedRole, setSelectedRole] = useState<string>("Admin");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
-  const [message, setMessage] = useState<string>("");
 
   const handleLogin = () => {
-    const role = roleRoutes[selectedRole];
-    localStorage.setItem("role", role);
-    localStorage.setItem("userType", "admin");
+    const role = roleRoutes[selectedRole] as UserRole;
+    authStorage.setSession(role, "admin");
 
     const adminRoutes: Record<string, string> = {
       "super-admin": "/dashboard/super-admin",
@@ -160,10 +160,6 @@ export default function AdminLoginPage() {
             >
               Login as {selectedRole}
             </button>
-
-            {message && (
-              <p className="text-sm text-white/90">{message}</p>
-            )}
 
           </div>
 

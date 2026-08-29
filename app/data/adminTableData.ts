@@ -209,7 +209,6 @@ export const BILLING_TABLE: AdminTableData = {
 export const INVENTORY_TABLE: AdminTableData = {
   columns: ["Item", "Category", "Stock", "Reorder Level", "Expiry", "Status"],
   rows: Array.from({ length: 1000 }).map((_, i) => {
-    const idx = i + 1;
     const categories = ["Antibiotic", "Diabetes", "Cardiology", "Pain Relief", "Vitamins", "Diuretics"];
     const category = categories[i % categories.length];
     const items = [
@@ -358,7 +357,7 @@ export const PHARMACY_TABLE: AdminTableData = {
     const patient = i % 2 === 0 ? "John Doe" : "Jane Smith";
     const item = i % 2 === 0 ? "Amlodipine" : "Metformin";
     const qty = String(i % 5 === 0 ? 10 : i % 7 === 0 ? 20 : 30 + (i % 3) * 5);
-    const total = `$${(qty as any).length ? (10 + (i % 20)).toString() : '0'}`;
+    const total = `$${10 + (i % 20)}`;
     const status = i % 4 === 0 ? "Processing" : "Delivered";
     return {
       "Sale ID": `PH-S-${idx}`,

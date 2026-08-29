@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import {
     FiMapPin,
     FiPhone,
@@ -17,10 +18,12 @@ export default function Footer() {
 
                 {/* LOGO + ABOUT */}
                 <div>
-                    <img
+                    <Image
                         src="/images/hospitalogo.png"
                         alt="Hospital Logo"
-                        className="h-14 mb-4"
+                        width={200}
+                        height={69}
+                        className="h-14 w-auto mb-4"
                     />
 
                     <p className="text-white/70 leading-relaxed text-sm">

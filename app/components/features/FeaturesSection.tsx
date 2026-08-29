@@ -6,15 +6,24 @@ import {
     FiClock,
     FiArrowRight,
 } from "react-icons/fi";
+import type { IconType } from "react-icons";
 
 type AccentType = "blue" | "green" | "red";
 
 type FeatureItem = {
     title: string;
     desc: string;
-    icon: any;
+    icon: IconType;
     accent: AccentType;
 };
+
+interface AccentClasses {
+    bg: string;
+    icon: string;
+    border: string;
+    shadow: string;
+    blob: string;
+}
 
 const features: FeatureItem[] = [
     {
@@ -37,7 +46,7 @@ const features: FeatureItem[] = [
     },
 ];
 
-const accentMap: Record<AccentType, any> = {
+const accentMap: Record<AccentType, AccentClasses> = {
     blue: {
         bg: "bg-blue-50",
         icon: "text-blue-600",

@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { FiMenu, FiX, FiChevronDown } from "react-icons/fi";
 import Link from "next/link";
-
-import logo from "../../../public/images/hospitalogo.png";
+import Image from "next/image";
 
 /* ================= DATA ================= */
 
@@ -123,7 +122,13 @@ export default function Navbar() {
             </button>
 
             <Link href="/" className="flex items-center">
-              <img src={logo.src} alt="logo" className="h-11 object-contain" />
+              <Image
+                src="/images/hospitalogo.png"
+                alt="logo"
+                width={200}
+                height={69}
+                className="h-11 w-auto object-contain"
+              />
             </Link>
           </div>
 

@@ -2,24 +2,37 @@
 "use client";
 
 import { FiPieChart, FiShield, FiLogOut, FiChevronDown, FiChevronUp } from "react-icons/fi";
+import Image from "next/image";
+import type { Dispatch, SetStateAction } from "react";
+import type { Feature, SubFeatureItem } from "@/app/data/features";
+import type { RolePermission, UserRole } from "@/app/config/roleConfig";
+
+interface SidebarProps {
+    sidebarOpen: boolean;
+    role: UserRole;
+    permissions: RolePermission;
+    accessibleFeatures: Feature[];
+    activeSection: string;
+    setActiveSection: Dispatch<SetStateAction<string>>;
+    selectedFeature: Feature | null;
+    setSelectedFeature: Dispatch<SetStateAction<Feature | null>>;
+    expandedFeature: number | null;
+    setExpandedFeature: Dispatch<SetStateAction<number | null>>;
+    openLogoutModal: () => void;
+}
 
 export const Sidebar = ({
     sidebarOpen, role, permissions, accessibleFeatures,
     activeSection, setActiveSection, selectedFeature,
     setSelectedFeature, expandedFeature, setExpandedFeature,
-    setSidebarOpen, openLogoutModal
-}: any) => {
-
-
-    // Search removed (table search remains in DashboardContent)
-
-
+    openLogoutModal
+}: SidebarProps) => {
 
     const toggleFeature = (id: number) => {
         setExpandedFeature((prev: number | null) => (prev === id ? null : id));
     };
 
-    const handleSelectFeature = (feat: any) => {
+    const handleSelectFeature = (feat: Feature) => {
         setSelectedFeature(feat);
         setActiveSection("feature-detail");
     };
@@ -28,7 +41,7 @@ export const Sidebar = ({
         <aside className={`${sidebarOpen ? "w-80" : "w-0 -translate-x-full"} shrink-0 bg-[var(--card)] border-r border-[var(--border)] flex flex-col transition-all duration-300 ease-in-out z-30 h-full overflow-hidden`}>
             {/* Sidebar Header */}
             <div className="p-6 border-b border-[var(--border)] flex items-center gap-3 bg-[var(--primary)] text-white">
-                <img src="/images/hospitalogo.png" alt="Hospital Logo" className="w-10 h-10 object-contain bg-white rounded-xl p-1 shadow-md" />
+                <Image src="/images/hospitalogo.png" alt="Hospital Logo" width={40} height={40} className="w-10 h-10 object-contain bg-white rounded-xl p-1 shadow-md" />
                 <div>
                     <h1 className="font-extrabold text-base leading-none tracking-tight text-white uppercase">Management</h1>
                     <span className="text-[10px] text-white/70 tracking-wider font-semibold block uppercase mt-1">
@@ -68,7 +81,7 @@ export const Sidebar = ({
                                 No modules found.
                             </div>
                         ) : (
-                            accessibleFeatures.map((feat: any) => {
+                            accessibleFeatures.map((feat: Feature) => {
                                 const Icon = feat.icon;
                                 const isExpanded = expandedFeature === feat.id;
                                 const isActive = activeSection === "feature-detail" && selectedFeature?.id === feat.id;
@@ -111,7 +124,7 @@ export const Sidebar = ({
 
                                         {isExpanded && (
                                             <div className="mt-1 mb-2 ml-6 space-y-0.5">
-                                                {feat.subFeatures.map((sub: any, sIdx: any) => {
+                                                {feat.subFeatures.map((sub: SubFeatureItem, sIdx: number) => {
                                                     const SubIcon = sub.icon;
                                                     return (
                                                         <div

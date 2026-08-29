@@ -18,17 +18,17 @@ import {
   FiX,
   FiMenu,
   FiPieChart,
-  FiSearch,
-  FiX as FiXIcon,
-  FiDownload,
   FiFile
 } from "react-icons/fi";
+import type { IconType } from "react-icons";
 
 import { useMemo, useState } from "react";
 
-import { ADMIN_TABLE_BY_FEATURE_ID } from "@/app/data/adminTableData";
+import { ADMIN_TABLE_BY_FEATURE_ID, type TableRow } from "@/app/data/adminTableData";
+import type { Feature, SubFeatureItem } from "@/app/data/features";
+import type { RolePermission, RoleStat } from "@/app/config/roleConfig";
 
-const iconMap: Record<string, any> = {
+const iconMap: Record<string, IconType> = {
   FiUser,
   FiCalendar,
   FiDollarSign,
@@ -50,17 +50,25 @@ export const DashboardContent = ({
   setSidebarOpen,
   activeSection,
   selectedFeature,
-  role,
   permissions,
   roleStats,
   accessibleFeatures,
   setActiveSection,
   setSelectedFeature,
-}: any) => {
+}: {
+  sidebarOpen: boolean;
+  setSidebarOpen: (open: boolean) => void;
+  activeSection: string;
+  selectedFeature: Feature | null;
+  permissions: RolePermission | null;
+  roleStats: RoleStat[];
+  accessibleFeatures: Feature[];
+  setActiveSection: (section: string) => void;
+  setSelectedFeature: (feature: Feature | null) => void;
+}) => {
   const [tableSearch, setTableSearch] = useState<string>("");
-  const [pageSize, setPageSize] = useState<number>(50);
+  const [pageSize] = useState<number>(50);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [uploadedFileName, setUploadedFileName] = useState<string>("");
 
 
   const roles = [
@@ -111,8 +119,6 @@ export const DashboardContent = ({
     },
   ];
 
-  console.log("DashboardContent selectedFeature.id:", selectedFeature?.id);
-
   const table = selectedFeature?.id
     ? ADMIN_TABLE_BY_FEATURE_ID[selectedFeature.id]
     : null;
@@ -123,7 +129,7 @@ export const DashboardContent = ({
     const q = tableSearch.trim().toLowerCase();
     if (!q) return table;
 
-    const filteredRows = table.rows.filter((row: any) => {
+    const filteredRows = table.rows.filter((row: TableRow) => {
       return table.columns.some((col) => {
         const val = row?.[col];
         return String(val ?? "").toLowerCase().includes(q);
@@ -150,8 +156,6 @@ export const DashboardContent = ({
 
   // Reset to page 1 when search text changes
   // (prevents showing an empty page after filtering)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-
 
 
 
@@ -183,25 +187,8 @@ export const DashboardContent = ({
     URL.revokeObjectURL(url);
   };
 
-  const toCsv = (columns: string[], rows: any[]) => {
-    const escapeCell = (val: any) => {
-      const str = String(val ?? "");
-      // Escape quotes and wrap if needed
-      const needsQuotes = /[",\r\n]/.test(str);
-      const escaped = str.replace(/"/g, '""');
-      return needsQuotes ? `"${escaped}"` : escaped;
-    };
-
-    const header = columns.map(escapeCell).join(",");
-    const body = rows
-      .map((row) => columns.map((col) => escapeCell(row?.[col])).join(","))
-      .join("\r\n");
-
-    return `${header}\r\n${body}\r\n`;
-  };
-
-  const toExcelHtml = (columns: string[], rows: any[]) => {
-    const escapeHtml = (val: any) => {
+  const toExcelHtml = (columns: string[], rows: TableRow[]) => {
+    const escapeHtml = (val: unknown) => {
       const str = String(val ?? "");
       return str
        .replace(/&/g, "&amp;")
@@ -264,7 +251,7 @@ ${tbody}
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {roleStats &&
-                roleStats.map((stat: any, idx: number) => {
+                roleStats.map((stat: RoleStat, idx: number) => {
                   const Icon = iconMap[stat.icon] || FiUser;
                   return (
                     <div
@@ -376,7 +363,7 @@ ${tbody}
                 <span className="text-[10px] text-[var(--primary)] font-bold">Use sidebar to browse all {accessibleFeatures.length} modules</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {accessibleFeatures.slice(0, 4).map((feat: any, idx: number) => {
+                {accessibleFeatures.slice(0, 4).map((feat: Feature, idx: number) => {
                   const FeatIcon = feat.icon || FiUser;
                   return (
                     <div
@@ -391,7 +378,7 @@ ${tbody}
                         <span className="text-xs font-bold text-[var(--text)] group-hover:text-[var(--primary-dark)] transition-colors">{feat.englishTitle}</span>
                       </div>
                       <p className="text-[9px] text-[var(--muted)] mt-3 line-clamp-2 leading-relaxed">
-                        {feat.subFeatures.map((s: any) => s.label).join(", ")}
+                        {feat.subFeatures.map((s: SubFeatureItem) => s.label).join(", ")}
                       </p>
                     </div>
                   );
@@ -501,7 +488,7 @@ ${tbody}
                               .join("");
 
                             const tbody = rows
-                              .map((row: any) => {
+                              .map((row: TableRow) => {
                                 const tds = columns
                                   .map((c: string) => `<td>${String(row?.[c] ?? "")}</td>`)
                                   .join("");
@@ -609,7 +596,7 @@ ${tbody}
                           </tr>
                         </thead>
                         <tbody>
-                          {paginatedRows.map((row: any, idx: number) => (
+                          {paginatedRows.map((row: TableRow, idx: number) => (
                             <tr key={idx} className="hover:bg-[var(--primary-soft)]/10 transition-colors">
                               {filteredTable.columns.map((col: string) => (
                                 <td
@@ -682,7 +669,7 @@ ${tbody}
                     <div>
                       <h4 className="text-xs font-extrabold text-[var(--text)] mb-3 uppercase tracking-wider">Sub-Features Available</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {selectedFeature.subFeatures.map((sub: any, sIdx: number) => {
+                        {selectedFeature.subFeatures.map((sub: SubFeatureItem, sIdx: number) => {
                           const SubIcon = sub.icon;
                           return (
                             <div key={sIdx} className="card flex items-center gap-3 p-3 rounded-xl group">

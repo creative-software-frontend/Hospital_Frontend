@@ -1,6 +1,22 @@
 // config/roleConfig.ts
 export type UserRole = 'super-admin' | 'admin' | 'doctor' | 'pharmacist' | 'pathologist' | 'radiologist' | 'accountant' | 'receptionist' | 'nurse';
 
+/** All staff/admin roles that can access the dashboard area. */
+export const STAFF_ROLES: UserRole[] = [
+    'super-admin',
+    'admin',
+    'doctor',
+    'pharmacist',
+    'pathologist',
+    'radiologist',
+    'accountant',
+    'receptionist',
+    'nurse',
+];
+
+export const isStaffRole = (role: string | null | undefined): role is UserRole =>
+    !!role && (STAFF_ROLES as string[]).includes(role);
+
 export interface RolePermission {
     role: UserRole;
     label: string;
@@ -77,8 +93,14 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermission> = {
 };
 
 // Role-specific dashboard stats configuration
-export const getRoleStats = (role: UserRole) => {
-    const baseStats = {
+export interface RoleStat {
+    label: string;
+    value: string;
+    icon: string;
+}
+
+export const getRoleStats = (role: UserRole): RoleStat[] => {
+    const baseStats: Record<UserRole, RoleStat[]> = {
         'super-admin': [
             { label: "Total Patients", value: "12,840", icon: "FiUser" },
             { label: "Today's Appointments", value: "342", icon: "FiCalendar" },
@@ -128,5 +150,5 @@ export const getRoleStats = (role: UserRole) => {
         ],
     };
 
-    return (baseStats as any)[role] || baseStats['super-admin'];
+    return baseStats[role];
 };

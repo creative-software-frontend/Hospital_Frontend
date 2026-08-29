@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import Link from "next/link";
+import Image from "next/image";
+import { motion } from "motion/react";
+import { authStorage } from "@/app/lib/auth";
 import {
   FiCalendar,
   FiFileText,
@@ -12,11 +13,9 @@ import {
   FiClock,
   FiBell,
   FiLogOut,
-  FiUser,
   FiChevronRight,
   FiPlus,
   FiDroplet,
-  FiAlertCircle,
   FiCheckCircle,
   FiMenu,
   FiX,
@@ -107,16 +106,10 @@ export default function UserDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [userEmail, setUserEmail] = useState("user@example.com");
-
-  useEffect(() => {
-    const email = localStorage.getItem("userEmail");
-    if (email) setUserEmail(email);
-  }, []);
+  const [userEmail] = useState(() => authStorage.getUserEmail() ?? "user@example.com");
 
   const handleLogout = () => {
-    localStorage.removeItem("userType");
-    localStorage.removeItem("userEmail");
+    authStorage.clearSession();
     router.push("/login");
   };
 
@@ -137,9 +130,11 @@ export default function UserDashboard() {
           className="p-5 border-b flex items-center gap-3"
           style={{ background: "var(--primary)", borderColor: "var(--border)" }}
         >
-          <img
+          <Image
             src="/images/hospitalogo.png"
             alt="Hospital Logo"
+            width={36}
+            height={36}
             className="w-9 h-9 object-contain bg-white rounded-xl p-1 shadow-md"
           />
           <div>
@@ -281,7 +276,7 @@ export default function UserDashboard() {
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto p-5 sm:p-6 news-scroll">
-          {activeTab === "overview" && <OverviewTab displayName={displayName} setActiveTab={setActiveTab} />}
+          {activeTab === "overview" && <OverviewTab setActiveTab={setActiveTab} />}
           {activeTab === "appointments" && <AppointmentsTab />}
           {activeTab === "reports" && <ReportsTab />}
           {activeTab === "medications" && <MedicationsTab />}
@@ -292,7 +287,7 @@ export default function UserDashboard() {
 }
 
 // ====================== OVERVIEW TAB ======================
-function OverviewTab({ displayName, setActiveTab }: { displayName: string; setActiveTab: (t: string) => void }) {
+function OverviewTab({ setActiveTab }: { setActiveTab: (t: string) => void }) {
   return (
     <div className="space-y-6">
       {/* Health Stats */}

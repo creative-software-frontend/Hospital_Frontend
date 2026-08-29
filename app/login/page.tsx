@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import Link from "next/link";
+import { authStorage } from "@/app/lib/auth";
 
 const news = [
   {
@@ -41,8 +42,7 @@ export default function UserLoginPage() {
       return;
     }
     setMessage("");
-    localStorage.setItem("userType", "user");
-    localStorage.setItem("userEmail", email);
+    authStorage.setSession(null, "user", email);
     router.push("/dashboard/user");
   };
 
