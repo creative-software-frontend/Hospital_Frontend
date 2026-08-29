@@ -671,6 +671,31 @@ ${tbody}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {selectedFeature.subFeatures.map((sub: SubFeatureItem, sIdx: number) => {
                           const SubIcon = sub.icon;
+                          if (sub.children?.length) {
+                            return (
+                              <div key={sIdx} className="sm:col-span-2">
+                                <div className="flex items-center gap-2.5 mb-2">
+                                  <div className="w-7 h-7 rounded-lg bg-[var(--primary-soft)]/35 flex items-center justify-center text-[var(--primary-dark)] shrink-0">
+                                    <SubIcon className="w-3.5 h-3.5" />
+                                  </div>
+                                  <span className="text-xs font-extrabold text-[var(--text)] uppercase tracking-wider">{sub.label}</span>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {sub.children.map((child: SubFeatureItem, cIdx: number) => {
+                                    const ChildIcon = child.icon;
+                                    return (
+                                      <div key={cIdx} className="card flex items-center gap-3 p-2.5 rounded-xl group">
+                                        <div className="w-6 h-6 rounded-md bg-[var(--primary-soft)]/30 flex items-center justify-center text-[var(--primary-dark)] group-hover:bg-[var(--primary)] group-hover:text-white transition-colors shrink-0">
+                                          <ChildIcon className="w-3 h-3" />
+                                        </div>
+                                        <span className="text-xs font-bold text-[var(--muted)] group-hover:text-[var(--text)] transition-colors">{child.label}</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          }
                           return (
                             <div key={sIdx} className="card flex items-center gap-3 p-3 rounded-xl group">
                               <div className="w-7 h-7 rounded-lg bg-[var(--primary-soft)]/35 flex items-center justify-center text-[var(--primary-dark)] group-hover:bg-[var(--primary)] group-hover:text-white transition-colors shrink-0">

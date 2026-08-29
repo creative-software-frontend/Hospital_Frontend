@@ -3,6 +3,7 @@
 
 import { FiPieChart, FiShield, FiLogOut, FiChevronDown, FiChevronUp } from "react-icons/fi";
 import Image from "next/image";
+import { useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { Feature, SubFeatureItem } from "@/app/data/features";
 import type { RolePermission, UserRole } from "@/app/config/roleConfig";
@@ -35,6 +36,21 @@ export const Sidebar = ({
     const handleSelectFeature = (feat: Feature) => {
         setSelectedFeature(feat);
         setActiveSection("feature-detail");
+    };
+
+    // Nested settings groups open by default; clicking toggles them.
+    const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+    const toggleGroup = (groupKey: string) => {
+        setCollapsedGroups((prev) => {
+            const next = new Set(prev);
+            if (next.has(groupKey)) {
+                next.delete(groupKey);
+            } else {
+                next.add(groupKey);
+            }
+            return next;
+        });
     };
 
     return (
@@ -125,6 +141,46 @@ export const Sidebar = ({
                                         {isExpanded && (
                                             <div className="mt-1 mb-2 ml-6 space-y-0.5">
                                                 {feat.subFeatures.map((sub: SubFeatureItem, sIdx: number) => {
+                                                    if (sub.children?.length) {
+                                                        const SubIcon = sub.icon;
+                                                        const groupKey = `${feat.id}-${sIdx}`;
+                                                        const isGroupOpen = !collapsedGroups.has(groupKey);
+                                                        return (
+                                                            <div key={sIdx} className="mt-0.5">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => toggleGroup(groupKey)}
+                                                                    className="w-full flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-[var(--primary-dark)] hover:bg-[var(--primary-soft)]/25 transition-colors cursor-pointer"
+                                                                >
+                                                                    <div className="flex items-center gap-2.5 overflow-hidden">
+                                                                        <SubIcon className="w-3 h-3 shrink-0 text-[var(--primary)]" />
+                                                                        <span className="truncate">{sub.label}</span>
+                                                                    </div>
+                                                                    {isGroupOpen ? (
+                                                                        <FiChevronUp className="w-3 h-3 shrink-0 text-[var(--muted)]" />
+                                                                    ) : (
+                                                                        <FiChevronDown className="w-3 h-3 shrink-0 text-[var(--muted)]" />
+                                                                    )}
+                                                                </button>
+                                                                {isGroupOpen && (
+                                                                    <div className="ml-5 space-y-0.5">
+                                                                        {sub.children.map((child: SubFeatureItem, cIdx: number) => {
+                                                                            const ChildIcon = child.icon;
+                                                                            return (
+                                                                                <div
+                                                                                    key={cIdx}
+                                                                                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer text-[11px] font-medium text-[var(--muted)] hover:bg-[var(--primary)]/10 hover:text-[var(--primary-dark)] hover:pl-4 transition-all duration-200"
+                                                                                >
+                                                                                    <ChildIcon className="w-3 h-3 shrink-0 text-[var(--primary)]/60" />
+                                                                                    <span>{child.label}</span>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    }
                                                     const SubIcon = sub.icon;
                                                     return (
                                                         <div

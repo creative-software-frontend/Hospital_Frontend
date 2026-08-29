@@ -5,13 +5,15 @@ import {
     FiClipboard, FiEdit, FiAlertCircle, FiClock, FiPrinter, FiMail, FiBarChart2, FiTag, FiPackage,
     FiShoppingCart, FiRefreshCcw, FiMapPin, FiAlertTriangle, FiCreditCard, FiCheckSquare, FiBell, FiSettings,
     FiUsers, FiNavigation, FiToggleRight, FiDroplet, FiThermometer, FiBookOpen,
-    FiStar, FiRepeat, FiPhone, FiGlobe, FiZap, FiLock
+    FiStar, FiRepeat, FiPhone, FiGlobe, FiZap, FiLock, FiGitBranch, FiServer, FiLink, FiArchive, FiFlag, FiTool
 } from "react-icons/fi";
 import type { IconType } from "react-icons";
 
 export interface SubFeatureItem {
     label: string;
     icon: IconType;
+    /** Optional nested settings items rendered as a group under this label. */
+    children?: SubFeatureItem[];
 }
 
 export interface Feature {
@@ -298,6 +300,52 @@ export const keyFeatures: Feature[] = [
             { label: "Lab Income Report", icon: FiDatabase },
             { label: "Financial Report", icon: FiTrendingUp },
             { label: "Management Dashboard", icon: FiPieChart },
+        ]
+    },
+    {
+        id: 21,
+        englishTitle: "Settings & Configuration",
+        icon: FiSettings,
+        subFeatures: [
+            { label: "General Settings", icon: FiSettings },
+            { label: "Branch Settings", icon: FiGitBranch },
+            { label: "User & Role Management", icon: FiUsers },
+            { label: "Security", icon: FiLock },
+            {
+                label: "Hospital Configuration",
+                icon: FiServer,
+                children: [
+                    { label: "Departments", icon: FiFolder },
+                    { label: "Doctors", icon: FiActivity },
+                    { label: "Patients", icon: FiUser },
+                    { label: "Services", icon: FiTag },
+                ],
+            },
+            {
+                label: "Clinical Settings",
+                icon: FiZap,
+                children: [
+                    { label: "OPD", icon: FiPlusSquare },
+                    { label: "IPD", icon: FiHome },
+                    { label: "Emergency", icon: FiAlertCircle },
+                    { label: "Prescription", icon: FiFileText },
+                    { label: "Diagnosis", icon: FiClipboard },
+                ],
+            },
+            { label: "Pharmacy Settings", icon: FiBriefcase },
+            { label: "Laboratory Settings", icon: FiDatabase },
+            { label: "Billing Settings", icon: FiCreditCard },
+            { label: "Accounting Settings", icon: FiDollarSign },
+            { label: "HR & Payroll", icon: FiUserCheck },
+            { label: "Inventory", icon: FiPackage },
+            { label: "Notification", icon: FiBell },
+            { label: "Print & Document", icon: FiPrinter },
+            { label: "API & Integration", icon: FiLink },
+            { label: "Backup & Database", icon: FiArchive },
+            { label: "Reports", icon: FiBarChart2 },
+            { label: "Localization", icon: FiFlag },
+            { label: "Master Data", icon: FiBookOpen },
+            { label: "System Maintenance", icon: FiTool },
         ]
     },
 ];

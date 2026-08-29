@@ -32,7 +32,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermission> = {
         label: 'Super Administrator',
         canViewOverview: true,
         canViewRolePermissions: true,
-        accessibleFeatureIds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20], // All features
+        accessibleFeatureIds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21], // All features + Settings
     },
     'admin': {
         role: 'admin',
