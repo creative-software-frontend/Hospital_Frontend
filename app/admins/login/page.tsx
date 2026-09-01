@@ -4,32 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import Link from "next/link";
+import { authApi, errorMessage } from "@/app/lib/api";
+import { toFrontendRole } from "@/app/lib/roles";
 import { authStorage } from "@/app/lib/auth";
-import type { UserRole } from "@/app/config/roleConfig";
-
-const roles = [
-  "Super Admin",
-  "Admin",
-  "Doctor",
-  "Pharmacist",
-  "Pathologist",
-  "Radiologist",
-  "Accountant",
-  "Receptionist",
-  "Nurse",
-];
-
-const roleRoutes: Record<string, string> = {
-  "Super Admin": "super-admin",
-  Admin: "admin",
-  Doctor: "doctor",
-  Pharmacist: "pharmacist",
-  Pathologist: "pathologist",
-  Radiologist: "radiologist",
-  Accountant: "accountant",
-  Receptionist: "receptionist",
-  Nurse: "nurse",
-};
 
 const news = [
   {
@@ -57,27 +34,35 @@ const news = [
 export default function AdminLoginPage() {
   const router = useRouter();
 
-  const [selectedRole, setSelectedRole] = useState<string>("Admin");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const [message, setMessage] = useState<string>("");
+  const [error, setError] = useState<string>("");
+  const [submitting, setSubmitting] = useState<boolean>(false);
 
-  const handleLogin = () => {
-    const role = roleRoutes[selectedRole] as UserRole;
-    authStorage.setSession(role, "admin");
-
-    const adminRoutes: Record<string, string> = {
-      "super-admin": "/dashboard/super-admin",
-      admin: "/dashboard/admin",
-      doctor: "/dashboard/doctor",
-      pharmacist: "/dashboard/pharmacist",
-      pathologist: "/dashboard/pathologist",
-      radiologist: "/dashboard/radiologist",
-      accountant: "/dashboard/accountant",
-      receptionist: "/dashboard/receptionist",
-      nurse: "/dashboard/nurse",
-    };
-
-    router.push(adminRoutes[role]);
+  const handleLogin = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!email || !password) {
+      setError("Please enter your email and password.");
+      return;
+    }
+    setError("");
+    setMessage("");
+    setSubmitting(true);
+    try {
+      const result = await authApi.login(email.trim(), password);
+      const role = toFrontendRole(result.roles);
+      if (!role) {
+        setError("This account has no dashboard role assigned.");
+        return;
+      }
+      authStorage.setSession(role, "admin", result.user.email);
+      router.push(`/dashboard/${role}`);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -110,58 +95,58 @@ export default function AdminLoginPage() {
           </div>
 
           <p className="text-white/80 text-sm">
-            Select your role to continue
+            Sign in with your staff account to continue
           </p>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-6">
-            {roles.map((role) => (
-              <button
-                key={role}
-                onClick={() => setSelectedRole(role)}
-                className="px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm border"
-                style={{
-                  background:
-                    selectedRole === role
-                      ? "var(--primary)"
-                      : "rgba(255,255,255,0.05)",
-                  borderColor:
-                    selectedRole === role
-                      ? "var(--primary)"
-                      : "rgba(255,255,255,0.2)",
-                  color: "white",
-                }}
-              >
-                {role}
-              </button>
-            ))}
-          </div>
+          <form onSubmit={handleLogin} className="mt-6 space-y-4">
 
-          <div className="mt-6 space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-white/70 mb-1.5">
+                Email or Username
+              </label>
+              <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@hospital.com"
+                autoComplete="username"
+                className="w-full px-4 py-3 rounded-lg bg-white text-black"
+              />
+            </div>
 
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
-              className="w-full px-4 py-3 rounded-lg bg-white text-black"
-            />
+            <div>
+              <label className="block text-xs font-semibold text-white/70 mb-1.5">
+                Password
+              </label>
+              <input
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                type="password"
+                placeholder="••••••••"
+                autoComplete="current-password"
+                className="w-full px-4 py-3 rounded-lg bg-white text-black"
+              />
+            </div>
 
-            <input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type="password"
-              placeholder="Password"
-              className="w-full px-4 py-3 rounded-lg bg-white text-black"
-            />
+            {error && (
+              <p className="text-sm text-red-200 bg-red-500/20 border border-red-400/40 rounded-lg px-3 py-2">
+                {error}
+              </p>
+            )}
+
+            {message && (
+              <p className="text-sm text-white/90">{message}</p>
+            )}
 
             <button
-              onClick={handleLogin}
-              className="w-full py-3 rounded-lg font-semibold text-white"
+              type="submit"
+              disabled={submitting}
+              className="w-full py-3 rounded-lg font-semibold text-white disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ background: "var(--primary)" }}
             >
-              Login as {selectedRole}
+              {submitting ? "Signing in..." : "Login"}
             </button>
 
-          </div>
+          </form>
 
           <div className="mt-6 pt-5 border-t border-white/15 text-center">
             <p className="text-white/50 text-xs">

@@ -29,6 +29,7 @@ import type { Feature, SubFeatureItem } from "@/app/data/features";
 import type { RolePermission, RoleStat } from "@/app/config/roleConfig";
 import { settingsData } from "@/app/data/settingsData";
 import { SettingsPageView } from "@/app/dashboard/settings/SettingsPageView";
+import { PatientModule } from "@/app/patients/PatientModule";
 
 const iconMap: Record<string, IconType> = {
   FiUser,
@@ -463,6 +464,8 @@ ${tbody}
 
             {selectedSettingsPage ? (
               <SettingsPageView page={selectedSettingsPage} />
+            ) : selectedFeature.id === 1 ? (
+              <PatientModule role={permissions?.role ?? null} />
             ) : (
             <div className="grid grid-cols-1 gap-6">
               <div className="card p-6 rounded-2xl shadow-sm space-y-6 w-full">

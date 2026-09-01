@@ -34,7 +34,7 @@ function enforceBranchAccess(actor: AuthUser, targetBranchId: number): void {
 /* ---------------------------------------------------------------------------
  * Select shapes
  * ------------------------------------------------------------------------- */
-const PATIENT_LIST_SELECT = {
+const PATIENT_LIST_SELECT: Prisma.PatientSelect = {
   id: true,
   patientCode: true,
   firstName: true,
@@ -56,9 +56,9 @@ const PATIENT_LIST_SELECT = {
     select: { id: true, name: true, relationship: true, phone: true, isPrimary: true },
     orderBy: [{ isPrimary: "desc" }, { id: "asc" }],
   },
-} as const;
+};
 
-const PATIENT_DETAIL_SELECT = {
+const PATIENT_DETAIL_SELECT: Prisma.PatientSelect = {
   ...PATIENT_LIST_SELECT,
   nationalId: true,
   occupation: true,
@@ -77,7 +77,23 @@ const PATIENT_DETAIL_SELECT = {
       payments: true,
     },
   },
-} as const;
+};
+
+const SCALAR_FIELD_SELECT: Prisma.PatientSelect = {
+  firstName: true,
+  lastName: true,
+  gender: true,
+  dateOfBirth: true,
+  bloodGroup: true,
+  maritalStatus: true,
+  phone: true,
+  email: true,
+  address: true,
+  district: true,
+  nationalId: true,
+  occupation: true,
+  photo: true,
+};
 
 /* ---------------------------------------------------------------------------
  * Helpers
@@ -120,18 +136,19 @@ function buildListWhere(actor: AuthUser, query: ListPatientsQuery): Prisma.Patie
   }
 
   if (query.patientCode) {
-    where.patientCode = { contains: query.patientCode, mode: "insensitive" };
+    where.patientCode = { contains: query.patientCode };
   }
 
-  // A single free-text search across several fields.
+  // A single free-text search across several fields. MySQL uses a
+  // case-insensitive collation, so plain `contains` is sufficient.
   const search = query.search?.trim();
   if (search) {
     where.OR = [
-      { firstName: { contains: search, mode: "insensitive" } },
-      { lastName: { contains: search, mode: "insensitive" } },
-      { patientCode: { contains: search, mode: "insensitive" } },
-      { phone: { contains: search, mode: "insensitive" } },
-      { email: { contains: search, mode: "insensitive" } },
+      { firstName: { contains: search } },
+      { lastName: { contains: search } },
+      { patientCode: { contains: search } },
+      { phone: { contains: search } },
+      { email: { contains: search } },
     ];
   }
 
@@ -140,16 +157,16 @@ function buildListWhere(actor: AuthUser, query: ListPatientsQuery): Prisma.Patie
   if (query.name) {
     exactFilters.push({
       OR: [
-        { firstName: { contains: query.name, mode: "insensitive" } },
-        { lastName: { contains: query.name, mode: "insensitive" } },
+        { firstName: { contains: query.name } },
+        { lastName: { contains: query.name } },
       ],
     });
   }
   if (query.phone) {
-    exactFilters.push({ phone: { contains: query.phone, mode: "insensitive" } });
+    exactFilters.push({ phone: { contains: query.phone } });
   }
   if (query.email) {
-    exactFilters.push({ email: { contains: query.email, mode: "insensitive" } });
+    exactFilters.push({ email: { contains: query.email } });
   }
 
   if (exactFilters.length > 0) {
@@ -191,7 +208,7 @@ export async function createPatient(actor: AuthUser, input: CreatePatientInput) 
   }
 
   const data: Prisma.PatientCreateInput = {
-    branchId: targetBranchId,
+    branch: { connect: { id: targetBranchId } },
     patientCode: input.patientCode,
     firstName: input.firstName,
     lastName: input.lastName,
@@ -310,7 +327,7 @@ export async function updatePatient(actor: AuthUser, id: number, input: UpdatePa
 
   // Only meaningful changes are persisted and audited.
   if (Object.keys(data).length > 0) {
-    const full = await prisma.patient.findUnique({ where: { id }, select: { ...scalarFields } });
+    const full = await prisma.patient.findUnique({ where: { id }, select: SCALAR_FIELD_SELECT });
     if (full) {
       for (const field of scalarFields) {
         const wasDefined = input[field] !== undefined;

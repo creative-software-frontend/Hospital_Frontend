@@ -1,0 +1,84 @@
+
+> hospital-frontend@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.190:3000
+✓ Ready in 543ms
+
+ GET /dashboard/super-admin 200 in 325ms (next.js: 157ms, application-code: 168ms)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+      <AppDevOverlayErrorBoundary globalError={[...]}>
+        <ReplaySsrOnlyErrors>
+        <DevRootHTTPAccessFallbackBoundary>
+          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+            <HTTPAccessFallbackErrorBoundary pathname="/dashboard..." notFound={<NotAllowedRootHTTPFallbackError>} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <Head headCacheNode={{rsc:{...}, ...}}>
+                    <__next_viewport_boundary__>
+                    <MetadataWrapper>
+                      <div
+                        hidden={true}
+-                       bis_skin_checked="1"
+                      >
+                    ...
+                  <__next_root_layout_boundary__>
+                    <SegmentViewNode type="layout" pagePath="layout.tsx">
+                      <SegmentTrieNode>
+                      <link>
+                      <script>
+                      <script>
+                      <RootLayout>
+                        <html lang="en" className="geist_a715...">
+                          <body
+                            className="min-h-full flex flex-col"
+-                           cz-shortcut-listen="true"
+-                           __processed_912afb7c-3d9a-4808-9a7f-46871e63b858__="true"
+-                           bis_register="W3sibWFzdGVyIjp0cnVlLCJleHRlbnNpb25JZCI6ImVwcGlvY2VtaG1ubGJoanBsY2drb2ZjaWll..."
+                          >
+                            ...
+                              <SegmentViewNode type="page" pagePath="dashboard/...">
+                                <SegmentTrieNode>
+                                <SuperAdminPage>
+                                  <DashboardLayout>
+                                    <div
+                                      className="flex h-screen items-center justify-center bg-[var(--bg)]"
+-                                     bis_skin_checked="1"
+                                    >
+                                      <div
+                                        className="text-center"
+-                                       bis_skin_checked="1"
+                                      >
+                                        <div
+                                          className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--prim..."
+-                                         bis_skin_checked="1"
+                                        >
+                                        ...
+                              ...
+                  ...
+ 
+ GET /admins/login 200 in 51ms (next.js: 30ms, application-code: 21ms)
+ GET / 200 in 160ms (next.js: 33ms, application-code: 127ms)
+ GET /dashboard/super-admin 200 in 32ms (next.js: 5ms, application-code: 27ms)
+ GET /login 200 in 51ms (next.js: 33ms, application-code: 18ms)
+ GET /admins/login 200 in 22ms (next.js: 5ms, application-code: 17ms)
+ GET /login 200 in 19ms (next.js: 5ms, application-code: 14ms)
+ GET /admins/login 200 in 19ms (next.js: 4ms, application-code: 15ms)
+ GET /login 200 in 20ms (next.js: 5ms, application-code: 15ms)
+ GET /dashboard/user 200 in 48ms (next.js: 31ms, application-code: 17ms)
+ GET /login 200 in 18ms (next.js: 5ms, application-code: 13ms)

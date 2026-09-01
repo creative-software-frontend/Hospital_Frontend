@@ -1,0 +1,427 @@
+// app/lib/api.ts
+// Typed client for the backend REST API. All calls go to the same-origin
+// `/api` prefix (Next.js rewrites proxy it to the Express backend on :5000).
+// Authentication rides on the backend's HTTP-only cookie, so we always send
+// `credentials: "include"` and never read a token from JS.
+
+export const API_BASE = "/api";
+
+/* ---------------------------------------------------------------------------
+ * Types (mirror the backend response shapes)
+ * ------------------------------------------------------------------------- */
+
+export interface ApiUser {
+  id: number;
+  email: string;
+  username: string | null;
+  name: string;
+  status: string;
+  branchId: number;
+}
+
+export interface MeResult {
+  user: ApiUser;
+  roles: string[];
+}
+
+export interface LoginResult {
+  user: ApiUser;
+  roles: string[];
+}
+
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface BranchRef {
+  id: number;
+  name: string;
+  code: string;
+}
+
+export type Gender = "MALE" | "FEMALE" | "OTHER";
+export type BloodGroup =
+  | "A_POS" | "A_NEG" | "B_POS" | "B_NEG"
+  | "AB_POS" | "AB_NEG" | "O_POS" | "O_NEG";
+export type MaritalStatus = "SINGLE" | "MARRIED" | "DIVORCED" | "WIDOWED";
+export type PatientStatus = "active" | "inactive";
+
+export interface PatientContact {
+  id: number;
+  name: string;
+  relationship: string | null;
+  phone: string | null;
+  address: string | null;
+  isPrimary: boolean;
+}
+
+export interface PatientListRecord {
+  id: number;
+  patientCode: string;
+  firstName: string;
+  lastName: string | null;
+  gender: Gender | null;
+  dateOfBirth: string | null;
+  bloodGroup: BloodGroup | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  district: string | null;
+  maritalStatus: MaritalStatus | null;
+  status: PatientStatus;
+  branchId: number;
+  createdAt: string;
+  updatedAt: string;
+  branch?: BranchRef;
+  contacts: PatientContact[];
+}
+
+export interface PatientDetail extends PatientListRecord {
+  nationalId: string | null;
+  occupation: string | null;
+  photo: string | null;
+  deletedAt: string | null;
+  createdById: number | null;
+  updatedById: number | null;
+  _count: {
+    appointments: number;
+    admissions: number;
+    medicalRecords: number;
+    prescriptions: number;
+    labOrders: number;
+    invoices: number;
+    payments: number;
+  };
+}
+
+export interface PatientListResult {
+  data: PatientListRecord[];
+  pagination: PaginationMeta;
+}
+
+export interface PatientContactInput {
+  name: string;
+  relationship?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  isPrimary?: boolean;
+}
+
+export interface CreatePatientInput {
+  patientCode: string;
+  firstName: string;
+  lastName?: string | null;
+  dateOfBirth?: string | null;
+  gender?: Gender | null;
+  bloodGroup?: BloodGroup | null;
+  maritalStatus?: MaritalStatus | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  district?: string | null;
+  nationalId?: string | null;
+  occupation?: string | null;
+  photo?: string | null;
+  contacts?: PatientContactInput[];
+}
+
+export type UpdatePatientInput = Partial<
+  Omit<CreatePatientInput, "patientCode" | "contacts">
+>;
+
+export interface PatientListQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+  gender?: Gender;
+  status?: PatientStatus;
+  branchId?: number;
+}
+
+/* ---------------------------------------------------------------------------
+ * Errors
+ * ------------------------------------------------------------------------- */
+
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code: string;
+  readonly details?: Record<string, string> | null;
+
+  constructor(status: number, code: string, message: string, details?: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+    this.details =
+      details && typeof details === "object"
+        ? (details as Record<string, string>)
+        : null;
+  }
+}
+
+export class UnauthenticatedError extends ApiError {
+  constructor(message = "Session expired. Please login again.") {
+    super(401, "UNAUTHENTICATED", message);
+    this.name = "UnauthenticatedError";
+  }
+}
+
+export class ForbiddenError extends ApiError {
+  constructor(message = "You do not have permission to perform this action") {
+    super(403, "FORBIDDEN", message);
+    this.name = "ForbiddenError";
+  }
+}
+
+export class NotFoundError extends ApiError {
+  constructor(message = "Resource not found") {
+    super(404, "NOT_FOUND", message);
+    this.name = "NotFoundError";
+  }
+}
+
+export class ConflictError extends ApiError {
+  constructor(message: string, code = "CONFLICT") {
+    super(409, code, message);
+    this.name = "ConflictError";
+  }
+}
+
+export class BusinessRuleError extends ApiError {
+  constructor(message: string) {
+    super(422, "BUSINESS_RULE", message);
+    this.name = "BusinessRuleError";
+  }
+}
+
+export class ValidationError extends ApiError {
+  readonly fieldErrors: Record<string, string>;
+
+  constructor(message: string, details?: unknown) {
+    super(400, "VALIDATION_ERROR", message, details);
+    this.name = "ValidationError";
+    this.fieldErrors = this.details ?? {};
+  }
+}
+
+function toApiError(status: number, code: string, message: string, details?: unknown): ApiError {
+  switch (code) {
+    case "UNAUTHENTICATED":
+    case "TOKEN_EXPIRED":
+    case "TOKEN_INVALID":
+      return new UnauthenticatedError(message);
+    case "FORBIDDEN":
+      return new ForbiddenError(message);
+    case "NOT_FOUND":
+    case "RECORD_NOT_FOUND":
+      return new NotFoundError(message);
+    case "CONFLICT":
+    case "UNIQUE_CONSTRAINT":
+      return new ConflictError(message, code);
+    case "BUSINESS_RULE":
+      return new BusinessRuleError(message);
+    case "VALIDATION_ERROR":
+      return new ValidationError(message, details);
+    default:
+      return new ApiError(status, code, message, details);
+  }
+}
+
+interface ErrorBody {
+  success?: false;
+  message?: string;
+  code?: string;
+  details?: unknown;
+}
+
+/* ---------------------------------------------------------------------------
+ * Request helper
+ * ------------------------------------------------------------------------- */
+
+async function rawRequest<TBody>(path: string, init?: RequestInit): Promise<TBody> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      credentials: "include",
+      headers: init?.body
+        ? { "Content-Type": "application/json", ...(init.headers ?? {}) }
+        : init?.headers,
+      ...init,
+    });
+  } catch {
+    throw new ApiError(0, "NETWORK_ERROR", "Cannot reach the server. Is the backend running?");
+  }
+
+  let body: unknown = null;
+  try {
+    body = await res.json();
+  } catch {
+    // non-JSON response (proxy error page, etc.)
+  }
+
+  if (!res.ok || (body && typeof body === "object" && (body as ErrorBody).success === false)) {
+    const errBody = body as ErrorBody | null;
+    const message = errBody?.message || `Request failed (${res.status})`;
+    const code = errBody?.code || "ERROR";
+    throw toApiError(res.status, code, message, errBody?.details);
+  }
+
+  return body as TBody;
+}
+
+/** Calls an endpoint whose body is `{ success: true, data: T }` and returns `data`. */
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const body = await rawRequest<{ data?: T }>(path, init);
+  if (body.data === undefined) {
+    throw new ApiError(0, "INVALID_RESPONSE", "Unexpected response from server");
+  }
+  return body.data;
+}
+
+function qs(params?: Record<string, string | number | boolean | null | undefined>): string {
+  if (!params) return "";
+  const sp = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== "") {
+      sp.set(key, String(value));
+    }
+  }
+  const q = sp.toString();
+  return q ? `?${q}` : "";
+}
+
+/* ---------------------------------------------------------------------------
+ * Auth endpoints
+ * ------------------------------------------------------------------------- */
+
+export const authApi = {
+  login: (identifier: string, password: string) =>
+    request<LoginResult>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ identifier, password }),
+    }),
+
+  me: () => request<MeResult>("/auth/me"),
+
+  logout: () =>
+    request<{ message?: string }>("/auth/logout", { method: "POST" }),
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ message?: string }>("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
+};
+
+/* ---------------------------------------------------------------------------
+ * Patient endpoints
+ * ------------------------------------------------------------------------- */
+
+export const patientApi = {
+  list: (query: PatientListQuery = {}) =>
+    rawRequest<PatientListResult>(
+      `/patients${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+
+  get: (id: number) => request<{ patient: PatientDetail }>(`/patients/${id}`),
+
+  create: (input: CreatePatientInput) =>
+    request<{ patient: { id: number; branchId: number; patientCode: string } }>("/patients", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  update: (id: number, input: UpdatePatientInput) =>
+    request<{ patient: PatientDetail }>(`/patients/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+
+  updateStatus: (id: number, status: PatientStatus) =>
+    request<{ patient: { id: number; status: PatientStatus } }>(`/patients/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }),
+
+  remove: (id: number) =>
+    request<{ message: string }>(`/patients/${id}`, { method: "DELETE" }),
+};
+
+/* ---------------------------------------------------------------------------
+ * Patient contact endpoints
+ * ------------------------------------------------------------------------- */
+
+export const contactApi = {
+  list: (patientId: number) =>
+    request<{ contacts: PatientContact[] }>(`/patients/${patientId}/contacts`),
+
+  create: (patientId: number, input: PatientContactInput) =>
+    request<{ contact: PatientContact }>(`/patients/${patientId}/contacts`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  update: (patientId: number, contactId: number, input: Partial<PatientContactInput>) =>
+    request<{ contact: PatientContact }>(`/patients/${patientId}/contacts/${contactId}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+
+  remove: (patientId: number, contactId: number) =>
+    request<{ message: string }>(`/patients/${patientId}/contacts/${contactId}`, {
+      method: "DELETE",
+    }),
+};
+
+/* ---------------------------------------------------------------------------
+ * Shared error/date helpers
+ * ------------------------------------------------------------------------- */
+
+export function errorMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err instanceof ValidationError) {
+      const first = Object.values(err.fieldErrors)[0];
+      return first ? first : err.message;
+    }
+    return err.message;
+  }
+  return "Something went wrong. Please try again.";
+}
+
+/**
+ * Formats an ISO date string as YYYY-MM-DD (backend send/receive format).
+ */
+export function toDateInput(value: string | null | undefined): string {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  // Use local time parts so the input matches what the user sees.
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export function formatDate(value: string | null | undefined): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+export function calcAge(dob: string | null | undefined): string {
+  if (!dob) return "—";
+  const d = new Date(dob);
+  if (Number.isNaN(d.getTime())) return "—";
+  const now = new Date();
+  let age = now.getFullYear() - d.getFullYear();
+  const m = now.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age -= 1;
+  return String(Math.max(0, age));
+}
