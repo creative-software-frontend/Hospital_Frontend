@@ -27,6 +27,8 @@ import { useMemo, useState } from "react";
 import { ADMIN_TABLE_BY_FEATURE_ID, type TableRow } from "@/app/data/adminTableData";
 import type { Feature, SubFeatureItem } from "@/app/data/features";
 import type { RolePermission, RoleStat } from "@/app/config/roleConfig";
+import { settingsData } from "@/app/data/settingsData";
+import { SettingsPageView } from "@/app/dashboard/settings/SettingsPageView";
 
 const iconMap: Record<string, IconType> = {
   FiUser,
@@ -55,6 +57,8 @@ export const DashboardContent = ({
   accessibleFeatures,
   setActiveSection,
   setSelectedFeature,
+  selectedSubFeatureId,
+  setSelectedSubFeatureId,
 }: {
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
@@ -65,6 +69,8 @@ export const DashboardContent = ({
   accessibleFeatures: Feature[];
   setActiveSection: (section: string) => void;
   setSelectedFeature: (feature: Feature | null) => void;
+  selectedSubFeatureId: string | null;
+  setSelectedSubFeatureId: (id: string | null) => void;
 }) => {
   const [tableSearch, setTableSearch] = useState<string>("");
   const [pageSize] = useState<number>(50);
@@ -122,6 +128,11 @@ export const DashboardContent = ({
   const table = selectedFeature?.id
     ? ADMIN_TABLE_BY_FEATURE_ID[selectedFeature.id]
     : null;
+
+  const selectedSettingsPage =
+    selectedSubFeatureId && settingsData[selectedSubFeatureId]
+      ? settingsData[selectedSubFeatureId]
+      : null;
 
 
   const filteredTable = useMemo(() => {
@@ -443,12 +454,16 @@ ${tbody}
               onClick={() => {
                 setActiveSection("overview");
                 setSelectedFeature(null);
+                setSelectedSubFeatureId(null);
               }}
               className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] hover:text-[var(--primary-dark)] transition-colors cursor-pointer"
             >
               <span>← Back to Dashboard Overview</span>
             </button>
 
+            {selectedSettingsPage ? (
+              <SettingsPageView page={selectedSettingsPage} />
+            ) : (
             <div className="grid grid-cols-1 gap-6">
               <div className="card p-6 rounded-2xl shadow-sm space-y-6 w-full">
                 {filteredTable ? (
@@ -711,6 +726,7 @@ ${tbody}
                 )}
               </div>
             </div>
+            )}
           </div>
         )}
       </main>

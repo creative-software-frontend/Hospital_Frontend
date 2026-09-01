@@ -17,6 +17,7 @@ export default function DashboardLayout({ role: initialRole }: { role?: UserRole
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [activeSection, setActiveSection] = useState<string>("overview");
     const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
+    const [selectedSubFeatureId, setSelectedSubFeatureId] = useState<string | null>(null);
     const [expandedFeature, setExpandedFeature] = useState<number | null>(null);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
 
@@ -60,6 +61,8 @@ export default function DashboardLayout({ role: initialRole }: { role?: UserRole
                 setActiveSection={setActiveSection}
                 selectedFeature={selectedFeature}
                 setSelectedFeature={setSelectedFeature}
+                selectedSubFeatureId={selectedSubFeatureId}
+                setSelectedSubFeatureId={setSelectedSubFeatureId}
                 expandedFeature={expandedFeature}
                 setExpandedFeature={setExpandedFeature}
                 openLogoutModal={openLogoutModal}
@@ -75,6 +78,8 @@ export default function DashboardLayout({ role: initialRole }: { role?: UserRole
                 accessibleFeatures={accessibleFeatures}
                 setActiveSection={setActiveSection}
                 setSelectedFeature={setSelectedFeature}
+                selectedSubFeatureId={selectedSubFeatureId}
+                setSelectedSubFeatureId={setSelectedSubFeatureId}
             />
 
             {/* LOGOUT CONFIRMATION MODAL */}
