@@ -1,14 +1,156 @@
 // prisma/schema.prisma
 // HMS (Hospital Management System) database schema
 // Based on the technical database specification, version 1.0.
+//
+// ARCHITECTURE NOTES
+// - Branch isolation: operational/transactional entities REQUIRE branchId.
+//   Genuinely global reference data (roles, permissions, categories,
+//   diagnosis masters, payment methods) has no branchId.
+// - The audit system uses the append-only AuditLog as the authoritative
+//   history. createdById/updatedById appear ONLY on operationally meaningful
+//   transactional/domain records to avoid relation clutter.
+// - Soft delete (deletedAt) is used ONLY where deletion must be reversible
+//   and history preserved (clinical, staffing, master catalogs). Financial
+//   and inventory movement history is never physically or logically deleted.
+// - Business codes that identify records within a branch are unique per
+//   branch via @@unique([branchId, code]) unless they are global reference
+//   codes.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum RoleKey {
+  SUPER_ADMIN
+  ADMIN
+  DOCTOR
+  PHARMACIST
+  PATHOLOGIST
+  RADIOLOGIST
+  ACCOUNTANT
+  RECEPTIONIST
+  NURSE
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  LOCKED
+}
+
+enum RecordStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum BloodGroup {
+  A_POS
+  A_NEG
+  B_POS
+  B_NEG
+  AB_POS
+  AB_NEG
+  O_POS
+  O_NEG
+}
+
+enum MaritalStatus {
+  SINGLE
+  MARRIED
+  DIVORCED
+  WIDOWED
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CHECKED_IN
+  IN_CONSULTATION
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum AdmissionStatus {
+  ADMITTED
+  TRANSFERRED
+  DISCHARGED
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  PENDING
+  PAID
+  PARTIAL
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentMethodType {
+  CASH
+  CARD
+  MOBILE
+  BANK_TRANSFER
+  INSURANCE
+  OTHER
+}
+
+enum PrescriptionStatus {
+  ACTIVE
+  PARTIALLY_DISPENSED
+  DISPENSED
+  CANCELLED
+}
+
+enum LabResultStatus {
+  PENDING
+  COLLECTED
+  IN_PROGRESS
+  APPROVED
+  RELEASED
+  REJECTED
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  INCOME
+  EXPENSE
+}
+
+enum StockMovementType {
+  PURCHASE
+  SALE
+  RETURN
+  ADJUSTMENT
+  TRANSFER
+  EXPIRED
 }
 
 // ============================================================
@@ -16,86 +158,120 @@ datasource db {
 // ============================================================
 
 model Branch {
-  id              Int      @id @default(autoincrement())
-  name            String
-  code            String   @unique
-  registrationNo  String?
-  address         String?
-  city            String?
-  district        String?
-  country         String?
-  phone           String?
-  email           String?
-  logo            String?
-  timezone        String?
-  currency        String?
-  status          String   @default("active")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             Int      @id @default(autoincrement())
+  name           String
+  code           String   @unique
+  registrationNo String?
+  address        String?
+  city           String?
+  district       String?
+  country        String?
+  phone          String?
+  email          String?
+  logo           String?
+  timezone       String?
+  currency       String?
+  status         String   @default("active")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  users           User[]
-  departments     Department[]
-  doctors         Doctor[]
-  patients        Patient[]
-  services        Service[]
-  appointments    Appointment[]
-  invoices        Invoice[]
-  settings        SystemSetting[]
-  warehouses      Warehouse[]
-  integrations    Integration[]
-  medicines       Medicine[]
+  users                  User[]
+  departments            Department[]
+  doctors                Doctor[]
+  patients               Patient[]
+  auditLogs              AuditLog[]
+  services               Service[]
+  appointments           Appointment[]
+  admissions             Admission[]
+  medicalRecords         MedicalRecord[]
+  prescriptions          Prescription[]
+  bedAllocations         Bed[]
+  rooms                  Room[]
+  wards                  Ward[]
+  floors                 Floor[]
+  employees              Employee[]
+  invoices               Invoice[]
+  payments               Payment[]
+  warehouses             Warehouse[]
+  integrations           Integration[]
+  medicines              Medicine[]
+  medicineBatches        MedicineBatch[]
+  stockMovements         StockMovement[]
+  labTests               LabTest[]
+  labOrders              LabOrder[]
+  labSamples             LabSample[]
+  labResults             LabResult[]
+  accounts               Account[]
+  accountingTransactions AccountingTransaction[]
+  inventoryItems         InventoryItem[]
+  inventoryStocks        InventoryStock[]
+  settings               SystemSetting[]
+  opdSettings            OpdSetting[]
+  ipdSettings            IpdSetting[]
+  emergencySettings      EmergencySetting[]
+  prescriptionTemplates  PrescriptionTemplate[]
+  prescriptionSettings   PrescriptionSetting[]
+  pharmacySettings       PharmacySetting[]
+  labSettings            LabSetting[]
+  billingSettings        BillingSetting[]
+  notificationSettings   NotificationSetting[]
+  documentTemplates      DocumentTemplate[]
+  reportSettings         ReportSetting[]
+  localizationSettings   LocalizationSetting[]
 
   @@index([code])
 }
 
 model User {
-  id           Int       @id @default(autoincrement())
-  branchId     Int?
-  name         String
-  email        String    @unique
-  phone        String?
-  username     String    @unique
-  password     String
-  status       String    @default("active")
-  lastLoginAt  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id          Int        @id @default(autoincrement())
+  branchId    Int
+  name        String
+  email       String     @unique
+  phone       String?
+  username    String     @unique
+  password    String
+  status      UserStatus @default(ACTIVE)
+  lastLoginAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
-  branch       Branch?   @relation(fields: [branchId], references: [id])
-  userRoles    UserRole[]
-  auditLogs    AuditLog[]
-  doctor       Doctor?
-  employee     Employee?
+  branch    Branch?    @relation(fields: [branchId], references: [id])
+  userRoles UserRole[]
+  auditLogs AuditLog[]
+  doctor    Doctor?
+  employee  Employee?
 
-  @@index([username])
-  @@index([email])
   @@index([branchId])
+  @@index([email])
+  @@index([username])
 }
 
 model Role {
-  id            Int             @id @default(autoincrement())
-  name          String          @unique
-  description   String?
-  status        String          @default("active")
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id          Int          @id @default(autoincrement())
+  seederKey   RoleKey      @unique
+  name        String       @unique
+  description String?
+  status      RecordStatus @default(ACTIVE)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   rolePermissions RolePermission[]
-  userRoles        UserRole[]
+  userRoles       UserRole[]
 
   @@index([name])
 }
 
 model Permission {
-  id          Int            @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   module      String
   action      String
   description String?
-  createdAt   DateTime       @default(now())
+  createdAt   DateTime @default(now())
 
   rolePermissions RolePermission[]
 
   @@unique([module, action])
+  @@index([module])
 }
 
 model RolePermission {
@@ -108,6 +284,7 @@ model RolePermission {
   permission Permission @relation(fields: [permissionId], references: [id])
 
   @@unique([roleId, permissionId])
+  @@index([permissionId])
 }
 
 model UserRole {
@@ -120,79 +297,75 @@ model UserRole {
   role Role @relation(fields: [roleId], references: [id])
 
   @@unique([userId, roleId])
+  @@index([roleId])
 }
 
 model AuditLog {
-  id         Int      @id @default(autoincrement())
-  userId     Int?
-  branchId   Int?
-  module     String
-  action     String
-  tableName  String?
-  recordId   String?
-  oldValues  Json?
-  newValues  Json?
-  ipAddress  String?
-  userAgent  String?
-  createdAt  DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  branchId  Int
+  module    String
+  action    String
+  tableName String?
+  recordId  String?
+  oldValues Json?
+  newValues Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
 
-  user User? @relation(fields: [userId], references: [id])
+  user   User?   @relation(fields: [userId], references: [id])
+  branch Branch? @relation(fields: [branchId], references: [id])
 
+  @@index([branchId])
   @@index([userId])
   @@index([module])
   @@index([createdAt])
 }
 
 // ============================================================
-// 2. GENERAL SETTINGS
+// 2. GENERAL SETTINGS (global + branch-scoped config)
 // ============================================================
 
 model SystemSetting {
-  id            Int      @id @default(autoincrement())
-  branchId      Int?
-  settingGroup  String
-  settingKey    String
-  settingValue  String?
-  dataType      String?
-  isEncrypted   Boolean  @default(false)
-  status        String   @default("active")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           Int      @id @default(autoincrement())
+  branchId     Int?
+  settingGroup String
+  settingKey   String
+  settingValue String?
+  dataType     String?
+  isEncrypted  Boolean  @default(false)
+  status       String   @default("active")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   branch Branch? @relation(fields: [branchId], references: [id])
 
   @@unique([branchId, settingGroup, settingKey])
+  @@index([settingGroup])
 }
-
-// ============================================================
-// 3. BRANCH SETTINGS  -> branches table (see above)
-// ============================================================
-
-// ============================================================
-// 5. SECURITY SETTINGS
-// ============================================================
 
 model SecuritySetting {
-  id                      Int      @id @default(autoincrement())
-  passwordMinLength       Int      @default(8)
-  passwordExpiryDays      Int      @default(90)
-  maxLoginAttempts        Int      @default(5)
-  sessionTimeout          Int      @default(30)
-  twoFactorEnabled        Boolean  @default(false)
-  ipRestrictionEnabled    Boolean  @default(false)
-  deviceRestrictionEnabled Boolean @default(false)
-  auditLogEnabled         Boolean  @default(true)
-  status                  String   @default("active")
-  updatedAt               DateTime @updatedAt
+  id                       Int      @id @default(autoincrement())
+  passwordMinLength        Int      @default(8)
+  passwordExpiryDays       Int      @default(90)
+  maxLoginAttempts         Int      @default(5)
+  sessionTimeout           Int      @default(30)
+  twoFactorEnabled         Boolean  @default(false)
+  ipRestrictionEnabled     Boolean  @default(false)
+  deviceRestrictionEnabled Boolean  @default(false)
+  auditLogEnabled          Boolean  @default(true)
+  status                   String   @default("active")
+  updatedAt                DateTime @updatedAt
 }
 
 // ============================================================
-// 6. HOSPITAL CONFIGURATION
+// HOSPITAL CONFIGURATION
 // ============================================================
 
 model Department {
   id             Int      @id @default(autoincrement())
-  branchId       Int?
+  branchId       Int
   name           String
   code           String
   description    String?
@@ -201,10 +374,10 @@ model Department {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  branch   Branch?   @relation(fields: [branchId], references: [id])
-  doctors  Doctor[]
-  services Service[]
-  employees Employee[]
+  branch       Branch?       @relation(fields: [branchId], references: [id])
+  doctors      Doctor[]
+  services     Service[]
+  employees    Employee[]
   designations Designation[]
 
   @@unique([branchId, code])
@@ -212,89 +385,235 @@ model Department {
 }
 
 // ============================================================
-// 7. DOCTOR SETTINGS
+// SERVICE SETTINGS
+// ============================================================
+
+model ServiceCategory {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
+  description String?
+  status      String  @default("active")
+
+  services Service[]
+}
+
+model Service {
+  id              Int      @id @default(autoincrement())
+  branchId        Int
+  departmentId    Int?
+  categoryId      Int?
+  serviceCode     String
+  name            String
+  description     String?
+  price           Decimal? @db.Decimal(12, 2)
+  taxPercent      Decimal? @db.Decimal(5, 2)
+  discountAllowed Boolean  @default(true)
+  status          String   @default("active")
+  createdById     Int?
+  updatedById     Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  branch     Branch?          @relation(fields: [branchId], references: [id])
+  department Department?      @relation(fields: [departmentId], references: [id])
+  category   ServiceCategory? @relation(fields: [categoryId], references: [id])
+
+  @@unique([branchId, serviceCode])
+  @@index([branchId])
+  @@index([departmentId])
+  @@index([categoryId])
+}
+
+// ============================================================
+// DOCTOR SETTINGS
 // ============================================================
 
 model Doctor {
-  id              Int      @id @default(autoincrement())
-  userId          Int?
-  branchId        Int?
+  id              Int       @id @default(autoincrement())
+  userId          Int?      @unique
+  branchId        Int
   departmentId    Int?
-  doctorCode      String   @unique
+  doctorCode      String
   name            String
   specialization  String?
   qualification   String?
   registrationNo  String?
   phone           String?
   email           String?
-  consultationFee Decimal? @db.Decimal(12, 2)
-  followupFee     Decimal? @db.Decimal(12, 2)
-  emergencyFee    Decimal? @db.Decimal(12, 2)
+  consultationFee Decimal?  @db.Decimal(12, 2)
+  followupFee     Decimal?  @db.Decimal(12, 2)
+  emergencyFee    Decimal?  @db.Decimal(12, 2)
   commissionType  String?
-  commissionValue Decimal? @db.Decimal(12, 2)
-  status          String   @default("active")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  commissionValue Decimal?  @db.Decimal(12, 2)
+  status          String    @default("active")
+  deletedAt       DateTime?
+  createdById     Int?
+  updatedById     Int?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  user       User?            @relation(fields: [userId], references: [id])
-  branch     Branch?          @relation(fields: [branchId], references: [id])
-  department Department?      @relation(fields: [departmentId], references: [id])
-  schedules  DoctorSchedule[]
-  appointments Appointment[]
+  user           User?            @relation(fields: [userId], references: [id])
+  branch         Branch?          @relation(fields: [branchId], references: [id])
+  department     Department?      @relation(fields: [departmentId], references: [id])
+  schedules      DoctorSchedule[]
+  appointments   Appointment[]
+  admissions     Admission[]
+  medicalRecords MedicalRecord[]
+  prescriptions  Prescription[]
+  labOrders      LabOrder[]
+  labResults     LabResult[]
 
-  @@unique([userId])
-  @@index([doctorCode])
-  @@index([registrationNo])
+  @@unique([branchId, doctorCode])
   @@index([branchId])
+  @@index([registrationNo])
+  @@index([deletedAt])
+  @@index([departmentId])
 }
 
 model DoctorSchedule {
-  id               Int      @id @default(autoincrement())
+  id               Int     @id @default(autoincrement())
   doctorId         Int
-  branchId         Int?
+  branchId         Int
   dayOfWeek        Int
   startTime        String?
   endTime          String?
   roomId           Int?
-  appointmentLimit Int      @default(0)
-  status           String   @default("active")
+  appointmentLimit Int     @default(0)
+  status           String  @default("active")
 
   doctor Doctor @relation(fields: [doctorId], references: [id])
+  room   Room?  @relation(fields: [roomId], references: [id])
+
+  @@index([doctorId])
+  @@index([branchId])
+  @@index([roomId])
 }
 
 // ============================================================
-// 8. PATIENT SETTINGS
+// HOSPITAL STRUCTURE: Floor / Ward / Room / Bed
+// ============================================================
+
+model Floor {
+  id        Int      @id @default(autoincrement())
+  branchId  Int
+  name      String
+  code      String
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch Branch? @relation(fields: [branchId], references: [id])
+  wards  Ward[]
+
+  @@unique([branchId, code])
+  @@index([branchId])
+}
+
+model Ward {
+  id        Int      @id @default(autoincrement())
+  branchId  Int
+  floorId   Int
+  name      String
+  code      String
+  wardType  String?
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch Branch? @relation(fields: [branchId], references: [id])
+  floor  Floor?  @relation(fields: [floorId], references: [id])
+  rooms  Room[]
+
+  @@unique([branchId, code])
+  @@index([branchId])
+  @@index([floorId])
+}
+
+model Room {
+  id        Int      @id @default(autoincrement())
+  branchId  Int
+  wardId    Int?
+  name      String
+  code      String
+  roomClass String?
+  rate      Decimal? @db.Decimal(12, 2)
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch          Branch?          @relation(fields: [branchId], references: [id])
+  ward            Ward?            @relation(fields: [wardId], references: [id])
+  beds            Bed[]
+  doctorSchedules DoctorSchedule[]
+
+  @@unique([branchId, code])
+  @@index([branchId])
+  @@index([wardId])
+}
+
+model Bed {
+  id        Int      @id @default(autoincrement())
+  branchId  Int
+  roomId    Int
+  bedNumber String
+  bedClass  String?
+  rate      Decimal? @db.Decimal(12, 2)
+  status    String   @default("available") // available | occupied | reserved | maintenance
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch     Branch?     @relation(fields: [branchId], references: [id])
+  room       Room?       @relation(fields: [roomId], references: [id])
+  admissions Admission[]
+
+  @@unique([branchId, bedNumber])
+  @@index([branchId])
+  @@index([roomId])
+  @@index([status])
+}
+
+// ============================================================
+// PATIENT SETTINGS
 // ============================================================
 
 model Patient {
-  id           Int      @id @default(autoincrement())
-  branchId     Int?
-  patientCode  String   @unique
-  firstName    String
-  lastName     String?
-  gender       String?
-  dateOfBirth  DateTime?
-  bloodGroup   String?
-  phone        String?
-  email        String?
-  address      String?
-  district     String?
-  nationalId   String?
-  occupation   String?
-  maritalStatus String?
-  photo        String?
-  status       String   @default("active")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            Int            @id @default(autoincrement())
+  branchId      Int
+  patientCode   String
+  firstName     String
+  lastName      String?
+  gender        Gender?
+  dateOfBirth   DateTime?
+  bloodGroup    BloodGroup?
+  phone         String?
+  email         String?
+  address       String?
+  district      String?
+  nationalId    String?
+  occupation    String?
+  maritalStatus MaritalStatus?
+  photo         String?
+  status        String         @default("active")
+  deletedAt     DateTime?
+  createdById   Int?
+  updatedById   Int?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
-  branch       Branch?        @relation(fields: [branchId], references: [id])
-  contacts     PatientContact[]
-  appointments Appointment[]
-  invoices     Invoice[]
+  branch         Branch?          @relation(fields: [branchId], references: [id])
+  contacts       PatientContact[]
+  appointments   Appointment[]
+  admissions     Admission[]
+  medicalRecords MedicalRecord[]
+  prescriptions  Prescription[]
+  labOrders      LabOrder[]
+  invoices       Invoice[]
+  payments       Payment[]
 
-  @@index([patientCode])
-  @@index([phone])
+  @@unique([branchId, patientCode])
   @@index([branchId])
+  @@index([phone])
+  @@index([deletedAt])
 }
 
 model PatientContact {
@@ -307,399 +626,675 @@ model PatientContact {
   isPrimary    Boolean @default(false)
 
   patient Patient @relation(fields: [patientId], references: [id])
+
+  @@index([patientId])
 }
 
 // ============================================================
-// 9. SERVICE SETTINGS
+// CLINICAL: MedicalRecord (Visit) / Diagnosis / Prescription
 // ============================================================
 
-model ServiceCategory {
-  id          Int      @id @default(autoincrement())
+model MedicalRecord {
+  id              Int       @id @default(autoincrement())
+  branchId        Int
+  patientId       Int
+  doctorId        Int?
+  appointmentId   Int?      @unique
+  visitNumber     String
+  visitType       String? // OPD | IPD | EMERGENCY | FOLLOWUP
+  chiefComplaint  String?
+  history         String?
+  examination     String?
+  notes           String?
+  vitals          Json?
+  status          String    @default("active")
+  deletedAt       DateTime?
+  createdById     Int?
+  createdByUserId Int?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  branch        Branch?                  @relation(fields: [branchId], references: [id])
+  patient       Patient?                 @relation(fields: [patientId], references: [id])
+  doctor        Doctor?                  @relation(fields: [doctorId], references: [id])
+  appointment   Appointment?             @relation(fields: [appointmentId], references: [id])
+  prescriptions Prescription[]
+  labOrders     LabOrder[]
+  diagnoses     MedicalRecordDiagnosis[]
+
+  @@unique([branchId, visitNumber])
+  @@index([branchId])
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([createdAt])
+  @@index([deletedAt])
+}
+
+model Diagnosis {
+  id          Int     @id @default(autoincrement())
+  categoryId  Int?
+  code        String  @unique
   name        String
   description String?
-  status      String   @default("active")
+  status      String  @default("active")
 
-  services Service[]
+  category       DiagnosisCategory?       @relation(fields: [categoryId], references: [id])
+  medicalRecords MedicalRecordDiagnosis[]
+
+  @@index([code])
+  @@index([categoryId])
 }
-
-model Service {
-  id             Int      @id @default(autoincrement())
-  branchId       Int?
-  departmentId   Int?
-  categoryId     Int?
-  serviceCode    String   @unique
-  name           String
-  description    String?
-  price          Decimal? @db.Decimal(12, 2)
-  taxPercent     Decimal? @db.Decimal(5, 2)
-  discountAllowed Boolean  @default(true)
-  status         String   @default("active")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  branch       Branch?          @relation(fields: [branchId], references: [id])
-  department   Department?      @relation(fields: [departmentId], references: [id])
-  category     ServiceCategory? @relation(fields: [categoryId], references: [id])
-
-  @@index([serviceCode])
-  @@index([branchId])
-}
-
-// ============================================================
-// 10. OPD SETTINGS
-// ============================================================
-
-model OpdSetting {
-  id                   Int      @id @default(autoincrement())
-  branchId             Int?
-  registrationFee      Decimal? @db.Decimal(12, 2)
-  consultationFee      Decimal? @db.Decimal(12, 2)
-  followupDays         Int      @default(14)
-  appointmentDuration  Int      @default(15)
-  queueEnabled         Boolean  @default(true)
-  prescriptionEnabled  Boolean  @default(true)
-  status               String   @default("active")
-}
-
-// ============================================================
-// 11. IPD SETTINGS
-// ============================================================
-
-model IpdSetting {
-  id            Int      @id @default(autoincrement())
-  branchId      Int?
-  admissionFee  Decimal? @db.Decimal(12, 2)
-  dischargeFee  Decimal? @db.Decimal(12, 2)
-  bedCharge     Decimal? @db.Decimal(12, 2)
-  nursingCharge Decimal? @db.Decimal(12, 2)
-  serviceCharge Decimal? @db.Decimal(12, 2)
-  status        String   @default("active")
-}
-
-// ============================================================
-// 12. EMERGENCY SETTINGS
-// ============================================================
-
-model EmergencySetting {
-  id               Int      @id @default(autoincrement())
-  branchId         Int?
-  registrationFee  Decimal? @db.Decimal(12, 2)
-  consultationFee  Decimal? @db.Decimal(12, 2)
-  serviceCharge    Decimal? @db.Decimal(12, 2)
-  triageEnabled    Boolean  @default(true)
-  status           String   @default("active")
-}
-
-// ============================================================
-// 13. PRESCRIPTION SETTINGS
-// ============================================================
-
-model PrescriptionTemplate {
-  id           Int      @id @default(autoincrement())
-  branchId     Int?
-  name         String
-  header       String?
-  footer       String?
-  logo         String?
-  signature    String?
-  templateData Json?
-  status       String   @default("active")
-
-  prescriptions PrescriptionSetting[]
-
-  @@unique([branchId, name])
-}
-
-model PrescriptionSetting {
-  id                 Int      @id @default(autoincrement())
-  branchId           Int?
-  templateId         Int?
-  showPatientHistory Boolean  @default(true)
-  showDiagnosis      Boolean  @default(true)
-  showMedicine       Boolean  @default(true)
-  showDosage         Boolean  @default(true)
-  showInstruction    Boolean  @default(true)
-  showDoctorSignature Boolean @default(true)
-  showQrCode         Boolean  @default(false)
-  status             String   @default("active")
-
-  template PrescriptionTemplate? @relation(fields: [templateId], references: [id])
-}
-
-// ============================================================
-// 14. DIAGNOSIS SETTINGS
-// ============================================================
 
 model DiagnosisCategory {
-  id          Int        @id @default(autoincrement())
-  name        String
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
   description String?
-  status      String     @default("active")
+  status      String  @default("active")
 
   diagnoses Diagnosis[]
 }
 
-model Diagnosis {
-  id          Int      @id @default(autoincrement())
-  categoryId  Int?
-  code        String   @unique
-  name        String
-  description String?
-  status      String   @default("active")
+model MedicalRecordDiagnosis {
+  id              Int     @id @default(autoincrement())
+  medicalRecordId Int
+  diagnosisId     Int
+  isPrimary       Boolean @default(false)
+  notes           String?
 
-  category DiagnosisCategory? @relation(fields: [categoryId], references: [id])
+  medicalRecord MedicalRecord @relation(fields: [medicalRecordId], references: [id])
+  diagnosis     Diagnosis     @relation(fields: [diagnosisId], references: [id])
+
+  @@unique([medicalRecordId, diagnosisId])
+  @@index([diagnosisId])
+}
+
+model Prescription {
+  id                 Int                @id @default(autoincrement())
+  branchId           Int
+  patientId          Int
+  doctorId           Int?
+  medicalRecordId    Int?
+  prescriptionNumber String
+  status             PrescriptionStatus @default(ACTIVE)
+  notes              String?
+  createdById        Int?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  branch        Branch?            @relation(fields: [branchId], references: [id])
+  patient       Patient?           @relation(fields: [patientId], references: [id])
+  doctor        Doctor?            @relation(fields: [doctorId], references: [id])
+  medicalRecord MedicalRecord?     @relation(fields: [medicalRecordId], references: [id])
+  items         PrescriptionItem[]
+
+  @@unique([branchId, prescriptionNumber])
+  @@index([branchId])
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([createdAt])
+}
+
+model PrescriptionItem {
+  id             Int     @id @default(autoincrement())
+  prescriptionId Int
+  medicineId     Int
+  dosage         String?
+  frequency      String?
+  duration       String?
+  instruction    String?
+  quantity       Int?
+  route          String?
+
+  prescription Prescription @relation(fields: [prescriptionId], references: [id])
+  medicine     Medicine     @relation(fields: [medicineId], references: [id])
+
+  @@index([prescriptionId])
+  @@index([medicineId])
 }
 
 // ============================================================
-// 15. PHARMACY SETTINGS
+// PHARMACY
 // ============================================================
 
 model MedicineCategory {
-  id          Int        @id @default(autoincrement())
-  name        String
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
   description String?
-  status      String     @default("active")
+  status      String  @default("active")
 
   medicines Medicine[]
 }
 
 model MedicineUnit {
-  id        Int      @id @default(autoincrement())
-  name      String
+  id        Int    @id @default(autoincrement())
+  name      String @unique
   shortName String
-  status    String   @default("active")
+  status    String @default("active")
 
-  medicines     Medicine[]
+  medicines      Medicine[]
   inventoryItems InventoryItem[]
 }
 
 model Medicine {
-  id            Int      @id @default(autoincrement())
-  branchId      Int?
-  categoryId    Int?
-  unitId        Int?
-  genericName   String
-  brandName     String?
-  medicineCode  String   @unique
-  barcode       String?
-  manufacturer  String?
-  reorderLevel  Int      @default(10)
-  status        String   @default("active")
+  id           Int       @id @default(autoincrement())
+  branchId     Int
+  categoryId   Int?
+  unitId       Int?
+  genericName  String
+  brandName    String?
+  medicineCode String
+  barcode      String?
+  manufacturer String?
+  reorderLevel Int       @default(10)
+  status       String    @default("active")
+  deletedAt    DateTime?
+  createdById  Int?
+  updatedById  Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  branch     Branch?         @relation(fields: [branchId], references: [id])
-  category   MedicineCategory? @relation(fields: [categoryId], references: [id])
-  unit       MedicineUnit?   @relation(fields: [unitId], references: [id])
-  batches    MedicineBatch[]
+  branch            Branch?            @relation(fields: [branchId], references: [id])
+  category          MedicineCategory?  @relation(fields: [categoryId], references: [id])
+  unit              MedicineUnit?      @relation(fields: [unitId], references: [id])
+  batches           MedicineBatch[]
+  stockMovements    StockMovement[]
+  prescriptionItems PrescriptionItem[]
 
-  @@index([medicineCode])
+  @@unique([branchId, medicineCode])
+  @@index([branchId])
   @@index([barcode])
+  @@index([deletedAt])
+  @@index([categoryId])
 }
 
 model MedicineBatch {
-  id           Int      @id @default(autoincrement())
-  medicineId   Int
-  batchNo      String
-  purchasePrice Decimal? @db.Decimal(12, 2)
-  sellingPrice Decimal?  @db.Decimal(12, 2)
-  quantity     Int      @default(0)
-  expiryDate   DateTime?
-  status       String   @default("active")
+  id            Int       @id @default(autoincrement())
+  branchId      Int
+  medicineId    Int
+  batchNo       String
+  purchasePrice Decimal?  @db.Decimal(12, 2)
+  sellingPrice  Decimal?  @db.Decimal(12, 2)
+  quantity      Int       @default(0)
+  expiryDate    DateTime?
+  status        String    @default("active")
+  updatedById   Int?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  medicine Medicine @relation(fields: [medicineId], references: [id])
+  medicine       Medicine        @relation(fields: [medicineId], references: [id])
+  branch         Branch?         @relation(fields: [branchId], references: [id])
+  stockMovements StockMovement[]
+
+  @@unique([branchId, batchNo])
+  @@index([branchId])
+  @@index([medicineId])
+  @@index([expiryDate])
 }
 
-model PharmacySetting {
-  id              Int     @id @default(autoincrement())
-  branchId        Int?
-  taxPercent      Decimal? @db.Decimal(5, 2)
-  defaultDiscount Decimal? @db.Decimal(5, 2)
-  expiryAlertDays Int     @default(30)
-  lowStockAlert   Boolean @default(true)
-  barcodeEnabled  Boolean @default(true)
-  batchEnabled    Boolean @default(true)
-  status          String  @default("active")
+model StockMovement {
+  id           Int               @id @default(autoincrement())
+  branchId     Int
+  medicineId   Int
+  batchId      Int?
+  movementType StockMovementType
+  quantity     Int
+  unitPrice    Decimal?          @db.Decimal(12, 2)
+  referenceNo  String?
+  notes        String?
+  createdById  Int?
+  createdAt    DateTime          @default(now())
+
+  branch   Branch?        @relation(fields: [branchId], references: [id])
+  medicine Medicine?      @relation(fields: [medicineId], references: [id])
+  batch    MedicineBatch? @relation(fields: [batchId], references: [id])
+
+  @@index([branchId])
+  @@index([medicineId])
+  @@index([batchId])
+  @@index([movementType])
+  @@index([createdAt])
 }
 
 // ============================================================
-// 16. LABORATORY SETTINGS
+// LABORATORY
 // ============================================================
 
 model LabCategory {
-  id          Int      @id @default(autoincrement())
-  name        String
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
   description String?
-  status      String   @default("active")
+  status      String  @default("active")
 
   labTests LabTest[]
 }
 
 model LabTest {
-  id             Int      @id @default(autoincrement())
+  id             Int       @id @default(autoincrement())
+  branchId       Int
   categoryId     Int?
-  testCode       String   @unique
+  testCode       String
   testName       String
   sampleType     String?
-  price          Decimal? @db.Decimal(12, 2)
+  price          Decimal?  @db.Decimal(12, 2)
   turnaroundTime Int?
-  status         String   @default("active")
+  status         String    @default("active")
+  deletedAt      DateTime?
+  updatedById    Int?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
+  branch     Branch?            @relation(fields: [branchId], references: [id])
   category   LabCategory?       @relation(fields: [categoryId], references: [id])
   parameters LabTestParameter[]
+  orderItems LabOrderItem[]
 
-  @@index([testCode])
+  @@unique([branchId, testCode])
+  @@index([branchId])
+  @@index([deletedAt])
+  @@index([categoryId])
 }
 
 model LabTestParameter {
-  id               Int     @id @default(autoincrement())
-  testId           Int
-  parameterName    String
-  unit             String?
-  normalRangeMale  String?
+  id                Int     @id @default(autoincrement())
+  testId            Int
+  parameterName     String
+  unit              String?
+  normalRangeMale   String?
   normalRangeFemale String?
-  normalRangeChild String?
-  criticalLow      String?
-  criticalHigh     String?
+  normalRangeChild  String?
+  criticalLow       String?
+  criticalHigh      String?
 
-  test LabTest @relation(fields: [testId], references: [id])
+  test         LabTest          @relation(fields: [testId], references: [id])
+  resultValues LabResultValue[]
+
+  @@index([testId])
 }
 
-model LabSetting {
-  id                      Int     @id @default(autoincrement())
-  branchId                Int?
-  sampleTrackingEnabled   Boolean @default(true)
-  barcodeEnabled          Boolean @default(true)
-  onlineReportEnabled     Boolean @default(true)
-  reportApprovalRequired  Boolean @default(false)
-  defaultReportTemplate   String?
-  status                  String  @default("active")
+model LabOrder {
+  id              Int      @id @default(autoincrement())
+  branchId        Int
+  patientId       Int
+  doctorId        Int?
+  medicalRecordId Int?
+  orderNumber     String
+  status          String   @default("ordered") // ordered | sampled | in-progress | completed | cancelled
+  priority        String?
+  notes           String?
+  createdById     Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  branch        Branch?        @relation(fields: [branchId], references: [id])
+  patient       Patient?       @relation(fields: [patientId], references: [id])
+  doctor        Doctor?        @relation(fields: [doctorId], references: [id])
+  medicalRecord MedicalRecord? @relation(fields: [medicalRecordId], references: [id])
+  items         LabOrderItem[]
+  samples       LabSample[]
+
+  @@unique([branchId, orderNumber])
+  @@index([branchId])
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([createdAt])
+}
+
+model LabOrderItem {
+  id         Int      @id @default(autoincrement())
+  labOrderId Int
+  labTestId  Int
+  price      Decimal? @db.Decimal(12, 2)
+  status     String   @default("ordered")
+
+  labOrder LabOrder    @relation(fields: [labOrderId], references: [id])
+  labTest  LabTest     @relation(fields: [labTestId], references: [id])
+  results  LabResult[]
+
+  @@unique([labOrderId, labTestId])
+  @@index([labTestId])
+}
+
+model LabSample {
+  id            Int       @id @default(autoincrement())
+  branchId      Int
+  labOrderId    Int
+  sampleNo      String
+  sampleType    String?
+  collectedAt   DateTime?
+  collectedById Int?
+  status        String    @default("pending")
+  notes         String?
+
+  branch   Branch?     @relation(fields: [branchId], references: [id])
+  labOrder LabOrder?   @relation(fields: [labOrderId], references: [id])
+  results  LabResult[]
+
+  @@unique([branchId, sampleNo])
+  @@index([branchId])
+  @@index([labOrderId])
+}
+
+model LabResult {
+  id             Int             @id @default(autoincrement())
+  branchId       Int
+  labOrderItemId Int
+  sampleId       Int?
+  status         LabResultStatus @default(PENDING)
+  observedAt     DateTime?
+  performedById  Int?
+  approvedById   Int?
+  notes          String?
+  updatedById    Int?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  branch       Branch?          @relation(fields: [branchId], references: [id])
+  doctor       Doctor?          @relation(fields: [performedById], references: [id])
+  labOrderItem LabOrderItem?    @relation(fields: [labOrderItemId], references: [id])
+  sample       LabSample?       @relation(fields: [sampleId], references: [id])
+  values       LabResultValue[]
+
+  @@index([branchId])
+  @@index([labOrderItemId])
+  @@index([status])
+  @@index([updatedAt])
+}
+
+model LabResultValue {
+  id          Int     @id @default(autoincrement())
+  labResultId Int
+  parameterId Int
+  resultValue String?
+  unit        String?
+  flag        String? // normal | high | low | critical
+  notes       String?
+
+  labResult LabResult        @relation(fields: [labResultId], references: [id])
+  parameter LabTestParameter @relation(fields: [parameterId], references: [id])
+
+  @@unique([labResultId, parameterId])
+  @@index([parameterId])
 }
 
 // ============================================================
-// 17. BILLING SETTINGS
+// ADMISSION (IPD) / BED ALLOCATION
+// ============================================================
+
+model Admission {
+  id                    Int             @id @default(autoincrement())
+  branchId              Int
+  patientId             Int
+  doctorId              Int?
+  bedId                 Int?
+  admissionNumber       String
+  admissionDate         DateTime        @default(now())
+  expectedDischargeDate DateTime?
+  dischargeDate         DateTime?
+  status                AdmissionStatus @default(ADMITTED)
+  reason                String?
+  notes                 String?
+  invoiceId             Int?
+  createdById           Int?
+  updatedById           Int?
+  deletedAt             DateTime?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  branch  Branch?  @relation(fields: [branchId], references: [id])
+  patient Patient? @relation(fields: [patientId], references: [id])
+  doctor  Doctor?  @relation(fields: [doctorId], references: [id])
+  bed     Bed?     @relation(fields: [bedId], references: [id])
+
+  @@unique([branchId, admissionNumber])
+  @@index([branchId])
+  @@index([patientId])
+  @@index([bedId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+// ============================================================
+// APPOINTMENT
+// ============================================================
+
+model Appointment {
+  id              Int               @id @default(autoincrement())
+  branchId        Int
+  patientId       Int
+  doctorId        Int
+  appointmentDate DateTime
+  startTime       String
+  endTime         String
+  status          AppointmentStatus @default(SCHEDULED)
+  reason          String?
+  notes           String?
+  cancelledById   Int?
+  cancelledAt     DateTime?
+  deletedAt       DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  patient       Patient?       @relation(fields: [patientId], references: [id])
+  doctor        Doctor?        @relation(fields: [doctorId], references: [id])
+  branch        Branch?        @relation(fields: [branchId], references: [id])
+  medicalRecord MedicalRecord?
+
+  @@index([branchId])
+  @@index([doctorId, appointmentDate])
+  @@index([patientId])
+  @@index([appointmentDate])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+// ============================================================
+// BILLING
 // ============================================================
 
 model PaymentMethod {
-  id     Int     @id @default(autoincrement())
+  id     Int               @id @default(autoincrement())
   name   String
-  code   String
-  type   String?
-  status String  @default("active")
+  code   String            @unique
+  type   PaymentMethodType @default(OTHER)
+  status String            @default("active")
 
-  invoices Invoice[]
-}
-
-model BillingSetting {
-  id                   Int     @id @default(autoincrement())
-  branchId             Int?
-  invoicePrefix        String  @default("INV-")
-  invoiceStartNumber   Int     @default(1)
-  receiptPrefix        String  @default("RCT-")
-  taxPercent           Decimal? @db.Decimal(5, 2)
-  serviceChargePercent Decimal? @db.Decimal(5, 2)
-  discountEnabled      Boolean @default(true)
-  partialPaymentEnabled Boolean @default(true)
-  refundEnabled        Boolean @default(true)
-  duePaymentEnabled    Boolean @default(true)
-  status               String  @default("active")
+  payments Payment[]
 }
 
 model Invoice {
-  id           Int      @id @default(autoincrement())
-  branchId     Int?
-  patientId    Int?
-  invoiceNumber String  @unique
-  paymentMethodId Int?
-  subtotal     Decimal? @db.Decimal(12, 2)
-  taxAmount    Decimal? @db.Decimal(12, 2)
-  discountAmount Decimal? @db.Decimal(12, 2)
-  total        Decimal? @db.Decimal(12, 2)
-  status       String   @default("pending")
-  issuedAt     DateTime @default(now())
+  id             Int           @id @default(autoincrement())
+  branchId       Int
+  patientId      Int
+  invoiceNumber  String
+  subtotal       Decimal?      @db.Decimal(12, 2)
+  taxAmount      Decimal?      @db.Decimal(12, 2)
+  discountAmount Decimal?      @db.Decimal(12, 2)
+  total          Decimal?      @db.Decimal(12, 2)
+  paidAmount     Decimal?      @default(0) @db.Decimal(12, 2)
+  dueAmount      Decimal?      @default(0) @db.Decimal(12, 2)
+  status         InvoiceStatus @default(DRAFT)
+  issuedAt       DateTime      @default(now())
+  dueAt          DateTime?
+  createdById    Int?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
-  branch       Branch?       @relation(fields: [branchId], references: [id])
-  patient      Patient?      @relation(fields: [patientId], references: [id])
-  paymentMethod PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
+  branch      Branch?             @relation(fields: [branchId], references: [id])
+  patient     Patient?            @relation(fields: [patientId], references: [id])
+  items       InvoiceItem[]
+  payments    Payment[]
+  allocations PaymentAllocation[]
 
-  @@index([invoiceNumber])
-  @@index([patientId])
+  @@unique([branchId, invoiceNumber])
   @@index([branchId])
+  @@index([patientId])
+  @@index([issuedAt])
+  @@index([status])
+}
+
+model InvoiceItem {
+  id          Int      @id @default(autoincrement())
+  invoiceId   Int
+  itemType    String // service | medicine | lab | admission | bed | other
+  itemRefId   Int?
+  description String
+  quantity    Int      @default(1)
+  unitPrice   Decimal? @db.Decimal(12, 2)
+  total       Decimal? @db.Decimal(12, 2)
+  taxPercent  Decimal? @db.Decimal(5, 2)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@index([invoiceId])
+  @@index([itemType])
+}
+
+model Payment {
+  id              Int           @id @default(autoincrement())
+  branchId        Int
+  paymentNumber   String
+  invoiceId       Int
+  patientId       Int
+  paymentMethodId Int?
+  amount          Decimal       @db.Decimal(12, 2)
+  paidAt          DateTime      @default(now())
+  status          PaymentStatus @default(COMPLETED)
+  referenceNo     String?
+  notes           String?
+  createdById     Int?
+  createdAt       DateTime      @default(now())
+
+  branch        Branch?             @relation(fields: [branchId], references: [id])
+  invoice       Invoice?            @relation(fields: [invoiceId], references: [id])
+  patient       Patient?            @relation(fields: [patientId], references: [id])
+  paymentMethod PaymentMethod?      @relation(fields: [paymentMethodId], references: [id])
+  allocations   PaymentAllocation[]
+
+  @@unique([branchId, paymentNumber])
+  @@index([branchId])
+  @@index([invoiceId])
+  @@index([patientId])
+  @@index([paidAt])
+}
+
+model PaymentAllocation {
+  id        Int      @id @default(autoincrement())
+  paymentId Int
+  invoiceId Int
+  amount    Decimal  @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
+
+  payment Payment @relation(fields: [paymentId], references: [id])
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@unique([paymentId, invoiceId])
+  @@index([invoiceId])
 }
 
 // ============================================================
-// 18. ACCOUNTING SETTINGS
+// ACCOUNTING
 // ============================================================
 
 model AccountCategory {
-  id          Int      @id @default(autoincrement())
-  name        String
-  type        String
+  id          Int         @id @default(autoincrement())
+  name        String      @unique
+  type        AccountType
   description String?
-  status      String   @default("active")
+  status      String      @default("active")
 
   accounts Account[]
 }
 
 model Account {
   id             Int      @id @default(autoincrement())
-  branchId       Int?
+  branchId       Int
   categoryId     Int?
-  accountCode    String   @unique
+  accountCode    String
   accountName    String
-  openingBalance Decimal? @db.Decimal(14, 2)
-  currentBalance Decimal? @db.Decimal(14, 2)
+  openingBalance Decimal? @default(0) @db.Decimal(14, 2)
   status         String   @default("active")
+  updatedById    Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  category AccountCategory? @relation(fields: [categoryId], references: [id])
+  branch   Branch?           @relation(fields: [branchId], references: [id])
+  category AccountCategory?  @relation(fields: [categoryId], references: [id])
+  entries  AccountingEntry[]
+
+  @@unique([branchId, accountCode])
+  @@index([branchId])
+  @@index([categoryId])
 }
 
-model IncomeCategory {
-  id          Int     @id @default(autoincrement())
-  name        String
-  description String?
-  status      String  @default("active")
+model AccountingTransaction {
+  id              Int      @id @default(autoincrement())
+  branchId        Int
+  transactionNo   String
+  transactionDate DateTime @default(now())
+  description     String?
+  invoiceId       Int?
+  referenceNo     String?
+  createdById     Int?
+  createdAt       DateTime @default(now())
+
+  branch  Branch?           @relation(fields: [branchId], references: [id])
+  entries AccountingEntry[]
+
+  @@unique([branchId, transactionNo])
+  @@index([branchId])
+  @@index([transactionDate])
 }
 
-model ExpenseCategory {
-  id          Int     @id @default(autoincrement())
-  name        String
-  description String?
-  status      String  @default("active")
+model AccountingEntry {
+  id            Int     @id @default(autoincrement())
+  transactionId Int
+  accountId     Int
+  debitAmount   Decimal @default(0) @db.Decimal(14, 2)
+  creditAmount  Decimal @default(0) @db.Decimal(14, 2)
+
+  transaction AccountingTransaction @relation(fields: [transactionId], references: [id])
+  account     Account               @relation(fields: [accountId], references: [id])
+
+  @@index([transactionId])
+  @@index([accountId])
 }
 
 // ============================================================
-// 19. HR & PAYROLL SETTINGS
+// HR & PAYROLL
 // ============================================================
 
 model EmployeeType {
-  id     Int     @id @default(autoincrement())
-  name   String
-  status String  @default("active")
+  id     Int    @id @default(autoincrement())
+  name   String @unique
+  status String @default("active")
 
   employees Employee[]
 }
 
 model Designation {
-  id           Int      @id @default(autoincrement())
+  id           Int    @id @default(autoincrement())
   name         String
   departmentId Int?
-  status       String   @default("active")
+  status       String @default("active")
 
   department Department? @relation(fields: [departmentId], references: [id])
   employees  Employee[]
+
+  @@index([departmentId])
 }
 
 model SalaryComponent {
-  id              Int     @id @default(autoincrement())
+  id              Int      @id @default(autoincrement())
   name            String
   componentType   String
   calculationType String?
   value           Decimal? @db.Decimal(12, 2)
-  status          String  @default("active")
+  status          String   @default("active")
 }
 
 model LeaveType {
   id          Int     @id @default(autoincrement())
-  name        String
+  name        String  @unique
   daysAllowed Int     @default(0)
   paid        Boolean @default(true)
   status      String  @default("active")
@@ -707,7 +1302,7 @@ model LeaveType {
 
 model ShiftType {
   id           Int     @id @default(autoincrement())
-  name         String
+  name         String  @unique
   startTime    String?
   endTime      String?
   graceMinutes Int     @default(0)
@@ -715,97 +1310,264 @@ model ShiftType {
 }
 
 model Employee {
-  id            Int      @id @default(autoincrement())
-  userId        Int?     @unique
-  branchId      Int?
+  id             Int       @id @default(autoincrement())
+  userId         Int?      @unique
+  branchId       Int
   employeeTypeId Int?
-  designationId Int?
-  departmentId  Int?
-  name          String
-  employeeCode  String   @unique
-  phone         String?
-  email         String?
-  hireDate      DateTime?
-  basicSalary   Decimal? @db.Decimal(12, 2)
-  status        String   @default("active")
-  createdAt     DateTime @default(now())
+  designationId  Int?
+  departmentId   Int?
+  name           String
+  employeeCode   String
+  phone          String?
+  email          String?
+  hireDate       DateTime?
+  basicSalary    Decimal?  @db.Decimal(12, 2)
+  status         String    @default("active")
+  deletedAt      DateTime?
+  updatedById    Int?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  user         User?          @relation(fields: [userId], references: [id])
-  employeeType EmployeeType?  @relation(fields: [employeeTypeId], references: [id])
-  designation  Designation?   @relation(fields: [designationId], references: [id])
-  department   Department?    @relation(fields: [departmentId], references: [id])
+  user              User?         @relation(fields: [userId], references: [id])
+  branch            Branch?       @relation(fields: [branchId], references: [id])
+  employeeType      EmployeeType? @relation(fields: [employeeTypeId], references: [id])
+  designation       Designation?  @relation(fields: [designationId], references: [id])
+  department        Department?   @relation(fields: [departmentId], references: [id])
+  managedWarehouses Warehouse[]
+
+  @@unique([branchId, employeeCode])
+  @@index([branchId])
+  @@index([deletedAt])
+  @@index([departmentId])
+  @@index([designationId])
 }
 
 // ============================================================
-// 20. INVENTORY SETTINGS
+// INVENTORY
 // ============================================================
 
 model InventoryCategory {
-  id          Int        @id @default(autoincrement())
-  name        String
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
   description String?
-  status      String     @default("active")
+  status      String  @default("active")
 
   items InventoryItem[]
 }
 
 model Warehouse {
   id        Int     @id @default(autoincrement())
-  branchId  Int?
+  branchId  Int
   name      String
   code      String
   location  String?
   managerId Int?
   status    String  @default("active")
 
-  branch Branch? @relation(fields: [branchId], references: [id])
-  stock  InventoryStock[]
+  branch  Branch?          @relation(fields: [branchId], references: [id])
+  manager Employee?        @relation(fields: [managerId], references: [id])
+  stock   InventoryStock[]
+
+  @@unique([branchId, code])
+  @@index([branchId])
+  @@index([managerId])
 }
 
 model InventoryItem {
-  id           Int      @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
+  branchId     Int
   categoryId   Int?
   unitId       Int?
-  itemCode     String   @unique
+  itemCode     String
   name         String
-  reorderLevel Int      @default(10)
-  status       String   @default("active")
+  reorderLevel Int       @default(10)
+  status       String    @default("active")
+  deletedAt    DateTime?
+  updatedById  Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
+  branch   Branch?            @relation(fields: [branchId], references: [id])
   category InventoryCategory? @relation(fields: [categoryId], references: [id])
   unit     MedicineUnit?      @relation(fields: [unitId], references: [id])
   stock    InventoryStock[]
+
+  @@unique([branchId, itemCode])
+  @@index([branchId])
+  @@index([deletedAt])
+  @@index([categoryId])
 }
 
 model InventoryStock {
-  id           Int      @id @default(autoincrement())
-  warehouseId  Int
-  itemId       Int
-  quantity     Int      @default(0)
-  averageCost  Decimal? @db.Decimal(14, 2)
-  lastUpdated  DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  branchId    Int
+  warehouseId Int
+  itemId      Int
+  quantity    Int      @default(0)
+  averageCost Decimal? @db.Decimal(14, 2)
+  lastUpdated DateTime @updatedAt
 
-  warehouse Warehouse     @relation(fields: [warehouseId], references: [id])
+  branch    Branch?       @relation(fields: [branchId], references: [id])
+  warehouse Warehouse?    @relation(fields: [warehouseId], references: [id])
   item      InventoryItem @relation(fields: [itemId], references: [id])
 
   @@unique([warehouseId, itemId])
+  @@index([branchId])
+  @@index([itemId])
 }
 
 // ============================================================
-// 21. NOTIFICATION SETTINGS
+// SETTINGS (kept as-is for this phase)
 // ============================================================
 
-model NotificationSetting {
+model OpdSetting {
+  id                  Int      @id @default(autoincrement())
+  branchId            Int
+  registrationFee     Decimal? @db.Decimal(12, 2)
+  consultationFee     Decimal? @db.Decimal(12, 2)
+  followupDays        Int      @default(14)
+  appointmentDuration Int      @default(15)
+  queueEnabled        Boolean  @default(true)
+  prescriptionEnabled Boolean  @default(true)
+  status              String   @default("active")
+
+  branch Branch? @relation(fields: [branchId], references: [id])
+
+  @@index([branchId])
+}
+
+model IpdSetting {
+  id            Int      @id @default(autoincrement())
+  branchId      Int
+  admissionFee  Decimal? @db.Decimal(12, 2)
+  dischargeFee  Decimal? @db.Decimal(12, 2)
+  bedCharge     Decimal? @db.Decimal(12, 2)
+  nursingCharge Decimal? @db.Decimal(12, 2)
+  serviceCharge Decimal? @db.Decimal(12, 2)
+  status        String   @default("active")
+
+  branch Branch? @relation(fields: [branchId], references: [id])
+
+  @@index([branchId])
+}
+
+model EmergencySetting {
+  id              Int      @id @default(autoincrement())
+  branchId        Int
+  registrationFee Decimal? @db.Decimal(12, 2)
+  consultationFee Decimal? @db.Decimal(12, 2)
+  serviceCharge   Decimal? @db.Decimal(12, 2)
+  triageEnabled   Boolean  @default(true)
+  status          String   @default("active")
+
+  branch Branch? @relation(fields: [branchId], references: [id])
+
+  @@index([branchId])
+}
+
+model PrescriptionTemplate {
+  id           Int     @id @default(autoincrement())
+  branchId     Int
+  name         String
+  header       String?
+  footer       String?
+  logo         String?
+  signature    String?
+  templateData Json?
+  status       String  @default("active")
+
+  branch        Branch?               @relation(fields: [branchId], references: [id])
+  prescriptions PrescriptionSetting[]
+
+  @@unique([branchId, name])
+  @@index([branchId])
+}
+
+model PrescriptionSetting {
+  id                  Int     @id @default(autoincrement())
+  branchId            Int
+  templateId          Int?
+  showPatientHistory  Boolean @default(true)
+  showDiagnosis       Boolean @default(true)
+  showMedicine        Boolean @default(true)
+  showDosage          Boolean @default(true)
+  showInstruction     Boolean @default(true)
+  showDoctorSignature Boolean @default(true)
+  showQrCode          Boolean @default(false)
+  status              String  @default("active")
+
+  branch   Branch?               @relation(fields: [branchId], references: [id])
+  template PrescriptionTemplate? @relation(fields: [templateId], references: [id])
+
+  @@index([branchId])
+}
+
+model PharmacySetting {
+  id              Int      @id @default(autoincrement())
+  branchId        Int
+  taxPercent      Decimal? @db.Decimal(5, 2)
+  defaultDiscount Decimal? @db.Decimal(5, 2)
+  expiryAlertDays Int      @default(30)
+  lowStockAlert   Boolean  @default(true)
+  barcodeEnabled  Boolean  @default(true)
+  batchEnabled    Boolean  @default(true)
+  status          String   @default("active")
+
+  branch Branch? @relation(fields: [branchId], references: [id])
+
+  @@index([branchId])
+}
+
+model LabSetting {
   id                     Int     @id @default(autoincrement())
-  branchId               Int?
-  smsEnabled             Boolean @default(false)
-  emailEnabled           Boolean @default(false)
-  whatsappEnabled        Boolean @default(false)
-  appointmentNotification Boolean @default(true)
-  billingNotification    Boolean @default(true)
-  labNotification        Boolean @default(true)
-  followupNotification   Boolean @default(true)
-  paymentNotification    Boolean @default(true)
+  branchId               Int
+  sampleTrackingEnabled  Boolean @default(true)
+  barcodeEnabled         Boolean @default(true)
+  onlineReportEnabled    Boolean @default(true)
+  reportApprovalRequired Boolean @default(false)
+  defaultReportTemplate  String?
   status                 String  @default("active")
+
+  branch Branch? @relation(fields: [branchId], references: [id])
+
+  @@index([branchId])
+}
+
+model BillingSetting {
+  id                    Int      @id @default(autoincrement())
+  branchId              Int
+  invoicePrefix         String   @default("INV-")
+  invoiceStartNumber    Int      @default(1)
+  receiptPrefix         String   @default("RCT-")
+  taxPercent            Decimal? @db.Decimal(5, 2)
+  serviceChargePercent  Decimal? @db.Decimal(5, 2)
+  discountEnabled       Boolean  @default(true)
+  partialPaymentEnabled Boolean  @default(true)
+  refundEnabled         Boolean  @default(true)
+  duePaymentEnabled     Boolean  @default(true)
+  status                String   @default("active")
+
+  branch Branch? @relation(fields: [branchId], references: [id])
+
+  @@index([branchId])
+}
+
+model NotificationSetting {
+  id                      Int     @id @default(autoincrement())
+  branchId                Int
+  smsEnabled              Boolean @default(false)
+  emailEnabled            Boolean @default(false)
+  whatsappEnabled         Boolean @default(false)
+  appointmentNotification Boolean @default(true)
+  billingNotification     Boolean @default(true)
+  labNotification         Boolean @default(true)
+  followupNotification    Boolean @default(true)
+  paymentNotification     Boolean @default(true)
+  status                  String  @default("active")
+
+  branch Branch? @relation(fields: [branchId], references: [id])
+
+  @@index([branchId])
 }
 
 model SmsGateway {
@@ -818,24 +1580,20 @@ model SmsGateway {
 }
 
 model EmailSetting {
-  id        Int     @id @default(autoincrement())
-  smtpHost  String?
-  smtpPort  Int?
-  username  String?
-  password  String?
+  id         Int     @id @default(autoincrement())
+  smtpHost   String?
+  smtpPort   Int?
+  username   String?
+  password   String?
   encryption String?
-  fromName  String?
-  fromEmail String?
-  status    String  @default("active")
+  fromName   String?
+  fromEmail  String?
+  status     String  @default("active")
 }
-
-// ============================================================
-// 22. PRINT & DOCUMENT SETTINGS
-// ============================================================
 
 model DocumentTemplate {
   id              Int     @id @default(autoincrement())
-  branchId        Int?
+  branchId        Int
   documentType    String
   templateName    String
   header          String?
@@ -845,18 +1603,16 @@ model DocumentTemplate {
   templateContent String?
   status          String  @default("active")
 
+  branch         Branch?         @relation(fields: [branchId], references: [id])
   reportSettings ReportSetting[]
 
   @@unique([branchId, documentType, templateName])
+  @@index([branchId])
 }
-
-// ============================================================
-// 23. API & INTEGRATION SETTINGS
-// ============================================================
 
 model Integration {
   id              Int     @id @default(autoincrement())
-  branchId        Int?
+  branchId        Int
   integrationType String
   providerName    String
   apiUrl          String?
@@ -866,11 +1622,9 @@ model Integration {
   status          String  @default("active")
 
   branch Branch? @relation(fields: [branchId], references: [id])
-}
 
-// ============================================================
-// 24. BACKUP & DATABASE SETTINGS
-// ============================================================
+  @@index([branchId])
+}
 
 model BackupSetting {
   id                Int     @id @default(autoincrement())
@@ -884,96 +1638,62 @@ model BackupSetting {
 }
 
 model BackupLog {
-  id              Int      @id @default(autoincrement())
+  id              Int       @id @default(autoincrement())
   backupType      String
   fileName        String?
   fileSize        Int?
   storageLocation String?
-  startedAt       DateTime @default(now())
+  startedAt       DateTime  @default(now())
   completedAt     DateTime?
-  status          String   @default("running")
+  status          String    @default("running")
   errorMessage    String?
 }
 
-// ============================================================
-// 25. REPORT SETTINGS
-// ============================================================
-
 model ReportSetting {
-  id          Int     @id @default(autoincrement())
-  branchId    Int?
-  reportName  String
-  reportType  String
-  templateId  Int?
-  showLogo    Boolean @default(true)
-  showHeader  Boolean @default(true)
-  showFooter  Boolean @default(true)
+  id            Int     @id @default(autoincrement())
+  branchId      Int
+  reportName    String
+  reportType    String
+  templateId    Int?
+  showLogo      Boolean @default(true)
+  showHeader    Boolean @default(true)
+  showFooter    Boolean @default(true)
   showSignature Boolean @default(true)
-  exportPdf   Boolean @default(true)
-  exportExcel Boolean @default(true)
-  status      String  @default("active")
+  exportPdf     Boolean @default(true)
+  exportExcel   Boolean @default(true)
+  status        String  @default("active")
 
+  branch   Branch?           @relation(fields: [branchId], references: [id])
   template DocumentTemplate? @relation(fields: [templateId], references: [id])
-}
 
-// ============================================================
-// 26. LOCALIZATION SETTINGS
-// ============================================================
+  @@index([branchId])
+}
 
 model LocalizationSetting {
-  id            Int     @id @default(autoincrement())
-  branchId      Int?
-  language      String  @default("English")
-  currency      String  @default("BDT")
-  currencySymbol String @default("৳")
-  dateFormat    String  @default("DD-MM-YYYY")
-  timeFormat    String  @default("24h")
-  timezone      String  @default("Asia/Dhaka")
-  numberFormat  String?
-  weekStartDay  Int     @default(1)
+  id             Int     @id @default(autoincrement())
+  branchId       Int
+  language       String  @default("English")
+  currency       String  @default("BDT")
+  currencySymbol String  @default("৳")
+  dateFormat     String  @default("DD-MM-YYYY")
+  timeFormat     String  @default("24h")
+  timezone       String  @default("Asia/Dhaka")
+  numberFormat   String?
+  weekStartDay   Int     @default(1)
+
+  branch Branch? @relation(fields: [branchId], references: [id])
 
   @@unique([branchId, language])
+  @@index([branchId])
 }
-
-// ============================================================
-// 28. SYSTEM MAINTENANCE
-// ============================================================
 
 model SystemMaintenance {
-  id               Int      @id @default(autoincrement())
-  maintenanceMode  Boolean  @default(false)
-  cacheEnabled     Boolean  @default(true)
-  lastCacheClear   DateTime?
-  systemVersion    String?
-  lastUpdate       DateTime?
+  id                   Int       @id @default(autoincrement())
+  maintenanceMode      Boolean   @default(false)
+  cacheEnabled         Boolean   @default(true)
+  lastCacheClear       DateTime?
+  systemVersion        String?
+  lastUpdate           DateTime?
   databaseOptimization DateTime?
-  status           String   @default("active")
+  status               String    @default("active")
 }
-
-// ============================================================
-// APPENDED / DOMAIN TABLES (referenced by the data flow)
-// ============================================================
-
-model Appointment {
-  id              Int      @id @default(autoincrement())
-  branchId        Int?
-  patientId       Int?
-  doctorId        Int?
-  appointmentDate DateTime?
-  status          String   @default("pending")
-  notes           String?
-  createdAt       DateTime @default(now())
-
-  patient Patient? @relation(fields: [patientId], references: [id])
-  doctor  Doctor?  @relation(fields: [doctorId], references: [id])
-  branch  Branch?  @relation(fields: [branchId], references: [id])
-
-  @@index([doctorId])
-  @@index([patientId])
-  @@index([appointmentDate])
-}
-
-// ============================================================
-// 34. RECOMMENDED INDEXES
-// - See @@index annotations throughout the schema above.
-// ============================================================
