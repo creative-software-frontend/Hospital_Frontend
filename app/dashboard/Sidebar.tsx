@@ -17,6 +17,8 @@ interface SidebarProps {
     setActiveSection: Dispatch<SetStateAction<string>>;
     selectedFeature: Feature | null;
     setSelectedFeature: Dispatch<SetStateAction<Feature | null>>;
+    selectedSubFeatureId: string | null;
+    setSelectedSubFeatureId: Dispatch<SetStateAction<string | null>>;
     expandedFeature: number | null;
     setExpandedFeature: Dispatch<SetStateAction<number | null>>;
     openLogoutModal: () => void;
@@ -25,7 +27,8 @@ interface SidebarProps {
 export const Sidebar = ({
     sidebarOpen, role, permissions, accessibleFeatures,
     activeSection, setActiveSection, selectedFeature,
-    setSelectedFeature, expandedFeature, setExpandedFeature,
+    setSelectedFeature, selectedSubFeatureId, setSelectedSubFeatureId,
+    expandedFeature, setExpandedFeature,
     openLogoutModal
 }: SidebarProps) => {
 
@@ -35,6 +38,7 @@ export const Sidebar = ({
 
     const handleSelectFeature = (feat: Feature) => {
         setSelectedFeature(feat);
+        setSelectedSubFeatureId(null);
         setActiveSection("feature-detail");
     };
 
@@ -51,6 +55,13 @@ export const Sidebar = ({
             }
             return next;
         });
+    };
+
+    const handleSelectSubFeature = (feat: Feature, sub: SubFeatureItem) => {
+        if (!sub.id) return;
+        setSelectedFeature(feat);
+        setSelectedSubFeatureId(sub.id);
+        setActiveSection("feature-detail");
     };
 
     return (
@@ -166,10 +177,16 @@ export const Sidebar = ({
                                                                     <div className="ml-5 space-y-0.5">
                                                                         {sub.children.map((child: SubFeatureItem, cIdx: number) => {
                                                                             const ChildIcon = child.icon;
+                                                                            const isSubActive = selectedSubFeatureId === child.id;
                                                                             return (
                                                                                 <div
                                                                                     key={cIdx}
-                                                                                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer text-[11px] font-medium text-[var(--muted)] hover:bg-[var(--primary)]/10 hover:text-[var(--primary-dark)] hover:pl-4 transition-all duration-200"
+                                                                                    onClick={() => handleSelectSubFeature(feat, child)}
+                                                                                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer text-[11px] font-medium transition-all duration-200 ${
+                                                                                        isSubActive
+                                                                                            ? "bg-[var(--primary)]/10 text-[var(--primary-dark)] pl-4"
+                                                                                            : "text-[var(--muted)] hover:bg-[var(--primary)]/10 hover:text-[var(--primary-dark)] hover:pl-4"
+                                                                                    }`}
                                                                                 >
                                                                                     <ChildIcon className="w-3 h-3 shrink-0 text-[var(--primary)]/60" />
                                                                                     <span>{child.label}</span>
@@ -182,10 +199,16 @@ export const Sidebar = ({
                                                         );
                                                     }
                                                     const SubIcon = sub.icon;
+                                                    const isSubActive = selectedSubFeatureId === sub.id;
                                                     return (
                                                         <div
                                                             key={sIdx}
-                                                            className="flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer text-[11px] font-medium text-[var(--muted)] hover:bg-[var(--primary)]/10 hover:text-[var(--primary-dark)] hover:pl-4 transition-all duration-200"
+                                                            onClick={() => sub.id && handleSelectSubFeature(feat, sub)}
+                                                            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer text-[11px] font-medium transition-all duration-200 ${
+                                                                sub.id && isSubActive
+                                                                    ? "bg-[var(--primary)]/10 text-[var(--primary-dark)] pl-4"
+                                                                    : "text-[var(--muted)] hover:bg-[var(--primary)]/10 hover:text-[var(--primary-dark)] hover:pl-4"
+                                                            }`}
                                                         >
                                                             <SubIcon className="w-3 h-3 shrink-0 text-[var(--primary)]/60" />
                                                             <span>{sub.label}</span>

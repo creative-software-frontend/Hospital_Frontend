@@ -12,6 +12,8 @@ import type { IconType } from "react-icons";
 export interface SubFeatureItem {
     label: string;
     icon: IconType;
+    /** Stable key used to look up a settings page when the item is clicked. */
+    id?: string;
     /** Optional nested settings items rendered as a group under this label. */
     children?: SubFeatureItem[];
 }
@@ -307,45 +309,47 @@ export const keyFeatures: Feature[] = [
         englishTitle: "Settings & Configuration",
         icon: FiSettings,
         subFeatures: [
-            { label: "General Settings", icon: FiSettings },
-            { label: "Branch Settings", icon: FiGitBranch },
-            { label: "User & Role Management", icon: FiUsers },
-            { label: "Security", icon: FiLock },
+            { id: "general-settings", label: "General Settings", icon: FiSettings },
+            { id: "branch-settings", label: "Branch Settings", icon: FiGitBranch },
+            { id: "user-role-management", label: "User & Role Management", icon: FiUsers },
+            { id: "security", label: "Security", icon: FiLock },
             {
+                id: "hospital-configuration",
                 label: "Hospital Configuration",
                 icon: FiServer,
                 children: [
-                    { label: "Departments", icon: FiFolder },
-                    { label: "Doctors", icon: FiActivity },
-                    { label: "Patients", icon: FiUser },
-                    { label: "Services", icon: FiTag },
+                    { id: "hc-departments", label: "Departments", icon: FiFolder },
+                    { id: "hc-doctors", label: "Doctors", icon: FiActivity },
+                    { id: "hc-patients", label: "Patients", icon: FiUser },
+                    { id: "hc-services", label: "Services", icon: FiTag },
                 ],
             },
             {
+                id: "clinical-settings",
                 label: "Clinical Settings",
                 icon: FiZap,
                 children: [
-                    { label: "OPD", icon: FiPlusSquare },
-                    { label: "IPD", icon: FiHome },
-                    { label: "Emergency", icon: FiAlertCircle },
-                    { label: "Prescription", icon: FiFileText },
-                    { label: "Diagnosis", icon: FiClipboard },
+                    { id: "clinical-opd", label: "OPD", icon: FiPlusSquare },
+                    { id: "clinical-ipd", label: "IPD", icon: FiHome },
+                    { id: "clinical-emergency", label: "Emergency", icon: FiAlertCircle },
+                    { id: "clinical-prescription", label: "Prescription", icon: FiFileText },
+                    { id: "clinical-diagnosis", label: "Diagnosis", icon: FiClipboard },
                 ],
             },
-            { label: "Pharmacy Settings", icon: FiBriefcase },
-            { label: "Laboratory Settings", icon: FiDatabase },
-            { label: "Billing Settings", icon: FiCreditCard },
-            { label: "Accounting Settings", icon: FiDollarSign },
-            { label: "HR & Payroll", icon: FiUserCheck },
-            { label: "Inventory", icon: FiPackage },
-            { label: "Notification", icon: FiBell },
-            { label: "Print & Document", icon: FiPrinter },
-            { label: "API & Integration", icon: FiLink },
-            { label: "Backup & Database", icon: FiArchive },
-            { label: "Reports", icon: FiBarChart2 },
-            { label: "Localization", icon: FiFlag },
-            { label: "Master Data", icon: FiBookOpen },
-            { label: "System Maintenance", icon: FiTool },
+            { id: "pharmacy-settings", label: "Pharmacy Settings", icon: FiBriefcase },
+            { id: "laboratory-settings", label: "Laboratory Settings", icon: FiDatabase },
+            { id: "billing-settings", label: "Billing Settings", icon: FiCreditCard },
+            { id: "accounting-settings", label: "Accounting Settings", icon: FiDollarSign },
+            { id: "hr-payroll", label: "HR & Payroll", icon: FiUserCheck },
+            { id: "inventory", label: "Inventory", icon: FiPackage },
+            { id: "notification", label: "Notification", icon: FiBell },
+            { id: "print-document", label: "Print & Document", icon: FiPrinter },
+            { id: "api-integration", label: "API & Integration", icon: FiLink },
+            { id: "backup-database", label: "Backup & Database", icon: FiArchive },
+            { id: "reports", label: "Reports", icon: FiBarChart2 },
+            { id: "localization", label: "Localization", icon: FiFlag },
+            { id: "master-data", label: "Master Data", icon: FiBookOpen },
+            { id: "system-maintenance", label: "System Maintenance", icon: FiTool },
         ]
     },
 ];
