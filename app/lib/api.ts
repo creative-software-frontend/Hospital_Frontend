@@ -510,6 +510,367 @@ export const contactApi = {
 };
 
 /* ---------------------------------------------------------------------------
+ * Branches (Settings → Branch Settings)
+ * ------------------------------------------------------------------------- */
+
+export type BranchStatus = "active" | "inactive";
+
+export interface BranchRecord {
+  id: number;
+  name: string;
+  code: string;
+  registrationNo: string | null;
+  address: string | null;
+  city: string | null;
+  district: string | null;
+  country: string | null;
+  phone: string | null;
+  email: string | null;
+  logo: string | null;
+  timezone: string | null;
+  currency: string | null;
+  status: BranchStatus;
+  createdAt: string;
+  updatedAt: string;
+  _count?: {
+    users: number;
+    departments: number;
+    patients: number;
+  };
+}
+
+export interface BranchListResult {
+  data: BranchRecord[];
+  pagination: PaginationMeta;
+}
+
+export interface BranchListQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: BranchStatus;
+}
+
+export type UpdateBranchInput = Partial<
+  Omit<BranchRecord, "id" | "code" | "createdAt" | "updatedAt" | "_count">
+>;
+
+export const branchApi = {
+  list: (query: BranchListQuery = {}) =>
+    rawRequest<BranchListResult>(
+      `/branches${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+
+  get: (id: number) => request<{ branch: BranchRecord }>(`/branches/${id}`),
+
+  update: (id: number, input: UpdateBranchInput) =>
+    request<{ branch: BranchRecord }>(`/branches/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+};
+
+/* ---------------------------------------------------------------------------
+ * Settings (Settings → General / Security)
+ * ------------------------------------------------------------------------- */
+
+export interface SystemSetting {
+  id: number;
+  branchId: number | null;
+  settingGroup: string;
+  settingKey: string;
+  settingValue: string | null;
+  dataType: string | null;
+  isEncrypted: boolean;
+  status: "active" | "inactive";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SecuritySetting {
+  id: number;
+  passwordMinLength: number;
+  passwordExpiryDays: number;
+  maxLoginAttempts: number;
+  sessionTimeout: number;
+  twoFactorEnabled: boolean;
+  ipRestrictionEnabled: boolean;
+  deviceRestrictionEnabled: boolean;
+  auditLogEnabled: boolean;
+  status: "active" | "inactive";
+  updatedAt: string;
+}
+
+export type UpdateSecurityInput = Partial<
+  Omit<SecuritySetting, "id" | "status" | "updatedAt">
+>;
+
+export interface PatientSetting {
+  id: number;
+  branchId: number;
+  patientIdPrefix: string;
+  autoGenerateId: boolean;
+  defaultPatientType: string;
+  requireGuardian: "NEVER" | "MINORS_ONLY" | "ALWAYS";
+  duplicateDetection: boolean;
+  phoneRequired: boolean;
+  emailRequired: boolean;
+  status: "active" | "inactive";
+  updatedAt: string;
+}
+
+export type UpdatePatientSettingInput = Partial<
+  Omit<PatientSetting, "id" | "branchId" | "status" | "updatedAt">
+>;
+
+export const settingsApi = {
+  system: {
+    list: (branchId?: number) =>
+      request<{ settings: SystemSetting[] }>(
+        `/settings/system${qs(branchId ? { branchId } : {})}`,
+      ),
+    upsert: (input: {
+      settingGroup: string;
+      settingKey: string;
+      settingValue?: string | null;
+      dataType?: string | null;
+      isEncrypted?: boolean;
+      status?: "active" | "inactive";
+    }) =>
+      request<{ setting: SystemSetting }>("/settings/system", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    remove: (id: number) =>
+      request<{ message: string }>(`/settings/system/${id}`, { method: "DELETE" }),
+  },
+  security: {
+    get: () => request<{ security: SecuritySetting }>("/settings/security"),
+    update: (input: UpdateSecurityInput) =>
+      request<{ security: SecuritySetting }>("/settings/security", {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+  },
+  patient: {
+    get: () => request<{ patientSetting: PatientSetting }>("/settings/patient"),
+    update: (input: UpdatePatientSettingInput) =>
+      request<{ patientSetting: PatientSetting }>("/settings/patient", {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+  },
+};
+
+/* ---------------------------------------------------------------------------
+ * Hospital configuration (Settings → Hospital Configuration)
+ * Departments / Doctors / Services
+ * ------------------------------------------------------------------------- */
+
+export type ActiveStatus = "active" | "inactive";
+
+export interface DepartmentRecord {
+  id: number;
+  branchId: number;
+  name: string;
+  code: string;
+  description: string | null;
+  departmentType: string | null;
+  status: ActiveStatus;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { doctors: number; services: number; employees: number };
+}
+
+export interface DepartmentListResult {
+  data: DepartmentRecord[];
+  pagination: PaginationMeta;
+}
+
+export interface DepartmentListQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: ActiveStatus;
+  departmentType?: string;
+}
+
+export interface CreateDepartmentInput {
+  name: string;
+  code: string;
+  description?: string | null;
+  departmentType?: string | null;
+  status?: ActiveStatus;
+}
+
+export type UpdateDepartmentInput = Partial<
+  Omit<CreateDepartmentInput, "code">
+>;
+
+export interface DoctorRecord {
+  id: number;
+  userId: number | null;
+  branchId: number;
+  departmentId: number | null;
+  doctorCode: string;
+  name: string;
+  specialization: string | null;
+  qualification: string | null;
+  registrationNo: string | null;
+  phone: string | null;
+  email: string | null;
+  consultationFee: string | null;
+  followupFee: string | null;
+  emergencyFee: string | null;
+  commissionType: string | null;
+  commissionValue: string | null;
+  status: ActiveStatus;
+  createdAt: string;
+  updatedAt: string;
+  department?: { id: number; name: string; code: string } | null;
+}
+
+export interface DoctorListResult {
+  data: DoctorRecord[];
+  pagination: PaginationMeta;
+}
+
+export interface DoctorListQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: ActiveStatus;
+  departmentId?: number;
+}
+
+export interface CreateDoctorInput {
+  doctorCode: string;
+  name: string;
+  departmentId?: number | null;
+  specialization?: string | null;
+  qualification?: string | null;
+  registrationNo?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  consultationFee?: string | null;
+  followupFee?: string | null;
+  emergencyFee?: string | null;
+  commissionType?: "PERCENT" | "FIXED" | null;
+  commissionValue?: string | null;
+  status?: ActiveStatus;
+}
+
+export type UpdateDoctorInput = Partial<Omit<CreateDoctorInput, "doctorCode">>;
+
+export interface ServiceCategoryRecord {
+  id: number;
+  name: string;
+  description: string | null;
+}
+
+export interface ServiceRecord {
+  id: number;
+  branchId: number;
+  departmentId: number | null;
+  categoryId: number | null;
+  serviceCode: string;
+  name: string;
+  description: string | null;
+  price: string | null;
+  taxPercent: string | null;
+  discountAllowed: boolean;
+  status: ActiveStatus;
+  createdAt: string;
+  updatedAt: string;
+  department?: { id: number; name: string; code: string } | null;
+  category?: { id: number; name: string } | null;
+}
+
+export interface ServiceListResult {
+  data: ServiceRecord[];
+  pagination: PaginationMeta;
+}
+
+export interface ServiceListQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: ActiveStatus;
+  departmentId?: number;
+  categoryId?: number;
+}
+
+export interface CreateServiceInput {
+  serviceCode: string;
+  name: string;
+  departmentId?: number | null;
+  categoryId?: number | null;
+  description?: string | null;
+  price?: string | null;
+  taxPercent?: string | null;
+  discountAllowed?: boolean;
+  status?: ActiveStatus;
+}
+
+export type UpdateServiceInput = Partial<Omit<CreateServiceInput, "serviceCode">>;
+
+export const departmentApi = {
+  list: (query: DepartmentListQuery = {}) =>
+    rawRequest<DepartmentListResult>(
+      `/departments${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+  get: (id: number) => request<{ department: DepartmentRecord }>(`/departments/${id}`),
+  create: (input: CreateDepartmentInput) =>
+    request<{ department: DepartmentRecord }>("/departments", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  update: (id: number, input: UpdateDepartmentInput) =>
+    request<{ department: DepartmentRecord }>(`/departments/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+};
+
+export const doctorApi = {
+  list: (query: DoctorListQuery = {}) =>
+    rawRequest<DoctorListResult>(
+      `/doctors${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+  get: (id: number) => request<{ doctor: DoctorRecord }>(`/doctors/${id}`),
+  create: (input: CreateDoctorInput) =>
+    request<{ doctor: DoctorRecord }>("/doctors", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  update: (id: number, input: UpdateDoctorInput) =>
+    request<{ doctor: DoctorRecord }>(`/doctors/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+};
+
+export const serviceApi = {
+  list: (query: ServiceListQuery = {}) =>
+    rawRequest<ServiceListResult>(
+      `/services${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+  get: (id: number) => request<{ service: ServiceRecord }>(`/services/${id}`),
+  categories: () =>
+    request<{ categories: ServiceCategoryRecord[] }>("/services/categories"),
+  create: (input: CreateServiceInput) =>
+    request<{ service: ServiceRecord }>("/services", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  update: (id: number, input: UpdateServiceInput) =>
+    request<{ service: ServiceRecord }>(`/services/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+};
+
+/* ---------------------------------------------------------------------------
  * Shared error/date helpers
  * ------------------------------------------------------------------------- */
 

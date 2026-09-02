@@ -116,6 +116,29 @@ const PERMISSIONS: PermissionDef[] = [
   { module: "account", action: "read", description: "View accounts" },
   { module: "accountingTransaction", action: "read", description: "View accounting transactions" },
   { module: "accountingTransaction", action: "create", description: "Create accounting transactions" },
+
+  // Settings & configuration (Group A)
+  { module: "systemSetting", action: "read", description: "View general/system settings" },
+  { module: "systemSetting", action: "update", description: "Update general/system settings" },
+  { module: "securitySetting", action: "read", description: "View security settings" },
+  { module: "securitySetting", action: "update", description: "Update security settings" },
+  { module: "branch", action: "read", description: "View branches" },
+  { module: "branch", action: "update", description: "Update branch information" },
+
+  // Hospital configuration (Group B)
+  { module: "department", action: "read", description: "View departments" },
+  { module: "department", action: "create", description: "Create departments" },
+  { module: "department", action: "update", description: "Update departments" },
+  { module: "doctor", action: "read", description: "View doctors" },
+  { module: "doctor", action: "create", description: "Create doctors" },
+  { module: "doctor", action: "update", description: "Update doctors" },
+  { module: "service", action: "read", description: "View billable services" },
+  { module: "service", action: "create", description: "Create services" },
+  { module: "service", action: "update", description: "Update services" },
+
+  // Patient configuration (Group B)
+  { module: "patientSetting", action: "read", description: "View patient registration settings" },
+  { module: "patientSetting", action: "update", description: "Update patient registration settings" },
 ];
 
 const MATRIX: Record<RoleKey, string[]> = {
@@ -124,6 +147,11 @@ const MATRIX: Record<RoleKey, string[]> = {
     "user:read", "user:create", "user:update", "role:read", "permission:read", "audit:read",
     "patient:read", "patient:create", "patient:update", "patient:delete",
     "appointment:read", "appointment:create", "appointment:update",
+    "branch:read", "branch:update", "systemSetting:read", "systemSetting:update", "securitySetting:read",
+    "department:read", "department:create", "department:update",
+    "doctor:read", "doctor:create", "doctor:update",
+    "service:read", "service:create", "service:update",
+    "patientSetting:read", "patientSetting:update",
   ],
   DOCTOR: [
     "auth:read", "patient:read", "patient:create", "patient:update",
@@ -132,6 +160,7 @@ const MATRIX: Record<RoleKey, string[]> = {
     "prescription:read", "prescription:create", "prescription:update",
     "admission:read", "bed:read", "labOrder:read", "labOrder:update",
     "imaging:read", "imaging:create", "imaging:update",
+    "department:read", "doctor:read", "service:read",
   ],
   PHARMACIST: [
     "auth:read", "medicine:read", "medicine:update", "prescription:read",
@@ -258,6 +287,197 @@ async function seed() {
   });
 
   console.log(`Super admin ready: ${email}`);
+
+  // 5. Default system settings (branch-scoped; idempotent per (branchId, group, key))
+  const generalDefaults: Array<{ key: string; value: string; dataType: string }> = [
+    { key: "system_name", value: "MediCare HMS", dataType: "string" },
+    { key: "version", value: "v2.4.1", dataType: "string" },
+    { key: "default_date_format", value: "DD/MM/YYYY", dataType: "string" },
+    { key: "default_time_format", value: "24 Hour", dataType: "string" },
+    { key: "timezone", value: "Asia/Dhaka", dataType: "string" },
+    { key: "currency", value: "BDT", dataType: "string" },
+    { key: "default_language", value: "English", dataType: "string" },
+    { key: "maintenance_mode", value: "off", dataType: "boolean" },
+  ];
+  const SETTING_GROUP_GENERAL = "general";
+  for (const def of generalDefaults) {
+    await prisma.systemSetting.upsert({
+      where: {
+        branchId_settingGroup_settingKey: {
+          branchId: branch.id,
+          settingGroup: SETTING_GROUP_GENERAL,
+          settingKey: def.key,
+        },
+      },
+      update: { settingValue: def.value, dataType: def.dataType },
+      create: {
+        branchId: branch.id,
+        settingGroup: SETTING_GROUP_GENERAL,
+        settingKey: def.key,
+        settingValue: def.value,
+        dataType: def.dataType,
+        status: "active",
+      },
+    });
+  }
+  console.log(`System settings ready: ${generalDefaults.length}`);
+
+  // 6. Default security settings (single global row)
+  const securityExists = await prisma.securitySetting.findFirst();
+  if (!securityExists) {
+    await prisma.securitySetting.create({
+      data: {
+        passwordMinLength: 8,
+        passwordExpiryDays: 90,
+        maxLoginAttempts: 5,
+        sessionTimeout: 30,
+        twoFactorEnabled: false,
+        ipRestrictionEnabled: false,
+        deviceRestrictionEnabled: false,
+        auditLogEnabled: true,
+        status: "active",
+      },
+    });
+  }
+  console.log("Security settings ready.");
+
+  // 7. Hospital configuration (Group B): departments, service categories, services, doctors
+  const DEPARTMENTS: Array<{ name: string; code: string; type: string }> = [
+    { name: "Cardiology", code: "CARD", type: "CLINICAL" },
+    { name: "Neurology", code: "NEURO", type: "CLINICAL" },
+    { name: "Orthopedics", code: "ORTHO", type: "CLINICAL" },
+    { name: "Pediatrics", code: "PED", type: "CLINICAL" },
+    { name: "Radiology", code: "RAD", type: "DIAGNOSTIC" },
+    { name: "Pathology", code: "PATH", type: "DIAGNOSTIC" },
+    { name: "General Medicine", code: "MED", type: "CLINICAL" },
+    { name: "Emergency", code: "EMRG", type: "CLINICAL" },
+  ];
+  const departmentByCode = new Map<string, number>();
+  for (const d of DEPARTMENTS) {
+    const row = await prisma.department.upsert({
+      where: { branchId_code: { branchId: branch.id, code: d.code } },
+      update: { name: d.name, departmentType: d.type, status: "active" },
+      create: {
+        branchId: branch.id,
+        name: d.name,
+        code: d.code,
+        departmentType: d.type,
+        description: `${d.name} department`,
+        status: "active",
+      },
+    });
+    departmentByCode.set(d.code, row.id);
+  }
+  console.log(`Departments ready: ${DEPARTMENTS.length}`);
+
+  const SERVICE_CATEGORIES: Array<{ name: string; description: string }> = [
+    { name: "Consultation", description: "Doctor consultation fees" },
+    { name: "Diagnostics", description: "Lab and imaging services" },
+    { name: "Room & Board", description: "Inpatient accommodation" },
+    { name: "Procedure", description: "Surgical and medical procedures" },
+  ];
+  const categoryByCode = new Map<string, number>();
+  for (const c of SERVICE_CATEGORIES) {
+    const row = await prisma.serviceCategory.upsert({
+      where: { name: c.name },
+      update: { description: c.description, status: "active" },
+      create: { name: c.name, description: c.description, status: "active" },
+    });
+    categoryByCode.set(c.name, row.id);
+  }
+  console.log(`Service categories ready: ${SERVICE_CATEGORIES.length}`);
+
+  const SERVICES: Array<{
+    code: string;
+    name: string;
+    dept: string | null;
+    category: string;
+    price: string;
+    description: string;
+  }> = [
+    { code: "SVC-CONS-01", name: "General Consultation", dept: "MED", category: "Consultation", price: "500", description: "Standard outpatient consultation" },
+    { code: "SVC-CARD-01", name: "Cardiology Consultation", dept: "CARD", category: "Consultation", price: "1500", description: "Specialist cardiology visit" },
+    { code: "SVC-LAB-01", name: "Complete Blood Count", dept: "PATH", category: "Diagnostics", price: "600", description: "CBC panel" },
+    { code: "SVC-RAD-01", name: "Chest X-Ray", dept: "RAD", category: "Diagnostics", price: "1200", description: "2 views, chest" },
+    { code: "SVC-WARD-01", name: "Private Room (per day)", dept: null, category: "Room & Board", price: "3000", description: "Private ward accommodation" },
+  ];
+  let servicesReady = 0;
+  for (const s of SERVICES) {
+    const existing = await prisma.service.findUnique({
+      where: { branchId_serviceCode: { branchId: branch.id, serviceCode: s.code } },
+    });
+    if (!existing) {
+      await prisma.service.create({
+        data: {
+          branchId: branch.id,
+          departmentId: s.dept ? departmentByCode.get(s.dept) : null,
+          categoryId: categoryByCode.get(s.category) ?? null,
+          serviceCode: s.code,
+          name: s.name,
+          description: s.description,
+          price: s.price,
+          taxPercent: "0",
+          discountAllowed: true,
+          status: "active",
+        },
+      });
+    }
+    servicesReady++;
+  }
+  console.log(`Services ready: ${servicesReady}`);
+
+  // Doctors (linked to the branch; not linked to user accounts by default).
+  const DOCTORS: Array<{ code: string; name: string; dept: string; specialization: string; fee: string }> = [
+    { code: "DOC-001", name: "Dr. Shahed Chowdhury", dept: "CARD", specialization: "Cardiologist", fee: "1500" },
+    { code: "DOC-002", name: "Dr. Nusrat Kabir", dept: "NEURO", specialization: "Neurologist", fee: "1200" },
+    { code: "DOC-003", name: "Dr. Rafiq Uddin", dept: "ORTHO", specialization: "Orthopedic", fee: "1000" },
+    { code: "DOC-004", name: "Dr. Farhana Akter", dept: "PED", specialization: "Pediatrician", fee: "800" },
+  ];
+  let doctorsReady = 0;
+  for (const doc of DOCTORS) {
+    const existing = await prisma.doctor.findUnique({
+      where: { branchId_doctorCode: { branchId: branch.id, doctorCode: doc.code } },
+    });
+    if (!existing) {
+      await prisma.doctor.create({
+        data: {
+          branchId: branch.id,
+          departmentId: departmentByCode.get(doc.dept) ?? null,
+          doctorCode: doc.code,
+          name: doc.name,
+          specialization: doc.specialization,
+          consultationFee: doc.fee,
+          followupFee: String(Number(doc.fee) * 0.6),
+          emergencyFee: String(Number(doc.fee) * 1.5),
+          status: "active",
+        },
+      });
+    }
+    doctorsReady++;
+  }
+  console.log(`Doctors ready: ${doctorsReady}`);
+
+  // 8. Default patient settings (branch-scoped, single row per branch)
+  const existingPatientSetting = await prisma.patientSetting.findFirst({
+    where: { branchId: branch.id },
+  });
+  if (!existingPatientSetting) {
+    await prisma.patientSetting.create({
+      data: {
+        branchId: branch.id,
+        patientIdPrefix: "PT-",
+        autoGenerateId: true,
+        defaultPatientType: "NEW",
+        requireGuardian: "MINORS_ONLY",
+        duplicateDetection: true,
+        phoneRequired: true,
+        emailRequired: false,
+        status: "active",
+      },
+    });
+  }
+  console.log("Patient settings ready.");
+
   console.log("Seed complete.");
 }
 

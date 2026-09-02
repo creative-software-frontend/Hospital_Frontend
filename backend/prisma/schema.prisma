@@ -209,6 +209,7 @@ model Branch {
   opdSettings            OpdSetting[]
   ipdSettings            IpdSetting[]
   emergencySettings      EmergencySetting[]
+  patientSettings        PatientSetting[]
   prescriptionTemplates  PrescriptionTemplate[]
   prescriptionSettings   PrescriptionSetting[]
   pharmacySettings       PharmacySetting[]
@@ -1445,6 +1446,24 @@ model IpdSetting {
   nursingCharge Decimal? @db.Decimal(12, 2)
   serviceCharge Decimal? @db.Decimal(12, 2)
   status        String   @default("active")
+
+  branch Branch? @relation(fields: [branchId], references: [id])
+
+  @@index([branchId])
+}
+
+model PatientSetting {
+  id                  Int     @id @default(autoincrement())
+  branchId            Int
+  patientIdPrefix     String  @default("PT-")
+  autoGenerateId      Boolean @default(true)
+  defaultPatientType  String  @default("NEW")
+  requireGuardian     String  @default("MINORS_ONLY")
+  duplicateDetection  Boolean @default(true)
+  phoneRequired       Boolean @default(true)
+  emailRequired       Boolean @default(false)
+  status              String  @default("active")
+  updatedAt           DateTime @updatedAt
 
   branch Branch? @relation(fields: [branchId], references: [id])
 

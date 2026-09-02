@@ -3,6 +3,13 @@
 
 import type { SettingsPageData, SettingsBlock } from "@/app/data/settingsData";
 import { UserRoleManagementView } from "@/app/dashboard/settings/users/UserRoleManagementView";
+import { GeneralSettingsView } from "@/app/dashboard/settings/general/GeneralSettingsView";
+import { BranchSettingsView } from "@/app/dashboard/settings/branches/BranchSettingsView";
+import { SecuritySettingsView } from "@/app/dashboard/settings/security/SecuritySettingsView";
+import { DepartmentsView } from "@/app/dashboard/settings/departments/DepartmentsView";
+import { DoctorsView } from "@/app/dashboard/settings/doctors/DoctorsView";
+import { ServicesView } from "@/app/dashboard/settings/services/ServicesView";
+import { PatientConfigurationView } from "@/app/dashboard/settings/patient/PatientConfigurationView";
 
 export const SettingsPageView = ({
   page,
@@ -13,6 +20,34 @@ export const SettingsPageView = ({
 }) => {
   if (pageKey === "user-role-management") {
     return <UserRoleManagementView />;
+  }
+
+  if (pageKey === "general-settings") {
+    return <GeneralSettingsView />;
+  }
+
+  if (pageKey === "branch-settings") {
+    return <BranchSettingsView />;
+  }
+
+  if (pageKey === "security") {
+    return <SecuritySettingsView />;
+  }
+
+  if (pageKey === "hc-departments") {
+    return <DepartmentsView />;
+  }
+
+  if (pageKey === "hc-doctors") {
+    return <DoctorsView />;
+  }
+
+  if (pageKey === "hc-services") {
+    return <ServicesView />;
+  }
+
+  if (pageKey === "hc-patients") {
+    return <PatientConfigurationView />;
   }
 
   return (
