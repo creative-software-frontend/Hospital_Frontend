@@ -8,6 +8,20 @@ import { authApi, errorMessage } from "@/app/lib/api";
 import { toFrontendRole } from "@/app/lib/roles";
 import { authStorage } from "@/app/lib/auth";
 
+const DEMO_PASSWORD = "StaffDemo123!";
+
+const demoAccounts = [
+  { role: "Super Admin", email: "admin@hospital.com", password: DEMO_PASSWORD },
+  { role: "Branch Admin", email: "admin2@hospital.com", password: DEMO_PASSWORD },
+  { role: "Doctor", email: "doctor@hospital.com", password: DEMO_PASSWORD },
+  { role: "Receptionist", email: "receptionist@hospital.com", password: DEMO_PASSWORD },
+  { role: "Nurse", email: "nurse@hospital.com", password: DEMO_PASSWORD },
+  { role: "Pharmacist", email: "pharmacist@hospital.com", password: DEMO_PASSWORD },
+  { role: "Pathologist", email: "pathologist@hospital.com", password: DEMO_PASSWORD },
+  { role: "Radiologist", email: "radiologist@hospital.com", password: DEMO_PASSWORD },
+  { role: "Accountant", email: "accountant@hospital.com", password: DEMO_PASSWORD },
+];
+
 const news = [
   {
     title: "National Pharmacist Day",
@@ -97,6 +111,31 @@ export default function AdminLoginPage() {
           <p className="text-white/80 text-sm">
             Sign in with your staff account to continue
           </p>
+
+          <div className="mt-5">
+            <p className="block text-xs font-semibold text-white/70 mb-1.5">
+              Quick demo access — pick a role
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {demoAccounts.map((acc) => (
+                <button
+                  key={acc.email}
+                  type="button"
+                  onClick={() => {
+                    setError("");
+                    setEmail(acc.email);
+                    setPassword(acc.password);
+                  }}
+                  className="text-left px-3 py-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 transition text-sm"
+                >
+                  <span className="block font-semibold">{acc.role}</span>
+                  <span className="block text-white/60 text-xs break-all">
+                    {acc.email}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
 
           <form onSubmit={handleLogin} className="mt-6 space-y-4">
 

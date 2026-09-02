@@ -145,6 +145,83 @@ export interface PatientListQuery {
 }
 
 /* ---------------------------------------------------------------------------
+ * Users / Roles / Permissions (Settings → User & Role Management)
+ * ------------------------------------------------------------------------- */
+
+export type UserStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED" | "LOCKED";
+
+export interface UserRoleRef {
+  id: number;
+  seederKey: string;
+  name: string;
+}
+
+export interface UserRecord {
+  id: number;
+  name: string;
+  email: string;
+  username: string | null;
+  phone: string | null;
+  status: UserStatus;
+  branchId: number;
+  lastLoginAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  branch?: BranchRef;
+  userRoles: { role: UserRoleRef }[];
+}
+
+export interface UserListResult {
+  data: UserRecord[];
+  pagination: PaginationMeta;
+}
+
+export interface UserListQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: UserStatus;
+  branchId?: number;
+  role?: string;
+}
+
+export interface CreateUserInput {
+  name: string;
+  email: string;
+  username: string;
+  password: string;
+  phone?: string | null;
+  branchId?: number;
+  roleIds: number[];
+}
+
+export type UpdateUserInput = Partial<
+  Omit<CreateUserInput, "password" | "branchId">
+>;
+
+export interface RolePermissionSummary {
+  permission: {
+    module: string;
+    action: string;
+    description: string | null;
+  };
+}
+
+export interface RoleRecord {
+  id: number;
+  seederKey: string;
+  name: string;
+  description: string | null;
+  status: string;
+  rolePermissions: RolePermissionSummary[];
+}
+
+export interface PermissionModule {
+  module: string;
+  actions: { action: string; description: string | null }[];
+}
+
+/* ---------------------------------------------------------------------------
  * Errors
  * ------------------------------------------------------------------------- */
 
@@ -317,6 +394,59 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify({ currentPassword, newPassword }),
     }),
+};
+
+/* ---------------------------------------------------------------------------
+ * Users endpoints (Settings → User & Role Management)
+ * ------------------------------------------------------------------------- */
+
+export const userApi = {
+  list: (query: UserListQuery = {}) =>
+    request<UserListResult>(
+      `/users${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+
+  get: (id: number) => request<{ user: UserRecord }>(`/users/${id}`),
+
+  create: (input: CreateUserInput) =>
+    request<{ message: string }>("/users", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  update: (id: number, input: UpdateUserInput) =>
+    request<{ user: UserRecord }>(`/users/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+
+  updateStatus: (id: number, status: UserStatus) =>
+    request<{ user: UserRecord }>(`/users/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }),
+};
+
+/* ---------------------------------------------------------------------------
+ * Roles endpoints
+ * ------------------------------------------------------------------------- */
+
+export const roleApi = {
+  list: (status?: "ACTIVE" | "INACTIVE") =>
+    request<{ roles: RoleRecord[] }>(
+      `/roles${qs(status ? { status } : {})}`,
+    ),
+};
+
+/* ---------------------------------------------------------------------------
+ * Permissions endpoints
+ * ------------------------------------------------------------------------- */
+
+export const permissionApi = {
+  list: (module?: string) =>
+    request<{ modules: PermissionModule[] }>(
+      `/permissions${qs(module ? { module } : {})}`,
+    ),
 };
 
 /* ---------------------------------------------------------------------------

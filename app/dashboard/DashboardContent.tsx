@@ -463,7 +463,7 @@ ${tbody}
             </button>
 
             {selectedSettingsPage ? (
-              <SettingsPageView page={selectedSettingsPage} />
+              <SettingsPageView page={selectedSettingsPage} pageKey={selectedSubFeatureId ?? undefined} />
             ) : selectedFeature.id === 1 ? (
               <PatientModule role={permissions?.role ?? null} />
             ) : (
