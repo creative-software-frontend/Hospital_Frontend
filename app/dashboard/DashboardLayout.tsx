@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { useRoleData } from "@/app/hooks/useRoleData";
+import { useSession } from "@/app/hooks/useSession";
 import { Sidebar } from "@/app/dashboard/Sidebar";
 import { DashboardContent } from "@/app/dashboard/DashboardContent";
 import { useRouter } from "next/navigation";
@@ -10,10 +11,15 @@ import { FiX, FiLogOut } from "react-icons/fi";
 import type { Feature } from "@/app/data/features";
 import type { UserRole } from "@/app/config/roleConfig";
 import { authStorage } from "@/app/lib/auth";
+import { authApi } from "@/app/lib/api";
 
 export default function DashboardLayout({ role: initialRole }: { role?: UserRole }) {
     const router = useRouter();
-    const { role, loading, permissions, accessibleFeatures, roleStats } = useRoleData(initialRole);
+    // The real backend session is the source of truth; the URL-provided role
+    // is only a fallback while the session is resolving.
+    const session = useSession();
+    const resolvedRole = session.role ?? initialRole;
+    const { role, loading, permissions, accessibleFeatures, roleStats } = useRoleData(resolvedRole);
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [activeSection, setActiveSection] = useState<string>("overview");
     const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
@@ -21,15 +27,20 @@ export default function DashboardLayout({ role: initialRole }: { role?: UserRole
     const [expandedFeature, setExpandedFeature] = useState<number | null>(null);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            await authApi.logout();
+        } catch {
+            // best-effort; the cookie may already be gone
+        }
         authStorage.clearSession();
-        router.push("/login");
+        router.push("/admins/login");
     };
 
     const openLogoutModal = () => setShowLogoutModal(true);
     const closeLogoutModal = () => setShowLogoutModal(false);
 
-    if (loading) {
+    if (session.loading || loading) {
         return (
             <div className="flex h-screen items-center justify-center bg-[var(--bg)]">
                 <div className="text-center">
@@ -40,7 +51,7 @@ export default function DashboardLayout({ role: initialRole }: { role?: UserRole
         );
     }
 
-    if (!role || !permissions) {
+    if (!role || !permissions || !session.user) {
         return (
             <div className="flex h-screen items-center justify-center bg-[var(--bg)]">
                 <div className="text-center">

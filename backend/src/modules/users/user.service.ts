@@ -63,10 +63,13 @@ export async function listUsers(actor: AuthUser, query: ListUsersQuery) {
   }
 
   if (search) {
+    // MySQL collation is already case-insensitive, so plain `contains`
+    // is sufficient (the `mode: "insensitive"` option is not supported
+    // on the MySQL connector).
     where.OR = [
-      { username: { contains: search, mode: "insensitive" } },
-      { email: { contains: search, mode: "insensitive" } },
-      { name: { contains: search, mode: "insensitive" } },
+      { username: { contains: search } },
+      { email: { contains: search } },
+      { name: { contains: search } },
     ];
   }
 

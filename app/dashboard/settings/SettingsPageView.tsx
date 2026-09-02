@@ -2,12 +2,19 @@
 "use client";
 
 import type { SettingsPageData, SettingsBlock } from "@/app/data/settingsData";
+import { UserRoleManagementView } from "@/app/dashboard/settings/users/UserRoleManagementView";
 
 export const SettingsPageView = ({
   page,
+  pageKey,
 }: {
   page: SettingsPageData;
+  pageKey?: string;
 }) => {
+  if (pageKey === "user-role-management") {
+    return <UserRoleManagementView />;
+  }
+
   return (
     <div className="space-y-4">
       <div className="card p-5 rounded-2xl border border-[var(--border)] shadow-sm">
