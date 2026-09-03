@@ -140,6 +140,16 @@ const PERMISSIONS: PermissionDef[] = [
   // Patient configuration (Group B)
   { module: "patientSetting", action: "read", description: "View patient registration settings" },
   { module: "patientSetting", action: "update", description: "Update patient registration settings" },
+
+  // Clinical settings (Group B)
+  { module: "opdSetting", action: "read", description: "View OPD settings" },
+  { module: "opdSetting", action: "update", description: "Update OPD settings" },
+  { module: "ipdSetting", action: "read", description: "View IPD settings" },
+  { module: "ipdSetting", action: "update", description: "Update IPD settings" },
+  { module: "emergencySetting", action: "read", description: "View emergency settings" },
+  { module: "emergencySetting", action: "update", description: "Update emergency settings" },
+  { module: "prescriptionSetting", action: "read", description: "View prescription settings" },
+  { module: "prescriptionSetting", action: "update", description: "Update prescription settings" },
 ];
 
 const MATRIX: Record<RoleKey, string[]> = {
@@ -153,6 +163,10 @@ const MATRIX: Record<RoleKey, string[]> = {
     "doctor:read", "doctor:create", "doctor:update",
     "service:read", "service:create", "service:update",
     "patientSetting:read", "patientSetting:update",
+    "opdSetting:read", "opdSetting:update",
+    "ipdSetting:read", "ipdSetting:update",
+    "emergencySetting:read", "emergencySetting:update",
+    "prescriptionSetting:read", "prescriptionSetting:update",
   ],
   DOCTOR: [
     "auth:read", "patient:read", "patient:create", "patient:update",
@@ -478,6 +492,77 @@ async function seed() {
     });
   }
   console.log("Patient settings ready.");
+
+  // 9. Default clinical settings (branch-scoped, single row per branch)
+  const existingOpd = await prisma.opdSetting.findFirst({ where: { branchId: branch.id } });
+  if (!existingOpd) {
+    await prisma.opdSetting.create({
+      data: {
+        branchId: branch.id,
+        registrationFee: "100",
+        consultationFee: "500",
+        followupDays: 14,
+        appointmentDuration: 15,
+        queueEnabled: true,
+        prescriptionEnabled: true,
+        status: "active",
+      },
+    });
+  }
+  console.log("OPD settings ready.");
+
+  const existingIpd = await prisma.ipdSetting.findFirst({ where: { branchId: branch.id } });
+  if (!existingIpd) {
+    await prisma.ipdSetting.create({
+      data: {
+        branchId: branch.id,
+        admissionFee: "200",
+        dischargeFee: "100",
+        bedCharge: "800",
+        nursingCharge: "300",
+        serviceCharge: "0",
+        status: "active",
+      },
+    });
+  }
+  console.log("IPD settings ready.");
+
+  const existingEmergency = await prisma.emergencySetting.findFirst({
+    where: { branchId: branch.id },
+  });
+  if (!existingEmergency) {
+    await prisma.emergencySetting.create({
+      data: {
+        branchId: branch.id,
+        registrationFee: "150",
+        consultationFee: "800",
+        serviceCharge: "0",
+        triageEnabled: true,
+        status: "active",
+      },
+    });
+  }
+  console.log("Emergency settings ready.");
+
+  const existingPrescription = await prisma.prescriptionSetting.findFirst({
+    where: { branchId: branch.id },
+  });
+  if (!existingPrescription) {
+    await prisma.prescriptionSetting.create({
+      data: {
+        branchId: branch.id,
+        showPatientHistory: true,
+        showDiagnosis: true,
+        showMedicine: true,
+        showDosage: true,
+        showInstruction: true,
+        showDoctorSignature: true,
+        showQrCode: false,
+        status: "active",
+      },
+    });
+  }
+  console.log("Prescription settings ready.");
 
   console.log("Seed complete.");
 }

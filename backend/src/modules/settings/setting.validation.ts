@@ -59,3 +59,57 @@ export const updatePatientSettingSchema = z.object({
 });
 
 export type UpdatePatientSettingInput = z.infer<typeof updatePatientSettingSchema>;
+
+/* Clinical settings (Settings → Clinical Settings) ------------------------- */
+
+const optionalMoney = z
+  .union([z.string().trim(), z.number()])
+  .optional()
+  .nullable()
+  .or(z.literal("").transform(() => null));
+
+const optionalInt = (min: number, max: number) =>
+  z.number().int().min(min).max(max).optional();
+
+export const updateOpdSettingSchema = z.object({
+  registrationFee: optionalMoney,
+  consultationFee: optionalMoney,
+  followupDays: optionalInt(0, 365),
+  appointmentDuration: optionalInt(1, 240),
+  queueEnabled: z.boolean().optional(),
+  prescriptionEnabled: z.boolean().optional(),
+  status: z.enum(SETTING_STATUS_VALUES).optional(),
+});
+
+export const updateIpdSettingSchema = z.object({
+  admissionFee: optionalMoney,
+  dischargeFee: optionalMoney,
+  bedCharge: optionalMoney,
+  nursingCharge: optionalMoney,
+  serviceCharge: optionalMoney,
+  status: z.enum(SETTING_STATUS_VALUES).optional(),
+});
+
+export const updateEmergencySettingSchema = z.object({
+  registrationFee: optionalMoney,
+  consultationFee: optionalMoney,
+  serviceCharge: optionalMoney,
+  triageEnabled: z.boolean().optional(),
+  status: z.enum(SETTING_STATUS_VALUES).optional(),
+});
+
+export const updatePrescriptionSettingSchema = z.object({
+  showPatientHistory: z.boolean().optional(),
+  showDiagnosis: z.boolean().optional(),
+  showMedicine: z.boolean().optional(),
+  showDosage: z.boolean().optional(),
+  showInstruction: z.boolean().optional(),
+  showDoctorSignature: z.boolean().optional(),
+  showQrCode: z.boolean().optional(),
+  status: z.enum(SETTING_STATUS_VALUES).optional(),
+});
+
+export type UpdateOpdSettingInput = z.infer<typeof updateOpdSettingSchema>;
+export type UpdateIpdSettingInput = z.infer<typeof updateIpdSettingSchema>;
+export type UpdateEmergencySettingInput = z.infer<typeof updateEmergencySettingSchema>;
+export type UpdatePrescriptionSettingInput = z.infer<typeof updatePrescriptionSettingSchema>;

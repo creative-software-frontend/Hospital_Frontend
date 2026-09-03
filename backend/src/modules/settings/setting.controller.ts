@@ -37,3 +37,43 @@ export const updatePatientSetting = asyncHandler(async (req: Request, res: Respo
   const patientSetting = await settingService.updatePatientSetting(req.user!, req.body);
   success(res, { patientSetting });
 });
+
+export const getOpdSetting = asyncHandler(async (req: Request, res: Response) => {
+  const opdSetting = await settingService.getOpdSetting(req.user!);
+  success(res, { opdSetting });
+});
+
+export const updateOpdSetting = asyncHandler(async (req: Request, res: Response) => {
+  const opdSetting = await settingService.updateOpdSetting(req.user!, req.body);
+  success(res, { opdSetting });
+});
+
+export const getIpdSetting = asyncHandler(async (req: Request, res: Response) => {
+  const ipdSetting = await settingService.getIpdSetting(req.user!);
+  success(res, { ipdSetting });
+});
+
+export const updateIpdSetting = asyncHandler(async (req: Request, res: Response) => {
+  const ipdSetting = await settingService.updateIpdSetting(req.user!, req.body);
+  success(res, { ipdSetting });
+});
+
+export const getEmergencySetting = asyncHandler(async (req: Request, res: Response) => {
+  const emergencySetting = await settingService.getEmergencySetting(req.user!);
+  success(res, { emergencySetting });
+});
+
+export const updateEmergencySetting = asyncHandler(async (req: Request, res: Response) => {
+  const emergencySetting = await settingService.updateEmergencySetting(req.user!, req.body);
+  success(res, { emergencySetting });
+});
+
+export const getPrescriptionSetting = asyncHandler(async (req: Request, res: Response) => {
+  const prescriptionSetting = await settingService.getPrescriptionSetting(req.user!);
+  success(res, { prescriptionSetting });
+});
+
+export const updatePrescriptionSetting = asyncHandler(async (req: Request, res: Response) => {
+  const prescriptionSetting = await settingService.updatePrescriptionSetting(req.user!, req.body);
+  success(res, { prescriptionSetting });
+});

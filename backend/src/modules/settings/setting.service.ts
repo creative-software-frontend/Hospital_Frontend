@@ -4,7 +4,11 @@ import { writeAuditLog } from "../../utils/audit";
 import type { AuthUser } from "../../types/auth";
 import type {
   ListSystemSettingsQuery,
+  UpdateEmergencySettingInput,
+  UpdateIpdSettingInput,
+  UpdateOpdSettingInput,
   UpdatePatientSettingInput,
+  UpdatePrescriptionSettingInput,
   UpdateSecuritySettingInput,
   UpsertSystemSettingInput,
 } from "./setting.validation";
@@ -225,5 +229,178 @@ export async function updatePatientSetting(actor: AuthUser, input: UpdatePatient
     branchId: actor.branchId,
   });
 
+  return updated;
+}
+
+/* ---------------------------------------------------------------------------
+ * Clinical settings (OPD / IPD / Emergency / Prescription)
+ * ------------------------------------------------------------------------- */
+
+async function findOrCreateBranchSetting<T extends { id: number; branchId: number }>(args: {
+  findFirst: () => Promise<T | null>;
+  create: () => Promise<T>;
+}): Promise<T> {
+  let setting = await args.findFirst();
+  if (!setting) {
+    setting = await args.create();
+  }
+  return setting;
+}
+
+export async function getOpdSetting(actor: AuthUser) {
+  return findOrCreateBranchSetting({
+    findFirst: () => prisma.opdSetting.findFirst({ where: { branchId: actor.branchId }, orderBy: { id: "asc" } }),
+    create: () =>
+      prisma.opdSetting.create({
+        data: {
+          branchId: actor.branchId,
+          registrationFee: null,
+          consultationFee: null,
+          followupDays: 14,
+          appointmentDuration: 15,
+          queueEnabled: true,
+          prescriptionEnabled: true,
+          status: "active",
+        },
+      }),
+  });
+}
+
+export async function updateOpdSetting(actor: AuthUser, input: UpdateOpdSettingInput) {
+  const current = await getOpdSetting(actor);
+  const updated = await prisma.opdSetting.update({ where: { id: current.id }, data: { ...input } });
+  await writeAuditLog({
+    module: "opdSetting",
+    action: "update",
+    tableName: "OpdSetting",
+    recordId: String(current.id),
+    oldValues: {
+      registrationFee: current.registrationFee,
+      consultationFee: current.consultationFee,
+      queueEnabled: current.queueEnabled,
+    },
+    newValues: { ...input },
+    user: actor,
+    branchId: actor.branchId,
+  });
+  return updated;
+}
+
+export async function getIpdSetting(actor: AuthUser) {
+  return findOrCreateBranchSetting({
+    findFirst: () => prisma.ipdSetting.findFirst({ where: { branchId: actor.branchId }, orderBy: { id: "asc" } }),
+    create: () =>
+      prisma.ipdSetting.create({
+        data: {
+          branchId: actor.branchId,
+          admissionFee: null,
+          dischargeFee: null,
+          bedCharge: null,
+          nursingCharge: null,
+          serviceCharge: null,
+          status: "active",
+        },
+      }),
+  });
+}
+
+export async function updateIpdSetting(actor: AuthUser, input: UpdateIpdSettingInput) {
+  const current = await getIpdSetting(actor);
+  const updated = await prisma.ipdSetting.update({ where: { id: current.id }, data: { ...input } });
+  await writeAuditLog({
+    module: "ipdSetting",
+    action: "update",
+    tableName: "IpdSetting",
+    recordId: String(current.id),
+    oldValues: { admissionFee: current.admissionFee, bedCharge: current.bedCharge },
+    newValues: { ...input },
+    user: actor,
+    branchId: actor.branchId,
+  });
+  return updated;
+}
+
+export async function getEmergencySetting(actor: AuthUser) {
+  return findOrCreateBranchSetting({
+    findFirst: () =>
+      prisma.emergencySetting.findFirst({ where: { branchId: actor.branchId }, orderBy: { id: "asc" } }),
+    create: () =>
+      prisma.emergencySetting.create({
+        data: {
+          branchId: actor.branchId,
+          registrationFee: null,
+          consultationFee: null,
+          serviceCharge: null,
+          triageEnabled: true,
+          status: "active",
+        },
+      }),
+  });
+}
+
+export async function updateEmergencySetting(actor: AuthUser, input: UpdateEmergencySettingInput) {
+  const current = await getEmergencySetting(actor);
+  const updated = await prisma.emergencySetting.update({ where: { id: current.id }, data: { ...input } });
+  await writeAuditLog({
+    module: "emergencySetting",
+    action: "update",
+    tableName: "EmergencySetting",
+    recordId: String(current.id),
+    oldValues: {
+      registrationFee: current.registrationFee,
+      consultationFee: current.consultationFee,
+      triageEnabled: current.triageEnabled,
+    },
+    newValues: { ...input },
+    user: actor,
+    branchId: actor.branchId,
+  });
+  return updated;
+}
+
+export async function getPrescriptionSetting(actor: AuthUser) {
+  return findOrCreateBranchSetting({
+    findFirst: () =>
+      prisma.prescriptionSetting.findFirst({ where: { branchId: actor.branchId }, orderBy: { id: "asc" } }),
+    create: () =>
+      prisma.prescriptionSetting.create({
+        data: {
+          branchId: actor.branchId,
+          showPatientHistory: true,
+          showDiagnosis: true,
+          showMedicine: true,
+          showDosage: true,
+          showInstruction: true,
+          showDoctorSignature: true,
+          showQrCode: false,
+          status: "active",
+        },
+      }),
+  });
+}
+
+export async function updatePrescriptionSetting(
+  actor: AuthUser,
+  input: UpdatePrescriptionSettingInput,
+) {
+  const current = await getPrescriptionSetting(actor);
+  const updated = await prisma.prescriptionSetting.update({
+    where: { id: current.id },
+    data: { ...input },
+  });
+  await writeAuditLog({
+    module: "prescriptionSetting",
+    action: "update",
+    tableName: "PrescriptionSetting",
+    recordId: String(current.id),
+    oldValues: {
+      showDiagnosis: current.showDiagnosis,
+      showMedicine: current.showMedicine,
+      showDoctorSignature: current.showDoctorSignature,
+    },
+    newValues: { ...input },
+    user: actor,
+    branchId: actor.branchId,
+  });
   return updated;
 }

@@ -5,7 +5,11 @@ import { requirePermission } from "../../middleware/permission.middleware";
 import * as settingController from "./setting.controller";
 import {
   listSystemSettingsQuerySchema,
+  updateEmergencySettingSchema,
+  updateIpdSettingSchema,
+  updateOpdSettingSchema,
   updatePatientSettingSchema,
+  updatePrescriptionSettingSchema,
   updateSecuritySettingSchema,
   upsertSystemSettingSchema,
 } from "./setting.validation";
@@ -61,6 +65,62 @@ router.patch(
   validate({ body: updatePatientSettingSchema }),
   requirePermission("patientSetting", "update"),
   settingController.updatePatientSetting,
+);
+
+// OPD settings
+router.get(
+  "/opd",
+  requirePermission("opdSetting", "read"),
+  settingController.getOpdSetting,
+);
+
+router.patch(
+  "/opd",
+  validate({ body: updateOpdSettingSchema }),
+  requirePermission("opdSetting", "update"),
+  settingController.updateOpdSetting,
+);
+
+// IPD settings
+router.get(
+  "/ipd",
+  requirePermission("ipdSetting", "read"),
+  settingController.getIpdSetting,
+);
+
+router.patch(
+  "/ipd",
+  validate({ body: updateIpdSettingSchema }),
+  requirePermission("ipdSetting", "update"),
+  settingController.updateIpdSetting,
+);
+
+// Emergency settings
+router.get(
+  "/emergency",
+  requirePermission("emergencySetting", "read"),
+  settingController.getEmergencySetting,
+);
+
+router.patch(
+  "/emergency",
+  validate({ body: updateEmergencySettingSchema }),
+  requirePermission("emergencySetting", "update"),
+  settingController.updateEmergencySetting,
+);
+
+// Prescription settings
+router.get(
+  "/prescription",
+  requirePermission("prescriptionSetting", "read"),
+  settingController.getPrescriptionSetting,
+);
+
+router.patch(
+  "/prescription",
+  validate({ body: updatePrescriptionSettingSchema }),
+  requirePermission("prescriptionSetting", "update"),
+  settingController.updatePrescriptionSetting,
 );
 
 export default router;
