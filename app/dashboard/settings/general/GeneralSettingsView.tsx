@@ -26,6 +26,35 @@ const SETTING_LABELS: Record<string, string> = {
   maintenance_mode: "Maintenance Mode",
 };
 
+const SELECT_OPTIONS: Record<string, { value: string; label: string }[]> = {
+  default_time_format: [
+    { value: "12-hour", label: "12 Hour" },
+    { value: "24-hour", label: "24 Hour" },
+  ],
+  default_language: [
+    { value: "en", label: "English" },
+    { value: "bn", label: "Bangla" },
+    { value: "hi", label: "Hindi" },
+    { value: "ar", label: "Arabic" },
+  ],
+  currency: [
+    { value: "BDT", label: "BDT (৳)" },
+    { value: "USD", label: "USD ($)" },
+    { value: "EUR", label: "EUR (€)" },
+    { value: "GBP", label: "GBP (£)" },
+    { value: "INR", label: "INR (₹)" },
+  ],
+  timezone: [
+    { value: "Asia/Dhaka", label: "Asia/Dhaka (GMT+6)" },
+    { value: "Asia/Kolkata", label: "Asia/Kolkata (GMT+5:30)" },
+    { value: "Asia/Kuala_Lumpur", label: "Asia/Kuala_Lumpur (GMT+8)" },
+    { value: "Asia/Singapore", label: "Asia/Singapore (GMT+8)" },
+    { value: "UTC", label: "UTC (GMT+0)" },
+  ],
+};
+
+const dropdownKeys = new Set(Object.keys(SELECT_OPTIONS));
+
 interface FormState {
   [key: string]: string;
 }
@@ -193,6 +222,23 @@ export function GeneralSettingsView() {
                         {form[s.settingKey] === "on" ? "On" : "Off"}
                       </span>
                     </div>
+                  ) : dropdownKeys.has(s.settingKey) ? (
+                    <select
+                      value={form[s.settingKey] ?? ""}
+                      onChange={(e) => updateValue(s.settingKey, e.target.value)}
+                      className={INPUT_CLS}
+                    >
+                      {SELECT_OPTIONS[s.settingKey].some((o) => o.value === (form[s.settingKey] ?? "")) ? null : (
+                        <option value={form[s.settingKey] ?? ""}>
+                          {form[s.settingKey] ?? "Select…"}
+                        </option>
+                      )}
+                      {SELECT_OPTIONS[s.settingKey].map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
                   ) : (
                     <input
                       value={form[s.settingKey] ?? ""}
