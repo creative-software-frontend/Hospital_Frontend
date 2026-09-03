@@ -10,6 +10,10 @@ import { DepartmentsView } from "@/app/dashboard/settings/departments/Department
 import { DoctorsView } from "@/app/dashboard/settings/doctors/DoctorsView";
 import { ServicesView } from "@/app/dashboard/settings/services/ServicesView";
 import { PatientConfigurationView } from "@/app/dashboard/settings/patient/PatientConfigurationView";
+import { OpdSettingsView } from "@/app/dashboard/settings/clinical/opd/OpdSettingsView";
+import { IpdSettingsView } from "@/app/dashboard/settings/clinical/ipd/IpdSettingsView";
+import { EmergencySettingsView } from "@/app/dashboard/settings/clinical/emergency/EmergencySettingsView";
+import { PrescriptionSettingsView } from "@/app/dashboard/settings/clinical/prescription/PrescriptionSettingsView";
 
 export const SettingsPageView = ({
   page,
@@ -48,6 +52,22 @@ export const SettingsPageView = ({
 
   if (pageKey === "hc-patients") {
     return <PatientConfigurationView />;
+  }
+
+  if (pageKey === "clinical-opd") {
+    return <OpdSettingsView />;
+  }
+
+  if (pageKey === "clinical-ipd") {
+    return <IpdSettingsView />;
+  }
+
+  if (pageKey === "clinical-emergency") {
+    return <EmergencySettingsView />;
+  }
+
+  if (pageKey === "clinical-prescription") {
+    return <PrescriptionSettingsView />;
   }
 
   return (

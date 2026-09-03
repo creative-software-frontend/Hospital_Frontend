@@ -644,6 +644,92 @@ export type UpdatePatientSettingInput = Partial<
   Omit<PatientSetting, "id" | "branchId" | "status" | "updatedAt">
 >;
 
+/* -- Clinical settings (Settings → Clinical Settings) ---------------------- */
+
+export interface OpdSetting {
+  id: number;
+  branchId: number;
+  registrationFee: string | null;
+  consultationFee: string | null;
+  followupDays: number;
+  appointmentDuration: number;
+  queueEnabled: boolean;
+  prescriptionEnabled: boolean;
+  status: "active" | "inactive";
+}
+
+export type UpdateOpdSettingInput = {
+  registrationFee?: string | null;
+  consultationFee?: string | null;
+  followupDays?: number;
+  appointmentDuration?: number;
+  queueEnabled?: boolean;
+  prescriptionEnabled?: boolean;
+  status?: "active" | "inactive";
+};
+
+export interface IpdSetting {
+  id: number;
+  branchId: number;
+  admissionFee: string | null;
+  dischargeFee: string | null;
+  bedCharge: string | null;
+  nursingCharge: string | null;
+  serviceCharge: string | null;
+  status: "active" | "inactive";
+}
+
+export type UpdateIpdSettingInput = {
+  admissionFee?: string | null;
+  dischargeFee?: string | null;
+  bedCharge?: string | null;
+  nursingCharge?: string | null;
+  serviceCharge?: string | null;
+  status?: "active" | "inactive";
+};
+
+export interface EmergencySetting {
+  id: number;
+  branchId: number;
+  registrationFee: string | null;
+  consultationFee: string | null;
+  serviceCharge: string | null;
+  triageEnabled: boolean;
+  status: "active" | "inactive";
+}
+
+export type UpdateEmergencySettingInput = {
+  registrationFee?: string | null;
+  consultationFee?: string | null;
+  serviceCharge?: string | null;
+  triageEnabled?: boolean;
+  status?: "active" | "inactive";
+};
+
+export interface PrescriptionSetting {
+  id: number;
+  branchId: number;
+  showPatientHistory: boolean;
+  showDiagnosis: boolean;
+  showMedicine: boolean;
+  showDosage: boolean;
+  showInstruction: boolean;
+  showDoctorSignature: boolean;
+  showQrCode: boolean;
+  status: "active" | "inactive";
+}
+
+export type UpdatePrescriptionSettingInput = {
+  showPatientHistory?: boolean;
+  showDiagnosis?: boolean;
+  showMedicine?: boolean;
+  showDosage?: boolean;
+  showInstruction?: boolean;
+  showDoctorSignature?: boolean;
+  showQrCode?: boolean;
+  status?: "active" | "inactive";
+};
+
 export const settingsApi = {
   system: {
     list: (branchId?: number) =>
@@ -677,6 +763,38 @@ export const settingsApi = {
     get: () => request<{ patientSetting: PatientSetting }>("/settings/patient"),
     update: (input: UpdatePatientSettingInput) =>
       request<{ patientSetting: PatientSetting }>("/settings/patient", {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+  },
+  opd: {
+    get: () => request<{ opdSetting: OpdSetting }>("/settings/opd"),
+    update: (input: UpdateOpdSettingInput) =>
+      request<{ opdSetting: OpdSetting }>("/settings/opd", {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+  },
+  ipd: {
+    get: () => request<{ ipdSetting: IpdSetting }>("/settings/ipd"),
+    update: (input: UpdateIpdSettingInput) =>
+      request<{ ipdSetting: IpdSetting }>("/settings/ipd", {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+  },
+  emergency: {
+    get: () => request<{ emergencySetting: EmergencySetting }>("/settings/emergency"),
+    update: (input: UpdateEmergencySettingInput) =>
+      request<{ emergencySetting: EmergencySetting }>("/settings/emergency", {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+  },
+  prescription: {
+    get: () => request<{ prescriptionSetting: PrescriptionSetting }>("/settings/prescription"),
+    update: (input: UpdatePrescriptionSettingInput) =>
+      request<{ prescriptionSetting: PrescriptionSetting }>("/settings/prescription", {
         method: "PATCH",
         body: JSON.stringify(input),
       }),
