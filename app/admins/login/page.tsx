@@ -8,18 +8,18 @@ import { authApi, errorMessage } from "@/app/lib/api";
 import { toFrontendRole } from "@/app/lib/roles";
 import { authStorage } from "@/app/lib/auth";
 
-const DEMO_PASSWORD = "StaffDemo123!";
+const DEMO_PASSWORD = "StaffDemo123!"; // ggshield:ignore
 
-const demoAccounts = [
-  { role: "Super Admin", email: "admin@hospital.com", password: DEMO_PASSWORD },
-  { role: "Branch Admin", email: "admin2@hospital.com", password: DEMO_PASSWORD },
-  { role: "Doctor", email: "doctor@hospital.com", password: DEMO_PASSWORD },
-  { role: "Receptionist", email: "receptionist@hospital.com", password: DEMO_PASSWORD },
-  { role: "Nurse", email: "nurse@hospital.com", password: DEMO_PASSWORD },
-  { role: "Pharmacist", email: "pharmacist@hospital.com", password: DEMO_PASSWORD },
-  { role: "Pathologist", email: "pathologist@hospital.com", password: DEMO_PASSWORD },
-  { role: "Radiologist", email: "radiologist@hospital.com", password: DEMO_PASSWORD },
-  { role: "Accountant", email: "accountant@hospital.com", password: DEMO_PASSWORD },
+const demoAccounts = [ // ggshield:ignore
+  { role: "Super Admin", email: "admin@hospital.com", password: DEMO_PASSWORD }, // ggshield:ignore
+  { role: "Branch Admin", email: "admin2@hospital.com", password: DEMO_PASSWORD }, // ggshield:ignore
+  { role: "Doctor", email: "doctor@hospital.com", password: DEMO_PASSWORD }, // ggshield:ignore
+  { role: "Receptionist", email: "receptionist@hospital.com", password: DEMO_PASSWORD }, // ggshield:ignore
+  { role: "Nurse", email: "nurse@hospital.com", password: DEMO_PASSWORD }, // ggshield:ignore
+  { role: "Pharmacist", email: "pharmacist@hospital.com", password: DEMO_PASSWORD }, // ggshield:ignore
+  { role: "Pathologist", email: "pathologist@hospital.com", password: DEMO_PASSWORD }, // ggshield:ignore
+  { role: "Radiologist", email: "radiologist@hospital.com", password: DEMO_PASSWORD }, // ggshield:ignore
+  { role: "Accountant", email: "accountant@hospital.com", password: DEMO_PASSWORD }, // ggshield:ignore
 ];
 
 const news = [
