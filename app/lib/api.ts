@@ -555,6 +555,21 @@ export type UpdateBranchInput = Partial<
   Omit<BranchRecord, "id" | "code" | "createdAt" | "updatedAt" | "_count">
 >;
 
+export type CreateBranchInput = {
+  name: string;
+  code: string;
+  registrationNo?: string | null;
+  address?: string | null;
+  city?: string | null;
+  district?: string | null;
+  country?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  timezone?: string | null;
+  currency?: string | null;
+  status?: BranchStatus;
+};
+
 export const branchApi = {
   list: (query: BranchListQuery = {}) =>
     rawRequest<BranchListResult>(
@@ -562,6 +577,12 @@ export const branchApi = {
     ),
 
   get: (id: number) => request<{ branch: BranchRecord }>(`/branches/${id}`),
+
+  create: (input: CreateBranchInput) =>
+    request<{ branch: BranchRecord }>(`/branches`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 
   update: (id: number, input: UpdateBranchInput) =>
     request<{ branch: BranchRecord }>(`/branches/${id}`, {

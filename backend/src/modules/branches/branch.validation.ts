@@ -55,5 +55,26 @@ export const updateBranchSchema = z.object({
   status: z.enum(BRANCH_STATUS_VALUES).optional(),
 });
 
+export const createBranchSchema = z.object({
+  name: z.string().trim().min(1, "name is required").max(255),
+  code: z
+    .string()
+    .trim()
+    .min(1, "code is required")
+    .max(32)
+    .regex(/^[A-Za-z0-9_-]+$/, "Code may only contain letters, numbers, dashes and underscores"),
+  registrationNo: optionalString(64),
+  address: optionalString(500),
+  city: optionalString(255),
+  district: optionalString(255),
+  country: optionalString(255),
+  phone: phoneSchema,
+  email: emailSchema,
+  timezone: optionalString(64),
+  currency: optionalString(8),
+  status: z.enum(BRANCH_STATUS_VALUES).optional(),
+});
+
 export type ListBranchesQuery = z.infer<typeof listBranchesQuerySchema>;
 export type UpdateBranchInput = z.infer<typeof updateBranchSchema>;
+export type CreateBranchInput = z.infer<typeof createBranchSchema>;

@@ -5,6 +5,7 @@ import { requirePermission } from "../../middleware/permission.middleware";
 import * as branchController from "./branch.controller";
 import {
   branchIdParamSchema,
+  createBranchSchema,
   listBranchesQuerySchema,
   updateBranchSchema,
 } from "./branch.validation";
@@ -18,6 +19,13 @@ router.get(
   validate({ query: listBranchesQuerySchema }),
   requirePermission("branch", "read"),
   branchController.listBranches,
+);
+
+router.post(
+  "/",
+  validate({ body: createBranchSchema }),
+  requirePermission("branch", "create"),
+  branchController.createBranch,
 );
 
 router.get(

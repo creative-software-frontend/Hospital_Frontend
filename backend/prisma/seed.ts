@@ -124,6 +124,7 @@ const PERMISSIONS: PermissionDef[] = [
   { module: "securitySetting", action: "update", description: "Update security settings" },
   { module: "branch", action: "read", description: "View branches" },
   { module: "branch", action: "update", description: "Update branch information" },
+  { module: "branch", action: "create", description: "Create branches" },
 
   // Hospital configuration (Group B)
   { module: "department", action: "read", description: "View departments" },

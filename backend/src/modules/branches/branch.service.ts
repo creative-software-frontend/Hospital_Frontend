@@ -1,10 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
-import { AuthorizationError, NotFoundError } from "../../errors/ApiError";
+import { AuthorizationError, ConflictError, NotFoundError } from "../../errors/ApiError";
 import { writeAuditLog } from "../../utils/audit";
 import { parsePagination, buildPaginationMeta, type SortableField } from "../../utils/pagination";
 import type { AuthUser } from "../../types/auth";
-import type { ListBranchesQuery, UpdateBranchInput } from "./branch.validation";
+import type { CreateBranchInput, ListBranchesQuery, UpdateBranchInput } from "./branch.validation";
 
 function isSuperAdmin(user: AuthUser): boolean {
   return user.roles.some((r) => r.seederKey === "SUPER_ADMIN");
@@ -100,6 +100,47 @@ export async function getBranch(actor: AuthUser, id: number) {
   await getAccessibleBranch(actor, id);
   const branch = await prisma.branch.findUnique({ where: { id }, select: BRANCH_DETAIL_SELECT });
   return branch!;
+}
+
+export async function createBranch(actor: AuthUser, input: CreateBranchInput) {
+  if (!isSuperAdmin(actor)) {
+    throw new AuthorizationError("Only a super admin can create a branch");
+  }
+
+  const code = input.code.toUpperCase();
+  const existing = await prisma.branch.findUnique({ where: { code }, select: { id: true } });
+  if (existing) {
+    throw new ConflictError(`Branch code "${code}" already exists`);
+  }
+
+  const branch = await prisma.branch.create({
+    data: {
+      name: input.name,
+      code,
+      registrationNo: input.registrationNo,
+      address: input.address,
+      city: input.city,
+      district: input.district,
+      country: input.country,
+      phone: input.phone,
+      email: input.email,
+      timezone: input.timezone,
+      currency: input.currency,
+      status: input.status ?? "active",
+    },
+    select: BRANCH_DETAIL_SELECT,
+  });
+
+  await writeAuditLog({
+    module: "branch",
+    action: "create",
+    tableName: "Branch",
+    recordId: String(branch.id),
+    newValues: { name: branch.name, code: branch.code },
+    user: actor,
+  });
+
+  return branch;
 }
 
 export async function updateBranch(actor: AuthUser, id: number, input: UpdateBranchInput) {

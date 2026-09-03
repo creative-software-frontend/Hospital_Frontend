@@ -13,6 +13,11 @@ export const getBranch = asyncHandler(async (req: Request, res: Response) => {
   success(res, { branch });
 });
 
+export const createBranch = asyncHandler(async (req: Request, res: Response) => {
+  const branch = await branchService.createBranch(req.user!, req.body);
+  success(res, { branch }, 201);
+});
+
 export const updateBranch = asyncHandler(async (req: Request, res: Response) => {
   const branch = await branchService.updateBranch(req.user!, Number(req.params.id), req.body);
   success(res, { branch });
