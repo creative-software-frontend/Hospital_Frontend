@@ -113,3 +113,17 @@ export type UpdateOpdSettingInput = z.infer<typeof updateOpdSettingSchema>;
 export type UpdateIpdSettingInput = z.infer<typeof updateIpdSettingSchema>;
 export type UpdateEmergencySettingInput = z.infer<typeof updateEmergencySettingSchema>;
 export type UpdatePrescriptionSettingInput = z.infer<typeof updatePrescriptionSettingSchema>;
+
+/* Pharmacy settings (Settings → Pharmacy Settings) ------------------------- */
+
+export const updatePharmacySettingSchema = z.object({
+  taxPercent: optionalMoney,
+  defaultDiscount: optionalMoney,
+  expiryAlertDays: optionalInt(1, 365),
+  lowStockAlert: z.boolean().optional(),
+  barcodeEnabled: z.boolean().optional(),
+  batchEnabled: z.boolean().optional(),
+  status: z.enum(SETTING_STATUS_VALUES).optional(),
+});
+
+export type UpdatePharmacySettingInput = z.infer<typeof updatePharmacySettingSchema>;

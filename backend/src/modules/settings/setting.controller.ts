@@ -77,3 +77,13 @@ export const updatePrescriptionSetting = asyncHandler(async (req: Request, res: 
   const prescriptionSetting = await settingService.updatePrescriptionSetting(req.user!, req.body);
   success(res, { prescriptionSetting });
 });
+
+export const getPharmacySetting = asyncHandler(async (req: Request, res: Response) => {
+  const pharmacySetting = await settingService.getPharmacySetting(req.user!);
+  success(res, { pharmacySetting });
+});
+
+export const updatePharmacySetting = asyncHandler(async (req: Request, res: Response) => {
+  const pharmacySetting = await settingService.updatePharmacySetting(req.user!, req.body);
+  success(res, { pharmacySetting });
+});

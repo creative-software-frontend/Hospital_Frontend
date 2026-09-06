@@ -8,6 +8,7 @@ import type {
   UpdateIpdSettingInput,
   UpdateOpdSettingInput,
   UpdatePatientSettingInput,
+  UpdatePharmacySettingInput,
   UpdatePrescriptionSettingInput,
   UpdateSecuritySettingInput,
   UpsertSystemSettingInput,
@@ -397,6 +398,50 @@ export async function updatePrescriptionSetting(
       showDiagnosis: current.showDiagnosis,
       showMedicine: current.showMedicine,
       showDoctorSignature: current.showDoctorSignature,
+    },
+    newValues: { ...input },
+    user: actor,
+    branchId: actor.branchId,
+  });
+  return updated;
+}
+
+/* ---------------------------------------------------------------------------
+ * Pharmacy settings
+ * ------------------------------------------------------------------------- */
+
+export async function getPharmacySetting(actor: AuthUser) {
+  return findOrCreateBranchSetting({
+    findFirst: () =>
+      prisma.pharmacySetting.findFirst({ where: { branchId: actor.branchId }, orderBy: { id: "asc" } }),
+    create: () =>
+      prisma.pharmacySetting.create({
+        data: {
+          branchId: actor.branchId,
+          taxPercent: null,
+          defaultDiscount: null,
+          expiryAlertDays: 30,
+          lowStockAlert: true,
+          barcodeEnabled: true,
+          batchEnabled: true,
+          status: "active",
+        },
+      }),
+  });
+}
+
+export async function updatePharmacySetting(actor: AuthUser, input: UpdatePharmacySettingInput) {
+  const current = await getPharmacySetting(actor);
+  const updated = await prisma.pharmacySetting.update({ where: { id: current.id }, data: { ...input } });
+  await writeAuditLog({
+    module: "pharmacySetting",
+    action: "update",
+    tableName: "PharmacySetting",
+    recordId: String(current.id),
+    oldValues: {
+      taxPercent: current.taxPercent,
+      defaultDiscount: current.defaultDiscount,
+      expiryAlertDays: current.expiryAlertDays,
     },
     newValues: { ...input },
     user: actor,

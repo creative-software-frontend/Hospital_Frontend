@@ -150,6 +150,10 @@ const PERMISSIONS: PermissionDef[] = [
   { module: "emergencySetting", action: "update", description: "Update emergency settings" },
   { module: "prescriptionSetting", action: "read", description: "View prescription settings" },
   { module: "prescriptionSetting", action: "update", description: "Update prescription settings" },
+
+  // Pharmacy settings (Group B)
+  { module: "pharmacySetting", action: "read", description: "View pharmacy settings" },
+  { module: "pharmacySetting", action: "update", description: "Update pharmacy settings" },
 ];
 
 const MATRIX: Record<RoleKey, string[]> = {
@@ -167,6 +171,7 @@ const MATRIX: Record<RoleKey, string[]> = {
     "ipdSetting:read", "ipdSetting:update",
     "emergencySetting:read", "emergencySetting:update",
     "prescriptionSetting:read", "prescriptionSetting:update",
+    "pharmacySetting:read", "pharmacySetting:update",
   ],
   DOCTOR: [
     "auth:read", "patient:read", "patient:create", "patient:update",
@@ -563,6 +568,25 @@ async function seed() {
     });
   }
   console.log("Prescription settings ready.");
+
+  const existingPharmacy = await prisma.pharmacySetting.findFirst({
+    where: { branchId: branch.id },
+  });
+  if (!existingPharmacy) {
+    await prisma.pharmacySetting.create({
+      data: {
+        branchId: branch.id,
+        taxPercent: null,
+        defaultDiscount: null,
+        expiryAlertDays: 30,
+        lowStockAlert: true,
+        barcodeEnabled: true,
+        batchEnabled: true,
+        status: "active",
+      },
+    });
+  }
+  console.log("Pharmacy settings ready.");
 
   console.log("Seed complete.");
 }

@@ -9,6 +9,7 @@ import {
   updateIpdSettingSchema,
   updateOpdSettingSchema,
   updatePatientSettingSchema,
+  updatePharmacySettingSchema,
   updatePrescriptionSettingSchema,
   updateSecuritySettingSchema,
   upsertSystemSettingSchema,
@@ -121,6 +122,20 @@ router.patch(
   validate({ body: updatePrescriptionSettingSchema }),
   requirePermission("prescriptionSetting", "update"),
   settingController.updatePrescriptionSetting,
+);
+
+// Pharmacy settings
+router.get(
+  "/pharmacy",
+  requirePermission("pharmacySetting", "read"),
+  settingController.getPharmacySetting,
+);
+
+router.patch(
+  "/pharmacy",
+  validate({ body: updatePharmacySettingSchema }),
+  requirePermission("pharmacySetting", "update"),
+  settingController.updatePharmacySetting,
 );
 
 export default router;
