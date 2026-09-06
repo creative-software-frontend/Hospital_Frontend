@@ -87,3 +87,13 @@ export const updatePharmacySetting = asyncHandler(async (req: Request, res: Resp
   const pharmacySetting = await settingService.updatePharmacySetting(req.user!, req.body);
   success(res, { pharmacySetting });
 });
+
+export const getLabSetting = asyncHandler(async (req: Request, res: Response) => {
+  const labSetting = await settingService.getLabSetting(req.user!);
+  success(res, { labSetting });
+});
+
+export const updateLabSetting = asyncHandler(async (req: Request, res: Response) => {
+  const labSetting = await settingService.updateLabSetting(req.user!, req.body);
+  success(res, { labSetting });
+});

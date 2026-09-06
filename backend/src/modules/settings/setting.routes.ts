@@ -7,6 +7,7 @@ import {
   listSystemSettingsQuerySchema,
   updateEmergencySettingSchema,
   updateIpdSettingSchema,
+  updateLabSettingSchema,
   updateOpdSettingSchema,
   updatePatientSettingSchema,
   updatePharmacySettingSchema,
@@ -136,6 +137,20 @@ router.patch(
   validate({ body: updatePharmacySettingSchema }),
   requirePermission("pharmacySetting", "update"),
   settingController.updatePharmacySetting,
+);
+
+// Laboratory settings
+router.get(
+  "/lab",
+  requirePermission("labSetting", "read"),
+  settingController.getLabSetting,
+);
+
+router.patch(
+  "/lab",
+  validate({ body: updateLabSettingSchema }),
+  requirePermission("labSetting", "update"),
+  settingController.updateLabSetting,
 );
 
 export default router;

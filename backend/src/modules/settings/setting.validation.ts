@@ -127,3 +127,22 @@ export const updatePharmacySettingSchema = z.object({
 });
 
 export type UpdatePharmacySettingInput = z.infer<typeof updatePharmacySettingSchema>;
+
+/* Laboratory settings (Settings → Laboratory Settings) --------------------- */
+
+export const updateLabSettingSchema = z.object({
+  sampleTrackingEnabled: z.boolean().optional(),
+  barcodeEnabled: z.boolean().optional(),
+  onlineReportEnabled: z.boolean().optional(),
+  reportApprovalRequired: z.boolean().optional(),
+  defaultReportTemplate: z
+    .string()
+    .trim()
+    .max(128, "Must be at most 128 characters")
+    .optional()
+    .nullable()
+    .or(z.literal("").transform(() => null)),
+  status: z.enum(SETTING_STATUS_VALUES).optional(),
+});
+
+export type UpdateLabSettingInput = z.infer<typeof updateLabSettingSchema>;

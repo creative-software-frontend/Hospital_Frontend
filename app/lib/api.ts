@@ -730,6 +730,48 @@ export type UpdatePrescriptionSettingInput = {
   status?: "active" | "inactive";
 };
 
+export interface PharmacySetting {
+  id: number;
+  branchId: number;
+  taxPercent: string | null;
+  defaultDiscount: string | null;
+  expiryAlertDays: number;
+  lowStockAlert: boolean;
+  barcodeEnabled: boolean;
+  batchEnabled: boolean;
+  status: "active" | "inactive";
+}
+
+export type UpdatePharmacySettingInput = {
+  taxPercent?: string | null;
+  defaultDiscount?: string | null;
+  expiryAlertDays?: number;
+  lowStockAlert?: boolean;
+  barcodeEnabled?: boolean;
+  batchEnabled?: boolean;
+  status?: "active" | "inactive";
+};
+
+export interface LabSetting {
+  id: number;
+  branchId: number;
+  sampleTrackingEnabled: boolean;
+  barcodeEnabled: boolean;
+  onlineReportEnabled: boolean;
+  reportApprovalRequired: boolean;
+  defaultReportTemplate: string | null;
+  status: "active" | "inactive";
+}
+
+export type UpdateLabSettingInput = {
+  sampleTrackingEnabled?: boolean;
+  barcodeEnabled?: boolean;
+  onlineReportEnabled?: boolean;
+  reportApprovalRequired?: boolean;
+  defaultReportTemplate?: string | null;
+  status?: "active" | "inactive";
+};
+
 export const settingsApi = {
   system: {
     list: (branchId?: number) =>
@@ -795,6 +837,22 @@ export const settingsApi = {
     get: () => request<{ prescriptionSetting: PrescriptionSetting }>("/settings/prescription"),
     update: (input: UpdatePrescriptionSettingInput) =>
       request<{ prescriptionSetting: PrescriptionSetting }>("/settings/prescription", {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+  },
+  pharmacy: {
+    get: () => request<{ pharmacySetting: PharmacySetting }>("/settings/pharmacy"),
+    update: (input: UpdatePharmacySettingInput) =>
+      request<{ pharmacySetting: PharmacySetting }>("/settings/pharmacy", {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+  },
+  lab: {
+    get: () => request<{ labSetting: LabSetting }>("/settings/lab"),
+    update: (input: UpdateLabSettingInput) =>
+      request<{ labSetting: LabSetting }>("/settings/lab", {
         method: "PATCH",
         body: JSON.stringify(input),
       }),

@@ -6,6 +6,7 @@ import type {
   ListSystemSettingsQuery,
   UpdateEmergencySettingInput,
   UpdateIpdSettingInput,
+  UpdateLabSettingInput,
   UpdateOpdSettingInput,
   UpdatePatientSettingInput,
   UpdatePharmacySettingInput,
@@ -442,6 +443,49 @@ export async function updatePharmacySetting(actor: AuthUser, input: UpdatePharma
       taxPercent: current.taxPercent,
       defaultDiscount: current.defaultDiscount,
       expiryAlertDays: current.expiryAlertDays,
+    },
+    newValues: { ...input },
+    user: actor,
+    branchId: actor.branchId,
+  });
+  return updated;
+}
+
+/* ---------------------------------------------------------------------------
+ * Laboratory settings
+ * ------------------------------------------------------------------------- */
+
+export async function getLabSetting(actor: AuthUser) {
+  return findOrCreateBranchSetting({
+    findFirst: () =>
+      prisma.labSetting.findFirst({ where: { branchId: actor.branchId }, orderBy: { id: "asc" } }),
+    create: () =>
+      prisma.labSetting.create({
+        data: {
+          branchId: actor.branchId,
+          sampleTrackingEnabled: true,
+          barcodeEnabled: true,
+          onlineReportEnabled: true,
+          reportApprovalRequired: false,
+          defaultReportTemplate: null,
+          status: "active",
+        },
+      }),
+  });
+}
+
+export async function updateLabSetting(actor: AuthUser, input: UpdateLabSettingInput) {
+  const current = await getLabSetting(actor);
+  const updated = await prisma.labSetting.update({ where: { id: current.id }, data: { ...input } });
+  await writeAuditLog({
+    module: "labSetting",
+    action: "update",
+    tableName: "LabSetting",
+    recordId: String(current.id),
+    oldValues: {
+      sampleTrackingEnabled: current.sampleTrackingEnabled,
+      barcodeEnabled: current.barcodeEnabled,
+      reportApprovalRequired: current.reportApprovalRequired,
     },
     newValues: { ...input },
     user: actor,

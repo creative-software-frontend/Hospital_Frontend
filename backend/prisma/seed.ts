@@ -154,6 +154,10 @@ const PERMISSIONS: PermissionDef[] = [
   // Pharmacy settings (Group B)
   { module: "pharmacySetting", action: "read", description: "View pharmacy settings" },
   { module: "pharmacySetting", action: "update", description: "Update pharmacy settings" },
+
+  // Laboratory settings (Group B)
+  { module: "labSetting", action: "read", description: "View laboratory settings" },
+  { module: "labSetting", action: "update", description: "Update laboratory settings" },
 ];
 
 const MATRIX: Record<RoleKey, string[]> = {
@@ -172,6 +176,7 @@ const MATRIX: Record<RoleKey, string[]> = {
     "emergencySetting:read", "emergencySetting:update",
     "prescriptionSetting:read", "prescriptionSetting:update",
     "pharmacySetting:read", "pharmacySetting:update",
+    "labSetting:read", "labSetting:update",
   ],
   DOCTOR: [
     "auth:read", "patient:read", "patient:create", "patient:update",
@@ -587,6 +592,24 @@ async function seed() {
     });
   }
   console.log("Pharmacy settings ready.");
+
+  const existingLab = await prisma.labSetting.findFirst({
+    where: { branchId: branch.id },
+  });
+  if (!existingLab) {
+    await prisma.labSetting.create({
+      data: {
+        branchId: branch.id,
+        sampleTrackingEnabled: true,
+        barcodeEnabled: true,
+        onlineReportEnabled: true,
+        reportApprovalRequired: false,
+        defaultReportTemplate: null,
+        status: "active",
+      },
+    });
+  }
+  console.log("Laboratory settings ready.");
 
   console.log("Seed complete.");
 }

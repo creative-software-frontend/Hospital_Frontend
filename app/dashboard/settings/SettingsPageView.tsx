@@ -14,6 +14,8 @@ import { OpdSettingsView } from "@/app/dashboard/settings/clinical/opd/OpdSettin
 import { IpdSettingsView } from "@/app/dashboard/settings/clinical/ipd/IpdSettingsView";
 import { EmergencySettingsView } from "@/app/dashboard/settings/clinical/emergency/EmergencySettingsView";
 import { PrescriptionSettingsView } from "@/app/dashboard/settings/clinical/prescription/PrescriptionSettingsView";
+import { PharmacySettingsView } from "@/app/dashboard/settings/pharmacy/PharmacySettingsView";
+import { LabSettingsView } from "@/app/dashboard/settings/laboratory/LabSettingsView";
 import { MockSettingsView } from "@/app/dashboard/settings/mock/MockSettingsView";
 
 export const SettingsPageView = ({
@@ -69,6 +71,14 @@ export const SettingsPageView = ({
 
   if (pageKey === "clinical-prescription") {
     return <PrescriptionSettingsView />;
+  }
+
+  if (pageKey === "pharmacy-settings") {
+    return <PharmacySettingsView />;
+  }
+
+  if (pageKey === "laboratory-settings") {
+    return <LabSettingsView />;
   }
 
   return <MockSettingsView page={page} />;
