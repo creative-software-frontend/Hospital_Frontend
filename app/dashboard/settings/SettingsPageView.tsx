@@ -18,6 +18,7 @@ import { PharmacySettingsView } from "@/app/dashboard/settings/pharmacy/Pharmacy
 import { LabSettingsView } from "@/app/dashboard/settings/laboratory/LabSettingsView";
 import { BillingSettingsView } from "@/app/dashboard/settings/billing/BillingSettingsView";
 import { AccountingSettingsView } from "@/app/dashboard/settings/accounting/AccountingSettingsView";
+import { HrSettingsView } from "@/app/dashboard/settings/hr/HrSettingsView";
 import { MockSettingsView } from "@/app/dashboard/settings/mock/MockSettingsView";
 
 export const SettingsPageView = ({
@@ -89,6 +90,10 @@ export const SettingsPageView = ({
 
   if (pageKey === "accounting-settings") {
     return <AccountingSettingsView />;
+  }
+
+  if (pageKey === "hr-payroll") {
+    return <HrSettingsView />;
   }
 
   return <MockSettingsView page={page} />;

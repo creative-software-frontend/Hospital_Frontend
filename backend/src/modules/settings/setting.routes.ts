@@ -8,6 +8,7 @@ import {
   updateAccountingSettingSchema,
   updateBillingSettingSchema,
   updateEmergencySettingSchema,
+  updateHrSettingSchema,
   updateIpdSettingSchema,
   updateLabSettingSchema,
   updateOpdSettingSchema,
@@ -181,6 +182,20 @@ router.patch(
   validate({ body: updateAccountingSettingSchema }),
   requirePermission("accountingSetting", "update"),
   settingController.updateAccountingSetting,
+);
+
+// HR & Payroll settings
+router.get(
+  "/hr",
+  requirePermission("hrSetting", "read"),
+  settingController.getHrSetting,
+);
+
+router.patch(
+  "/hr",
+  validate({ body: updateHrSettingSchema }),
+  requirePermission("hrSetting", "update"),
+  settingController.updateHrSetting,
 );
 
 export default router;

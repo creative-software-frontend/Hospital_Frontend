@@ -7,6 +7,7 @@ import type {
   UpdateAccountingSettingInput,
   UpdateBillingSettingInput,
   UpdateEmergencySettingInput,
+  UpdateHrSettingInput,
   UpdateIpdSettingInput,
   UpdateLabSettingInput,
   UpdateOpdSettingInput,
@@ -590,6 +591,49 @@ export async function updateAccountingSetting(actor: AuthUser, input: UpdateAcco
       baseCurrency: current.baseCurrency,
       autoPostToLedger: current.autoPostToLedger,
       trialBalanceFrequency: current.trialBalanceFrequency,
+    },
+    newValues: { ...input },
+    user: actor,
+    branchId: actor.branchId,
+  });
+  return updated;
+}
+
+/* ---------------------------------------------------------------------------
+ * HR & Payroll settings
+ * ------------------------------------------------------------------------- */
+
+export async function getHrSetting(actor: AuthUser) {
+  return findOrCreateBranchSetting({
+    findFirst: () =>
+      prisma.hrSetting.findFirst({ where: { branchId: actor.branchId }, orderBy: { id: "asc" } }),
+    create: () =>
+      prisma.hrSetting.create({
+        data: {
+          branchId: actor.branchId,
+          payrollCycle: "monthly",
+          salaryDisbursementDay: 1,
+          annualLeaveDays: 18,
+          overtimeRate: null,
+          status: "active",
+        },
+      }),
+  });
+}
+
+export async function updateHrSetting(actor: AuthUser, input: UpdateHrSettingInput) {
+  const current = await getHrSetting(actor);
+  const updated = await prisma.hrSetting.update({ where: { id: current.id }, data: { ...input } });
+  await writeAuditLog({
+    module: "hrSetting",
+    action: "update",
+    tableName: "HrSetting",
+    recordId: String(current.id),
+    oldValues: {
+      payrollCycle: current.payrollCycle,
+      salaryDisbursementDay: current.salaryDisbursementDay,
+      annualLeaveDays: current.annualLeaveDays,
+      overtimeRate: current.overtimeRate,
     },
     newValues: { ...input },
     user: actor,

@@ -179,3 +179,17 @@ export const updateAccountingSettingSchema = z.object({
 });
 
 export type UpdateAccountingSettingInput = z.infer<typeof updateAccountingSettingSchema>;
+
+/* HR & Payroll settings (Settings → HR & Payroll) -------------------------- */
+
+const PAYROLL_CYCLES = ["weekly", "biweekly", "monthly"] as const;
+
+export const updateHrSettingSchema = z.object({
+  payrollCycle: z.enum(PAYROLL_CYCLES).optional(),
+  salaryDisbursementDay: z.number().int().min(1).max(28).optional(),
+  annualLeaveDays: z.number().int().min(0).max(365).optional(),
+  overtimeRate: optionalMoney,
+  status: z.enum(SETTING_STATUS_VALUES).optional(),
+});
+
+export type UpdateHrSettingInput = z.infer<typeof updateHrSettingSchema>;

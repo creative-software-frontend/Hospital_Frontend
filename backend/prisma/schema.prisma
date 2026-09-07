@@ -216,6 +216,7 @@ model Branch {
   labSettings            LabSetting[]
   billingSettings        BillingSetting[]
   accountingSettings     AccountingSetting[]
+  hrSettings             HrSetting[]
   notificationSettings   NotificationSetting[]
   documentTemplates      DocumentTemplate[]
   reportSettings         ReportSetting[]
@@ -1582,6 +1583,20 @@ model AccountingSetting {
   trialBalanceFrequency String  @default("monthly")
   voucherEnabled        Boolean @default(true)
   status                String  @default("active")
+
+  branch Branch? @relation(fields: [branchId], references: [id])
+
+  @@index([branchId])
+}
+
+model HrSetting {
+  id                    Int      @id @default(autoincrement())
+  branchId              Int
+  payrollCycle          String   @default("monthly")
+  salaryDisbursementDay Int      @default(1)
+  annualLeaveDays       Int      @default(18)
+  overtimeRate          Decimal? @db.Decimal(3, 2)
+  status                String   @default("active")
 
   branch Branch? @relation(fields: [branchId], references: [id])
 

@@ -832,6 +832,28 @@ export type UpdateAccountingSettingInput = {
   status?: "active" | "inactive";
 };
 
+export const PAYROLL_CYCLES = ["weekly", "biweekly", "monthly"] as const;
+
+export type PayrollCycle = (typeof PAYROLL_CYCLES)[number];
+
+export interface HrSetting {
+  id: number;
+  branchId: number;
+  payrollCycle: PayrollCycle;
+  salaryDisbursementDay: number;
+  annualLeaveDays: number;
+  overtimeRate: string | null;
+  status: "active" | "inactive";
+}
+
+export type UpdateHrSettingInput = {
+  payrollCycle?: PayrollCycle;
+  salaryDisbursementDay?: number;
+  annualLeaveDays?: number;
+  overtimeRate?: string | null;
+  status?: "active" | "inactive";
+};
+
 export const settingsApi = {
   system: {
     list: (branchId?: number) =>
@@ -929,6 +951,14 @@ export const settingsApi = {
     get: () => request<{ accountingSetting: AccountingSetting }>("/settings/accounting"),
     update: (input: UpdateAccountingSettingInput) =>
       request<{ accountingSetting: AccountingSetting }>("/settings/accounting", {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+  },
+  hr: {
+    get: () => request<{ hrSetting: HrSetting }>("/settings/hr"),
+    update: (input: UpdateHrSettingInput) =>
+      request<{ hrSetting: HrSetting }>("/settings/hr", {
         method: "PATCH",
         body: JSON.stringify(input),
       }),

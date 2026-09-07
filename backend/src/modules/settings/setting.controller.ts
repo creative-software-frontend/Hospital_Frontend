@@ -117,3 +117,13 @@ export const updateAccountingSetting = asyncHandler(async (req: Request, res: Re
   const accountingSetting = await settingService.updateAccountingSetting(req.user!, req.body);
   success(res, { accountingSetting });
 });
+
+export const getHrSetting = asyncHandler(async (req: Request, res: Response) => {
+  const hrSetting = await settingService.getHrSetting(req.user!);
+  success(res, { hrSetting });
+});
+
+export const updateHrSetting = asyncHandler(async (req: Request, res: Response) => {
+  const hrSetting = await settingService.updateHrSetting(req.user!, req.body);
+  success(res, { hrSetting });
+});

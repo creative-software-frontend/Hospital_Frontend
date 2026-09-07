@@ -166,6 +166,10 @@ const PERMISSIONS: PermissionDef[] = [
   // Accounting settings (Group B)
   { module: "accountingSetting", action: "read", description: "View accounting settings" },
   { module: "accountingSetting", action: "update", description: "Update accounting settings" },
+
+  // HR & Payroll settings (Group B)
+  { module: "hrSetting", action: "read", description: "View HR & payroll settings" },
+  { module: "hrSetting", action: "update", description: "Update HR & payroll settings" },
 ];
 
 const MATRIX: Record<RoleKey, string[]> = {
@@ -187,6 +191,7 @@ const MATRIX: Record<RoleKey, string[]> = {
     "labSetting:read", "labSetting:update",
     "billingSetting:read", "billingSetting:update",
     "accountingSetting:read", "accountingSetting:update",
+    "hrSetting:read", "hrSetting:update",
   ],
   DOCTOR: [
     "auth:read", "patient:read", "patient:create", "patient:update",
@@ -661,6 +666,23 @@ async function seed() {
     });
   }
   console.log("Accounting settings ready.");
+
+  const existingHr = await prisma.hrSetting.findFirst({
+    where: { branchId: branch.id },
+  });
+  if (!existingHr) {
+    await prisma.hrSetting.create({
+      data: {
+        branchId: branch.id,
+        payrollCycle: "monthly",
+        salaryDisbursementDay: 1,
+        annualLeaveDays: 18,
+        overtimeRate: null,
+        status: "active",
+      },
+    });
+  }
+  console.log("HR settings ready.");
 
   console.log("Seed complete.");
 }
