@@ -16,6 +16,8 @@ import { EmergencySettingsView } from "@/app/dashboard/settings/clinical/emergen
 import { PrescriptionSettingsView } from "@/app/dashboard/settings/clinical/prescription/PrescriptionSettingsView";
 import { PharmacySettingsView } from "@/app/dashboard/settings/pharmacy/PharmacySettingsView";
 import { LabSettingsView } from "@/app/dashboard/settings/laboratory/LabSettingsView";
+import { BillingSettingsView } from "@/app/dashboard/settings/billing/BillingSettingsView";
+import { AccountingSettingsView } from "@/app/dashboard/settings/accounting/AccountingSettingsView";
 import { MockSettingsView } from "@/app/dashboard/settings/mock/MockSettingsView";
 
 export const SettingsPageView = ({
@@ -79,6 +81,14 @@ export const SettingsPageView = ({
 
   if (pageKey === "laboratory-settings") {
     return <LabSettingsView />;
+  }
+
+  if (pageKey === "billing-settings") {
+    return <BillingSettingsView />;
+  }
+
+  if (pageKey === "accounting-settings") {
+    return <AccountingSettingsView />;
   }
 
   return <MockSettingsView page={page} />;

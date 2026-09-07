@@ -158,6 +158,14 @@ const PERMISSIONS: PermissionDef[] = [
   // Laboratory settings (Group B)
   { module: "labSetting", action: "read", description: "View laboratory settings" },
   { module: "labSetting", action: "update", description: "Update laboratory settings" },
+
+  // Billing settings (Group B)
+  { module: "billingSetting", action: "read", description: "View billing settings" },
+  { module: "billingSetting", action: "update", description: "Update billing settings" },
+
+  // Accounting settings (Group B)
+  { module: "accountingSetting", action: "read", description: "View accounting settings" },
+  { module: "accountingSetting", action: "update", description: "Update accounting settings" },
 ];
 
 const MATRIX: Record<RoleKey, string[]> = {
@@ -177,6 +185,8 @@ const MATRIX: Record<RoleKey, string[]> = {
     "prescriptionSetting:read", "prescriptionSetting:update",
     "pharmacySetting:read", "pharmacySetting:update",
     "labSetting:read", "labSetting:update",
+    "billingSetting:read", "billingSetting:update",
+    "accountingSetting:read", "accountingSetting:update",
   ],
   DOCTOR: [
     "auth:read", "patient:read", "patient:create", "patient:update",
@@ -610,6 +620,47 @@ async function seed() {
     });
   }
   console.log("Laboratory settings ready.");
+
+  const existingBilling = await prisma.billingSetting.findFirst({
+    where: { branchId: branch.id },
+  });
+  if (!existingBilling) {
+    await prisma.billingSetting.create({
+      data: {
+        branchId: branch.id,
+        invoicePrefix: "INV-",
+        invoiceStartNumber: 1,
+        receiptPrefix: "RCT-",
+        taxPercent: null,
+        serviceChargePercent: null,
+        discountEnabled: true,
+        partialPaymentEnabled: true,
+        refundEnabled: true,
+        duePaymentEnabled: true,
+        status: "active",
+      },
+    });
+  }
+  console.log("Billing settings ready.");
+
+  const existingAccounting = await prisma.accountingSetting.findFirst({
+    where: { branchId: branch.id },
+  });
+  if (!existingAccounting) {
+    await prisma.accountingSetting.create({
+      data: {
+        branchId: branch.id,
+        fiscalYear: "July 2025 - June 2026",
+        baseCurrency: "BDT",
+        chartOfAccounts: "Hospital Standard",
+        autoPostToLedger: true,
+        trialBalanceFrequency: "monthly",
+        voucherEnabled: true,
+        status: "active",
+      },
+    });
+  }
+  console.log("Accounting settings ready.");
 
   console.log("Seed complete.");
 }

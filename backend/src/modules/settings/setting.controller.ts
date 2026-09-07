@@ -97,3 +97,23 @@ export const updateLabSetting = asyncHandler(async (req: Request, res: Response)
   const labSetting = await settingService.updateLabSetting(req.user!, req.body);
   success(res, { labSetting });
 });
+
+export const getBillingSetting = asyncHandler(async (req: Request, res: Response) => {
+  const billingSetting = await settingService.getBillingSetting(req.user!);
+  success(res, { billingSetting });
+});
+
+export const updateBillingSetting = asyncHandler(async (req: Request, res: Response) => {
+  const billingSetting = await settingService.updateBillingSetting(req.user!, req.body);
+  success(res, { billingSetting });
+});
+
+export const getAccountingSetting = asyncHandler(async (req: Request, res: Response) => {
+  const accountingSetting = await settingService.getAccountingSetting(req.user!);
+  success(res, { accountingSetting });
+});
+
+export const updateAccountingSetting = asyncHandler(async (req: Request, res: Response) => {
+  const accountingSetting = await settingService.updateAccountingSetting(req.user!, req.body);
+  success(res, { accountingSetting });
+});

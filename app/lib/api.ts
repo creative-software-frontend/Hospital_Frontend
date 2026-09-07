@@ -772,6 +772,66 @@ export type UpdateLabSettingInput = {
   status?: "active" | "inactive";
 };
 
+export interface BillingSetting {
+  id: number;
+  branchId: number;
+  invoicePrefix: string;
+  invoiceStartNumber: number;
+  receiptPrefix: string;
+  taxPercent: string | null;
+  serviceChargePercent: string | null;
+  discountEnabled: boolean;
+  partialPaymentEnabled: boolean;
+  refundEnabled: boolean;
+  duePaymentEnabled: boolean;
+  status: "active" | "inactive";
+}
+
+export type UpdateBillingSettingInput = {
+  invoicePrefix?: string;
+  invoiceStartNumber?: number;
+  receiptPrefix?: string;
+  taxPercent?: string | null;
+  serviceChargePercent?: string | null;
+  discountEnabled?: boolean;
+  partialPaymentEnabled?: boolean;
+  refundEnabled?: boolean;
+  duePaymentEnabled?: boolean;
+  status?: "active" | "inactive";
+};
+
+export const TRIAL_BALANCE_FREQUENCIES = [
+  "daily",
+  "weekly",
+  "monthly",
+  "quarterly",
+  "yearly",
+] as const;
+
+export type TrialBalanceFrequency = (typeof TRIAL_BALANCE_FREQUENCIES)[number];
+
+export interface AccountingSetting {
+  id: number;
+  branchId: number;
+  fiscalYear: string;
+  baseCurrency: string;
+  chartOfAccounts: string;
+  autoPostToLedger: boolean;
+  trialBalanceFrequency: TrialBalanceFrequency;
+  voucherEnabled: boolean;
+  status: "active" | "inactive";
+}
+
+export type UpdateAccountingSettingInput = {
+  fiscalYear?: string;
+  baseCurrency?: string;
+  chartOfAccounts?: string;
+  autoPostToLedger?: boolean;
+  trialBalanceFrequency?: TrialBalanceFrequency;
+  voucherEnabled?: boolean;
+  status?: "active" | "inactive";
+};
+
 export const settingsApi = {
   system: {
     list: (branchId?: number) =>
@@ -853,6 +913,22 @@ export const settingsApi = {
     get: () => request<{ labSetting: LabSetting }>("/settings/lab"),
     update: (input: UpdateLabSettingInput) =>
       request<{ labSetting: LabSetting }>("/settings/lab", {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+  },
+  billing: {
+    get: () => request<{ billingSetting: BillingSetting }>("/settings/billing"),
+    update: (input: UpdateBillingSettingInput) =>
+      request<{ billingSetting: BillingSetting }>("/settings/billing", {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+  },
+  accounting: {
+    get: () => request<{ accountingSetting: AccountingSetting }>("/settings/accounting"),
+    update: (input: UpdateAccountingSettingInput) =>
+      request<{ accountingSetting: AccountingSetting }>("/settings/accounting", {
         method: "PATCH",
         body: JSON.stringify(input),
       }),

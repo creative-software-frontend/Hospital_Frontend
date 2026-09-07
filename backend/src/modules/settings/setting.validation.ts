@@ -146,3 +146,36 @@ export const updateLabSettingSchema = z.object({
 });
 
 export type UpdateLabSettingInput = z.infer<typeof updateLabSettingSchema>;
+
+/* Billing settings (Settings → Billing Settings) --------------------------- */
+
+export const updateBillingSettingSchema = z.object({
+  invoicePrefix: z.string().trim().max(32).optional(),
+  invoiceStartNumber: z.number().int().min(1).max(1_000_000).optional(),
+  receiptPrefix: z.string().trim().max(32).optional(),
+  taxPercent: optionalMoney,
+  serviceChargePercent: optionalMoney,
+  discountEnabled: z.boolean().optional(),
+  partialPaymentEnabled: z.boolean().optional(),
+  refundEnabled: z.boolean().optional(),
+  duePaymentEnabled: z.boolean().optional(),
+  status: z.enum(SETTING_STATUS_VALUES).optional(),
+});
+
+export type UpdateBillingSettingInput = z.infer<typeof updateBillingSettingSchema>;
+
+/* Accounting settings (Settings → Accounting Settings) --------------------- */
+
+const TRIAL_BALANCE_FREQUENCIES = ["daily", "weekly", "monthly", "quarterly", "yearly"] as const;
+
+export const updateAccountingSettingSchema = z.object({
+  fiscalYear: z.string().trim().max(64).optional(),
+  baseCurrency: z.string().trim().max(16).optional(),
+  chartOfAccounts: z.string().trim().max(64).optional(),
+  autoPostToLedger: z.boolean().optional(),
+  trialBalanceFrequency: z.enum(TRIAL_BALANCE_FREQUENCIES).optional(),
+  voucherEnabled: z.boolean().optional(),
+  status: z.enum(SETTING_STATUS_VALUES).optional(),
+});
+
+export type UpdateAccountingSettingInput = z.infer<typeof updateAccountingSettingSchema>;

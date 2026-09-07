@@ -5,6 +5,8 @@ import { requirePermission } from "../../middleware/permission.middleware";
 import * as settingController from "./setting.controller";
 import {
   listSystemSettingsQuerySchema,
+  updateAccountingSettingSchema,
+  updateBillingSettingSchema,
   updateEmergencySettingSchema,
   updateIpdSettingSchema,
   updateLabSettingSchema,
@@ -151,6 +153,34 @@ router.patch(
   validate({ body: updateLabSettingSchema }),
   requirePermission("labSetting", "update"),
   settingController.updateLabSetting,
+);
+
+// Billing settings
+router.get(
+  "/billing",
+  requirePermission("billingSetting", "read"),
+  settingController.getBillingSetting,
+);
+
+router.patch(
+  "/billing",
+  validate({ body: updateBillingSettingSchema }),
+  requirePermission("billingSetting", "update"),
+  settingController.updateBillingSetting,
+);
+
+// Accounting settings
+router.get(
+  "/accounting",
+  requirePermission("accountingSetting", "read"),
+  settingController.getAccountingSetting,
+);
+
+router.patch(
+  "/accounting",
+  validate({ body: updateAccountingSettingSchema }),
+  requirePermission("accountingSetting", "update"),
+  settingController.updateAccountingSetting,
 );
 
 export default router;

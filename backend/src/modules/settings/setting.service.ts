@@ -4,6 +4,8 @@ import { writeAuditLog } from "../../utils/audit";
 import type { AuthUser } from "../../types/auth";
 import type {
   ListSystemSettingsQuery,
+  UpdateAccountingSettingInput,
+  UpdateBillingSettingInput,
   UpdateEmergencySettingInput,
   UpdateIpdSettingInput,
   UpdateLabSettingInput,
@@ -176,8 +178,59 @@ export async function updateSecuritySetting(actor: AuthUser, input: UpdateSecuri
     },
     newValues: { ...input },
     user: actor,
+    branchId: actor.branchId,
   });
+  return updated;
+}
 
+/* ---------------------------------------------------------------------------
+ * Billing settings
+ * ------------------------------------------------------------------------- */
+
+export async function getBillingSetting(actor: AuthUser) {
+  return findOrCreateBranchSetting({
+    findFirst: () =>
+      prisma.billingSetting.findFirst({ where: { branchId: actor.branchId }, orderBy: { id: "asc" } }),
+    create: () =>
+      prisma.billingSetting.create({
+        data: {
+          branchId: actor.branchId,
+          invoicePrefix: "INV-",
+          invoiceStartNumber: 1,
+          receiptPrefix: "RCT-",
+          taxPercent: null,
+          serviceChargePercent: null,
+          discountEnabled: true,
+          partialPaymentEnabled: true,
+          refundEnabled: true,
+          duePaymentEnabled: true,
+          status: "active",
+        },
+      }),
+  });
+}
+
+export async function updateBillingSetting(actor: AuthUser, input: UpdateBillingSettingInput) {
+  const current = await getBillingSetting(actor);
+  const updated = await prisma.billingSetting.update({
+    where: { id: current.id },
+    data: { ...input },
+  });
+  await writeAuditLog({
+    module: "billingSetting",
+    action: "update",
+    tableName: "BillingSetting",
+    recordId: String(current.id),
+    oldValues: {
+      invoicePrefix: current.invoicePrefix,
+      invoiceStartNumber: current.invoiceStartNumber,
+      taxPercent: current.taxPercent,
+      discountEnabled: current.discountEnabled,
+    },
+    newValues: { ...input },
+    user: actor,
+    branchId: actor.branchId,
+  });
   return updated;
 }
 
@@ -486,6 +539,57 @@ export async function updateLabSetting(actor: AuthUser, input: UpdateLabSettingI
       sampleTrackingEnabled: current.sampleTrackingEnabled,
       barcodeEnabled: current.barcodeEnabled,
       reportApprovalRequired: current.reportApprovalRequired,
+    },
+    newValues: { ...input },
+    user: actor,
+    branchId: actor.branchId,
+  });
+  return updated;
+}
+
+/* ---------------------------------------------------------------------------
+ * Accounting settings
+ * ------------------------------------------------------------------------- */
+
+export async function getAccountingSetting(actor: AuthUser) {
+  return findOrCreateBranchSetting({
+    findFirst: () =>
+      prisma.accountingSetting.findFirst({
+        where: { branchId: actor.branchId },
+        orderBy: { id: "asc" },
+      }),
+    create: () =>
+      prisma.accountingSetting.create({
+        data: {
+          branchId: actor.branchId,
+          fiscalYear: "July 2025 - June 2026",
+          baseCurrency: "BDT",
+          chartOfAccounts: "Hospital Standard",
+          autoPostToLedger: true,
+          trialBalanceFrequency: "monthly",
+          voucherEnabled: true,
+          status: "active",
+        },
+      }),
+  });
+}
+
+export async function updateAccountingSetting(actor: AuthUser, input: UpdateAccountingSettingInput) {
+  const current = await getAccountingSetting(actor);
+  const updated = await prisma.accountingSetting.update({
+    where: { id: current.id },
+    data: { ...input },
+  });
+  await writeAuditLog({
+    module: "accountingSetting",
+    action: "update",
+    tableName: "AccountingSetting",
+    recordId: String(current.id),
+    oldValues: {
+      fiscalYear: current.fiscalYear,
+      baseCurrency: current.baseCurrency,
+      autoPostToLedger: current.autoPostToLedger,
+      trialBalanceFrequency: current.trialBalanceFrequency,
     },
     newValues: { ...input },
     user: actor,
