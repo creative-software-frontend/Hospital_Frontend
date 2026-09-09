@@ -127,3 +127,23 @@ export const updateHrSetting = asyncHandler(async (req: Request, res: Response) 
   const hrSetting = await settingService.updateHrSetting(req.user!, req.body);
   success(res, { hrSetting });
 });
+
+export const getInventorySetting = asyncHandler(async (req: Request, res: Response) => {
+  const inventorySetting = await settingService.getInventorySetting(req.user!);
+  success(res, { inventorySetting });
+});
+
+export const updateInventorySetting = asyncHandler(async (req: Request, res: Response) => {
+  const inventorySetting = await settingService.updateInventorySetting(req.user!, req.body);
+  success(res, { inventorySetting });
+});
+
+export const getNotificationSetting = asyncHandler(async (req: Request, res: Response) => {
+  const notificationSetting = await settingService.getNotificationSetting(req.user!);
+  success(res, { notificationSetting });
+});
+
+export const updateNotificationSetting = asyncHandler(async (req: Request, res: Response) => {
+  const notificationSetting = await settingService.updateNotificationSetting(req.user!, req.body);
+  success(res, { notificationSetting });
+});

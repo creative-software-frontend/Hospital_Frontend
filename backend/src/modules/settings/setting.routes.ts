@@ -9,6 +9,8 @@ import {
   updateBillingSettingSchema,
   updateEmergencySettingSchema,
   updateHrSettingSchema,
+  updateInventorySettingSchema,
+  updateNotificationSettingSchema,
   updateIpdSettingSchema,
   updateLabSettingSchema,
   updateOpdSettingSchema,
@@ -196,6 +198,34 @@ router.patch(
   validate({ body: updateHrSettingSchema }),
   requirePermission("hrSetting", "update"),
   settingController.updateHrSetting,
+);
+
+// Inventory settings
+router.get(
+  "/inventory",
+  requirePermission("inventorySetting", "read"),
+  settingController.getInventorySetting,
+);
+
+router.patch(
+  "/inventory",
+  validate({ body: updateInventorySettingSchema }),
+  requirePermission("inventorySetting", "update"),
+  settingController.updateInventorySetting,
+);
+
+// Notification settings
+router.get(
+  "/notification",
+  requirePermission("notificationSetting", "read"),
+  settingController.getNotificationSetting,
+);
+
+router.patch(
+  "/notification",
+  validate({ body: updateNotificationSettingSchema }),
+  requirePermission("notificationSetting", "update"),
+  settingController.updateNotificationSetting,
 );
 
 export default router;

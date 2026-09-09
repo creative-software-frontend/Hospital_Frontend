@@ -19,6 +19,8 @@ import { LabSettingsView } from "@/app/dashboard/settings/laboratory/LabSettings
 import { BillingSettingsView } from "@/app/dashboard/settings/billing/BillingSettingsView";
 import { AccountingSettingsView } from "@/app/dashboard/settings/accounting/AccountingSettingsView";
 import { HrSettingsView } from "@/app/dashboard/settings/hr/HrSettingsView";
+import { InventorySettingsView } from "@/app/dashboard/settings/inventory/InventorySettingsView";
+import { NotificationSettingsView } from "@/app/dashboard/settings/notification/NotificationSettingsView";
 import { MockSettingsView } from "@/app/dashboard/settings/mock/MockSettingsView";
 
 export const SettingsPageView = ({
@@ -94,6 +96,14 @@ export const SettingsPageView = ({
 
   if (pageKey === "hr-payroll") {
     return <HrSettingsView />;
+  }
+
+  if (pageKey === "inventory") {
+    return <InventorySettingsView />;
+  }
+
+  if (pageKey === "notification") {
+    return <NotificationSettingsView />;
   }
 
   return <MockSettingsView page={page} />;

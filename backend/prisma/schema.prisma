@@ -217,6 +217,7 @@ model Branch {
   billingSettings        BillingSetting[]
   accountingSettings     AccountingSetting[]
   hrSettings             HrSetting[]
+  inventorySettings      InventorySetting[]
   notificationSettings   NotificationSetting[]
   documentTemplates      DocumentTemplate[]
   reportSettings         ReportSetting[]
@@ -1597,6 +1598,21 @@ model HrSetting {
   annualLeaveDays       Int      @default(18)
   overtimeRate          Decimal? @db.Decimal(3, 2)
   status                String   @default("active")
+
+  branch Branch? @relation(fields: [branchId], references: [id])
+
+  @@index([branchId])
+}
+
+model InventorySetting {
+  id                    Int     @id @default(autoincrement())
+  branchId              Int
+  trackMedicalEquipment Boolean @default(true)
+  assetBarcode          Boolean @default(true)
+  lowStockAlert         Boolean @default(true)
+  autoReorder           Boolean @default(true)
+  stockTransferApproval Boolean @default(true)
+  status                String  @default("active")
 
   branch Branch? @relation(fields: [branchId], references: [id])
 

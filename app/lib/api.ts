@@ -854,6 +854,52 @@ export type UpdateHrSettingInput = {
   status?: "active" | "inactive";
 };
 
+export interface InventorySetting {
+  id: number;
+  branchId: number;
+  trackMedicalEquipment: boolean;
+  assetBarcode: boolean;
+  lowStockAlert: boolean;
+  autoReorder: boolean;
+  stockTransferApproval: boolean;
+  status: "active" | "inactive";
+}
+
+export type UpdateInventorySettingInput = {
+  trackMedicalEquipment?: boolean;
+  assetBarcode?: boolean;
+  lowStockAlert?: boolean;
+  autoReorder?: boolean;
+  stockTransferApproval?: boolean;
+  status?: "active" | "inactive";
+};
+
+export interface NotificationSetting {
+  id: number;
+  branchId: number;
+  smsEnabled: boolean;
+  emailEnabled: boolean;
+  whatsappEnabled: boolean;
+  appointmentNotification: boolean;
+  billingNotification: boolean;
+  labNotification: boolean;
+  followupNotification: boolean;
+  paymentNotification: boolean;
+  status: "active" | "inactive";
+}
+
+export type UpdateNotificationSettingInput = {
+  smsEnabled?: boolean;
+  emailEnabled?: boolean;
+  whatsappEnabled?: boolean;
+  appointmentNotification?: boolean;
+  billingNotification?: boolean;
+  labNotification?: boolean;
+  followupNotification?: boolean;
+  paymentNotification?: boolean;
+  status?: "active" | "inactive";
+};
+
 export const settingsApi = {
   system: {
     list: (branchId?: number) =>
@@ -959,6 +1005,22 @@ export const settingsApi = {
     get: () => request<{ hrSetting: HrSetting }>("/settings/hr"),
     update: (input: UpdateHrSettingInput) =>
       request<{ hrSetting: HrSetting }>("/settings/hr", {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+  },
+  inventory: {
+    get: () => request<{ inventorySetting: InventorySetting }>("/settings/inventory"),
+    update: (input: UpdateInventorySettingInput) =>
+      request<{ inventorySetting: InventorySetting }>("/settings/inventory", {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+  },
+  notification: {
+    get: () => request<{ notificationSetting: NotificationSetting }>("/settings/notification"),
+    update: (input: UpdateNotificationSettingInput) =>
+      request<{ notificationSetting: NotificationSetting }>("/settings/notification", {
         method: "PATCH",
         body: JSON.stringify(input),
       }),

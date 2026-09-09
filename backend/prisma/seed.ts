@@ -170,6 +170,14 @@ const PERMISSIONS: PermissionDef[] = [
   // HR & Payroll settings (Group B)
   { module: "hrSetting", action: "read", description: "View HR & payroll settings" },
   { module: "hrSetting", action: "update", description: "Update HR & payroll settings" },
+
+  // Inventory settings (Group B)
+  { module: "inventorySetting", action: "read", description: "View inventory settings" },
+  { module: "inventorySetting", action: "update", description: "Update inventory settings" },
+
+  // Notification settings (Group B)
+  { module: "notificationSetting", action: "read", description: "View notification settings" },
+  { module: "notificationSetting", action: "update", description: "Update notification settings" },
 ];
 
 const MATRIX: Record<RoleKey, string[]> = {
@@ -192,6 +200,8 @@ const MATRIX: Record<RoleKey, string[]> = {
     "billingSetting:read", "billingSetting:update",
     "accountingSetting:read", "accountingSetting:update",
     "hrSetting:read", "hrSetting:update",
+    "inventorySetting:read", "inventorySetting:update",
+    "notificationSetting:read", "notificationSetting:update",
   ],
   DOCTOR: [
     "auth:read", "patient:read", "patient:create", "patient:update",
@@ -683,6 +693,45 @@ async function seed() {
     });
   }
   console.log("HR settings ready.");
+
+  const existingInventory = await prisma.inventorySetting.findFirst({
+    where: { branchId: branch.id },
+  });
+  if (!existingInventory) {
+    await prisma.inventorySetting.create({
+      data: {
+        branchId: branch.id,
+        trackMedicalEquipment: true,
+        assetBarcode: true,
+        lowStockAlert: true,
+        autoReorder: true,
+        stockTransferApproval: true,
+        status: "active",
+      },
+    });
+  }
+  console.log("Inventory settings ready.");
+
+  const existingNotification = await prisma.notificationSetting.findFirst({
+    where: { branchId: branch.id },
+  });
+  if (!existingNotification) {
+    await prisma.notificationSetting.create({
+      data: {
+        branchId: branch.id,
+        smsEnabled: false,
+        emailEnabled: false,
+        whatsappEnabled: false,
+        appointmentNotification: true,
+        billingNotification: true,
+        labNotification: true,
+        followupNotification: true,
+        paymentNotification: true,
+        status: "active",
+      },
+    });
+  }
+  console.log("Notification settings ready.");
 
   console.log("Seed complete.");
 }

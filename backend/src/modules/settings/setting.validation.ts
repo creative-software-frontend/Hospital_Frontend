@@ -193,3 +193,32 @@ export const updateHrSettingSchema = z.object({
 });
 
 export type UpdateHrSettingInput = z.infer<typeof updateHrSettingSchema>;
+
+/* Inventory settings (Settings → Inventory) -------------------------------- */
+
+export const updateInventorySettingSchema = z.object({
+  trackMedicalEquipment: z.boolean().optional(),
+  assetBarcode: z.boolean().optional(),
+  lowStockAlert: z.boolean().optional(),
+  autoReorder: z.boolean().optional(),
+  stockTransferApproval: z.boolean().optional(),
+  status: z.enum(SETTING_STATUS_VALUES).optional(),
+});
+
+export type UpdateInventorySettingInput = z.infer<typeof updateInventorySettingSchema>;
+
+/* Notification settings (Settings → Notification) -------------------------- */
+
+export const updateNotificationSettingSchema = z.object({
+  smsEnabled: z.boolean().optional(),
+  emailEnabled: z.boolean().optional(),
+  whatsappEnabled: z.boolean().optional(),
+  appointmentNotification: z.boolean().optional(),
+  billingNotification: z.boolean().optional(),
+  labNotification: z.boolean().optional(),
+  followupNotification: z.boolean().optional(),
+  paymentNotification: z.boolean().optional(),
+  status: z.enum(SETTING_STATUS_VALUES).optional(),
+});
+
+export type UpdateNotificationSettingInput = z.infer<typeof updateNotificationSettingSchema>;

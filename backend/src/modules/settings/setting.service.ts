@@ -8,6 +8,8 @@ import type {
   UpdateBillingSettingInput,
   UpdateEmergencySettingInput,
   UpdateHrSettingInput,
+  UpdateInventorySettingInput,
+  UpdateNotificationSettingInput,
   UpdateIpdSettingInput,
   UpdateLabSettingInput,
   UpdateOpdSettingInput,
@@ -634,6 +636,112 @@ export async function updateHrSetting(actor: AuthUser, input: UpdateHrSettingInp
       salaryDisbursementDay: current.salaryDisbursementDay,
       annualLeaveDays: current.annualLeaveDays,
       overtimeRate: current.overtimeRate,
+    },
+    newValues: { ...input },
+    user: actor,
+    branchId: actor.branchId,
+  });
+  return updated;
+}
+
+/* ---------------------------------------------------------------------------
+ * Inventory settings
+ * ------------------------------------------------------------------------- */
+
+export async function getInventorySetting(actor: AuthUser) {
+  return findOrCreateBranchSetting({
+    findFirst: () =>
+      prisma.inventorySetting.findFirst({
+        where: { branchId: actor.branchId },
+        orderBy: { id: "asc" },
+      }),
+    create: () =>
+      prisma.inventorySetting.create({
+        data: {
+          branchId: actor.branchId,
+          trackMedicalEquipment: true,
+          assetBarcode: true,
+          lowStockAlert: true,
+          autoReorder: true,
+          stockTransferApproval: true,
+          status: "active",
+        },
+      }),
+  });
+}
+
+export async function updateInventorySetting(actor: AuthUser, input: UpdateInventorySettingInput) {
+  const current = await getInventorySetting(actor);
+  const updated = await prisma.inventorySetting.update({
+    where: { id: current.id },
+    data: { ...input },
+  });
+  await writeAuditLog({
+    module: "inventorySetting",
+    action: "update",
+    tableName: "InventorySetting",
+    recordId: String(current.id),
+    oldValues: {
+      trackMedicalEquipment: current.trackMedicalEquipment,
+      assetBarcode: current.assetBarcode,
+      autoReorder: current.autoReorder,
+      stockTransferApproval: current.stockTransferApproval,
+    },
+    newValues: { ...input },
+    user: actor,
+    branchId: actor.branchId,
+  });
+  return updated;
+}
+
+/* ---------------------------------------------------------------------------
+ * Notification settings
+ * ------------------------------------------------------------------------- */
+
+export async function getNotificationSetting(actor: AuthUser) {
+  return findOrCreateBranchSetting({
+    findFirst: () =>
+      prisma.notificationSetting.findFirst({
+        where: { branchId: actor.branchId },
+        orderBy: { id: "asc" },
+      }),
+    create: () =>
+      prisma.notificationSetting.create({
+        data: {
+          branchId: actor.branchId,
+          smsEnabled: false,
+          emailEnabled: false,
+          whatsappEnabled: false,
+          appointmentNotification: true,
+          billingNotification: true,
+          labNotification: true,
+          followupNotification: true,
+          paymentNotification: true,
+          status: "active",
+        },
+      }),
+  });
+}
+
+export async function updateNotificationSetting(
+  actor: AuthUser,
+  input: UpdateNotificationSettingInput,
+) {
+  const current = await getNotificationSetting(actor);
+  const updated = await prisma.notificationSetting.update({
+    where: { id: current.id },
+    data: { ...input },
+  });
+  await writeAuditLog({
+    module: "notificationSetting",
+    action: "update",
+    tableName: "NotificationSetting",
+    recordId: String(current.id),
+    oldValues: {
+      smsEnabled: current.smsEnabled,
+      emailEnabled: current.emailEnabled,
+      appointmentNotification: current.appointmentNotification,
+      billingNotification: current.billingNotification,
     },
     newValues: { ...input },
     user: actor,
