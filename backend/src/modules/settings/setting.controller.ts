@@ -282,3 +282,23 @@ export const updateLocalizationSetting = asyncHandler(async (req: Request, res: 
   const localization = await settingService.updateLocalizationSetting(req.user!, req.body);
   success(res, { localization });
 });
+
+export const getSystemMaintenance = asyncHandler(async (req: Request, res: Response) => {
+  const maintenance = await settingService.getSystemMaintenance(req.user!);
+  success(res, { maintenance });
+});
+
+export const updateSystemMaintenance = asyncHandler(async (req: Request, res: Response) => {
+  const maintenance = await settingService.updateSystemMaintenance(req.user!, req.body);
+  success(res, { maintenance });
+});
+
+export const clearSystemCache = asyncHandler(async (req: Request, res: Response) => {
+  const maintenance = await settingService.clearSystemCache(req.user!);
+  success(res, { maintenance });
+});
+
+export const optimizeDatabase = asyncHandler(async (req: Request, res: Response) => {
+  const maintenance = await settingService.optimizeDatabase(req.user!);
+  success(res, { maintenance });
+});

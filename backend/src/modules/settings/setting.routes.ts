@@ -28,6 +28,7 @@ import {
   updatePrintTemplateSchema,
   updateReportSettingSchema,
   updateSecuritySettingSchema,
+  updateSystemMaintenanceSchema,
   upsertSystemSettingSchema,
 } from "./setting.validation";
 
@@ -396,6 +397,32 @@ router.patch(
   validate({ body: updateLocalizationSettingSchema }),
   requirePermission("localizationSetting", "update"),
   settingController.updateLocalizationSetting,
+);
+
+// System Maintenance
+router.get(
+  "/system-maintenance",
+  requirePermission("systemMaintenance", "read"),
+  settingController.getSystemMaintenance,
+);
+
+router.patch(
+  "/system-maintenance",
+  validate({ body: updateSystemMaintenanceSchema }),
+  requirePermission("systemMaintenance", "update"),
+  settingController.updateSystemMaintenance,
+);
+
+router.post(
+  "/system-maintenance/cache-clear",
+  requirePermission("systemMaintenance", "update"),
+  settingController.clearSystemCache,
+);
+
+router.post(
+  "/system-maintenance/optimize",
+  requirePermission("systemMaintenance", "update"),
+  settingController.optimizeDatabase,
 );
 
 export default router;

@@ -206,6 +206,10 @@ const PERMISSIONS: PermissionDef[] = [
   // Localization (Group B)
   { module: "localizationSetting", action: "read", description: "View localization settings" },
   { module: "localizationSetting", action: "update", description: "Update localization settings" },
+
+  // System Maintenance (Group B)
+  { module: "systemMaintenance", action: "read", description: "View system health & maintenance" },
+  { module: "systemMaintenance", action: "update", description: "Run maintenance tools" },
 ];
 
 const MATRIX: Record<RoleKey, string[]> = {
@@ -236,6 +240,7 @@ const MATRIX: Record<RoleKey, string[]> = {
     "reportSetting:read", "reportSetting:create", "reportSetting:update",
     "masterData:read", "masterData:create", "masterData:update",
     "localizationSetting:read", "localizationSetting:update",
+    "systemMaintenance:read", "systemMaintenance:update",
   ],
   DOCTOR: [
     "auth:read", "patient:read", "patient:create", "patient:update",
@@ -1054,6 +1059,19 @@ async function seed() {
     });
   }
   console.log("Localization ready.");
+
+  const systemMaintenanceFirst = await prisma.systemMaintenance.findFirst();
+  if (!systemMaintenanceFirst) {
+    await prisma.systemMaintenance.create({
+      data: {
+        maintenanceMode: false,
+        cacheEnabled: true,
+        systemVersion: "2.1.0",
+        status: "active",
+      },
+    });
+  }
+  console.log("System maintenance ready.");
 
   console.log("Seed complete.");
 }

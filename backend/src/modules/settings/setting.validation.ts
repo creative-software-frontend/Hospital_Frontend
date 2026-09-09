@@ -357,3 +357,14 @@ export const updateLocalizationSettingSchema = z.object({
 });
 
 export type UpdateLocalizationSettingInput = z.infer<typeof updateLocalizationSettingSchema>;
+
+/* System Maintenance (Settings → System Maintenance) ------------------------ */
+
+export const updateSystemMaintenanceSchema = z.object({
+  maintenanceMode: z.boolean().optional(),
+  cacheEnabled: z.boolean().optional(),
+  systemVersion: z.string().trim().max(64).optional().nullable(),
+  status: z.enum(SETTING_STATUS_VALUES).optional(),
+});
+
+export type UpdateSystemMaintenanceInput = z.infer<typeof updateSystemMaintenanceSchema>;

@@ -27,6 +27,7 @@ import type {
   UpdateReportSettingInput,
   UpdateMasterDataInput,
   UpdateLocalizationSettingInput,
+  UpdateSystemMaintenanceInput,
   UpdateSecuritySettingInput,
   UpsertSystemSettingInput,
 } from "./setting.validation";
@@ -1491,6 +1492,134 @@ export async function updateLocalizationSetting(
       ...(input.timeFormat ? { timeFormat: input.timeFormat } : {}),
       ...(input.timezone ? { timezone: input.timezone } : {}),
     },
+    user: actor,
+    branchId: actor.branchId,
+  });
+  return updated;
+}
+
+/* ---------------------------------------------------------------------------
+ * System Maintenance
+ * ------------------------------------------------------------------------- */
+
+async function dbHealthCheck(): Promise<string> {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return "Optimal";
+  } catch {
+    return "Degraded";
+  }
+}
+
+export async function getSystemMaintenance(actor: AuthUser) {
+  const first = await prisma.systemMaintenance.findFirst();
+  let row = first;
+  if (!row) {
+    row = await prisma.systemMaintenance.create({
+      data: {
+        maintenanceMode: false,
+        cacheEnabled: true,
+        systemVersion: "2.1.0",
+        status: "active",
+      },
+    });
+  }
+
+  const dbHealth = await dbHealthCheck();
+  return {
+    ...row,
+    uptimeSeconds: process.uptime(),
+    dbHealth,
+  };
+}
+
+export async function updateSystemMaintenance(
+  actor: AuthUser,
+  input: UpdateSystemMaintenanceInput,
+) {
+  const first = await prisma.systemMaintenance.findFirst();
+  let current = first;
+  if (!current) {
+    current = await prisma.systemMaintenance.create({
+      data: {
+        maintenanceMode: false,
+        cacheEnabled: true,
+        systemVersion: "2.1.0",
+        status: "active",
+      },
+    });
+  }
+
+  const updated = await prisma.systemMaintenance.update({
+    where: { id: current.id },
+    data: { ...input },
+  });
+
+  await writeAuditLog({
+    module: "systemMaintenance",
+    action: "update",
+    tableName: "SystemMaintenance",
+    recordId: String(updated.id),
+    oldValues: {
+      maintenanceMode: current.maintenanceMode,
+      cacheEnabled: current.cacheEnabled,
+      systemVersion: current.systemVersion,
+      status: current.status,
+    },
+    newValues: {
+      ...(input.maintenanceMode !== undefined ? { maintenanceMode: input.maintenanceMode } : {}),
+      ...(input.cacheEnabled !== undefined ? { cacheEnabled: input.cacheEnabled } : {}),
+      ...(input.systemVersion !== undefined ? { systemVersion: input.systemVersion } : {}),
+      ...(input.status ? { status: input.status } : {}),
+    },
+    user: actor,
+    branchId: actor.branchId,
+  });
+  return updated;
+}
+
+export async function clearSystemCache(actor: AuthUser) {
+  const now = new Date();
+  const first = await prisma.systemMaintenance.findFirst();
+  if (!first) {
+    throw new NotFoundError("System maintenance record not found");
+  }
+  const updated = await prisma.systemMaintenance.update({
+    where: { id: first.id },
+    data: { lastCacheClear: now },
+  });
+
+  await writeAuditLog({
+    module: "systemMaintenance",
+    action: "cache-clear",
+    tableName: "SystemMaintenance",
+    recordId: String(updated.id),
+    oldValues: { lastCacheClear: first.lastCacheClear },
+    newValues: { lastCacheClear: now },
+    user: actor,
+    branchId: actor.branchId,
+  });
+  return updated;
+}
+
+export async function optimizeDatabase(actor: AuthUser) {
+  const now = new Date();
+  const first = await prisma.systemMaintenance.findFirst();
+  if (!first) {
+    throw new NotFoundError("System maintenance record not found");
+  }
+  const updated = await prisma.systemMaintenance.update({
+    where: { id: first.id },
+    data: { databaseOptimization: now },
+  });
+
+  await writeAuditLog({
+    module: "systemMaintenance",
+    action: "optimize",
+    tableName: "SystemMaintenance",
+    recordId: String(updated.id),
+    oldValues: { databaseOptimization: first.databaseOptimization },
+    newValues: { databaseOptimization: now },
     user: actor,
     branchId: actor.branchId,
   });

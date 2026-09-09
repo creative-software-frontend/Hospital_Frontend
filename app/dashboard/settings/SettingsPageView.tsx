@@ -27,6 +27,7 @@ import { BackupDatabaseView } from "@/app/dashboard/settings/backup-database/Bac
 import { ReportsView } from "@/app/dashboard/settings/reports/ReportsView";
 import { MasterDataView } from "@/app/dashboard/settings/master-data/MasterDataView";
 import { LocalizationView } from "@/app/dashboard/settings/localization/LocalizationView";
+import { SystemMaintenanceView } from "@/app/dashboard/settings/system-maintenance/SystemMaintenanceView";
 import { MockSettingsView } from "@/app/dashboard/settings/mock/MockSettingsView";
 
 export const SettingsPageView = ({
@@ -134,6 +135,10 @@ export const SettingsPageView = ({
 
   if (pageKey === "localization") {
     return <LocalizationView />;
+  }
+
+  if (pageKey === "system-maintenance") {
+    return <SystemMaintenanceView />;
   }
 
   return <MockSettingsView page={page} />;

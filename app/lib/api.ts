@@ -1222,6 +1222,26 @@ export const LOCALIZATION_WEEK_DAYS: Record<number, string> = {
   6: "Saturday",
 };
 
+export interface SystemMaintenance {
+  id: number;
+  maintenanceMode: boolean;
+  cacheEnabled: boolean;
+  lastCacheClear: string | null;
+  systemVersion: string | null;
+  lastUpdate: string | null;
+  databaseOptimization: string | null;
+  status: "active" | "inactive";
+  uptimeSeconds?: number;
+  dbHealth?: string;
+}
+
+export type UpdateSystemMaintenanceInput = {
+  maintenanceMode?: boolean;
+  cacheEnabled?: boolean;
+  systemVersion?: string | null;
+  status?: "active" | "inactive";
+};
+
 export const settingsApi = {
   system: {
     list: (branchId?: number) =>
@@ -1433,6 +1453,22 @@ export const settingsApi = {
       request<{ localization: LocalizationSetting }>("/settings/localization", {
         method: "PATCH",
         body: JSON.stringify(input),
+      }),
+  },
+  systemMaintenance: {
+    get: () => request<{ maintenance: SystemMaintenance }>("/settings/system-maintenance"),
+    update: (input: UpdateSystemMaintenanceInput) =>
+      request<{ maintenance: SystemMaintenance }>("/settings/system-maintenance", {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+    clearCache: () =>
+      request<{ maintenance: SystemMaintenance }>("/settings/system-maintenance/cache-clear", {
+        method: "POST",
+      }),
+    optimize: () =>
+      request<{ maintenance: SystemMaintenance }>("/settings/system-maintenance/optimize", {
+        method: "POST",
       }),
   },
 };
