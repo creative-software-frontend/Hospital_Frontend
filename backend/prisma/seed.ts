@@ -183,6 +183,11 @@ const PERMISSIONS: PermissionDef[] = [
   { module: "printSetting", action: "read", description: "View print & document templates" },
   { module: "printSetting", action: "create", description: "Create print & document templates" },
   { module: "printSetting", action: "update", description: "Update print & document templates" },
+
+  // API & Integration (Group B)
+  { module: "integrationSetting", action: "read", description: "View API & integrations" },
+  { module: "integrationSetting", action: "create", description: "Create API integrations" },
+  { module: "integrationSetting", action: "update", description: "Update and test API integrations" },
 ];
 
 const MATRIX: Record<RoleKey, string[]> = {
@@ -208,6 +213,7 @@ const MATRIX: Record<RoleKey, string[]> = {
     "inventorySetting:read", "inventorySetting:update",
     "notificationSetting:read", "notificationSetting:update",
     "printSetting:read", "printSetting:create", "printSetting:update",
+    "integrationSetting:read", "integrationSetting:create", "integrationSetting:update",
   ],
   DOCTOR: [
     "auth:read", "patient:read", "patient:create", "patient:update",
@@ -802,6 +808,62 @@ async function seed() {
     }
   }
   console.log("Print & document templates ready.");
+
+  const DEFAULT_INTEGRATIONS = [
+    {
+      integrationType: "sms",
+      providerName: "BulkSMS BD",
+      apiUrl: "https://api.bulksmsbd.example/sms",
+      apiKey: "sk-live-9f2c14d8",
+      secretKey: "sc-live-5a1b61ac",
+    },
+    {
+      integrationType: "payment",
+      providerName: "SSLCommerz",
+      apiUrl: "https://sandbox.sslcommerz.example",
+      apiKey: "sslc-live-8f3a9c25",
+      secretKey: "sslc-secret-71d0e3",
+    },
+    {
+      integrationType: "email",
+      providerName: "SMTP",
+      apiUrl: "smtp://smtp.citycare.example:587",
+      apiKey: null,
+      secretKey: null,
+    },
+    {
+      integrationType: "lab",
+      providerName: "HL7 Lab Interface",
+      apiUrl: "https://lims.citycare.example/hl7",
+      apiKey: null,
+      secretKey: null,
+      status: "inactive",
+    },
+  ];
+
+  for (const integration of DEFAULT_INTEGRATIONS) {
+    const existing = await prisma.integration.findFirst({
+      where: {
+        branchId: branch.id,
+        integrationType: integration.integrationType,
+        providerName: integration.providerName,
+      },
+    });
+    if (!existing) {
+      await prisma.integration.create({
+        data: {
+          branchId: branch.id,
+          integrationType: integration.integrationType,
+          providerName: integration.providerName,
+          apiUrl: integration.apiUrl,
+          apiKey: integration.apiKey,
+          secretKey: integration.secretKey,
+          status: integration.status ?? "active",
+        },
+      });
+    }
+  }
+  console.log("API & Integration ready.");
 
   console.log("Seed complete.");
 }

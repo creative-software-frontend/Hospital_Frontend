@@ -1,8 +1,10 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ConflictError, NotFoundError } from "../../errors/ApiError";
 import { writeAuditLog } from "../../utils/audit";
 import type { AuthUser } from "../../types/auth";
 import type {
+  CreateIntegrationInput,
   CreatePrintTemplateInput,
   ListSystemSettingsQuery,
   UpdateAccountingSettingInput,
@@ -10,6 +12,7 @@ import type {
   UpdateEmergencySettingInput,
   UpdateHrSettingInput,
   UpdateInventorySettingInput,
+  UpdateIntegrationInput,
   UpdateNotificationSettingInput,
   UpdateIpdSettingInput,
   UpdateLabSettingInput,
@@ -889,4 +892,182 @@ export async function deletePrintTemplate(actor: AuthUser, id: number) {
     user: actor,
     branchId: actor.branchId,
   });
+}
+
+/* ---------------------------------------------------------------------------
+ * API & Integration
+ * ------------------------------------------------------------------------- */
+
+function toIntegrationResponse(
+  row: {
+    id: number;
+    branchId: number;
+    integrationType: string;
+    providerName: string;
+    apiUrl: string | null;
+    apiKey: string | null;
+    secretKey: string | null;
+    configuration: Prisma.JsonValue | null;
+    status: string;
+  },
+): {
+  id: number;
+  branchId: number;
+  integrationType: string;
+  providerName: string;
+  apiUrl: string | null;
+  apiKeyMasked: string | null;
+  hasSecretKey: boolean;
+  configuration: Prisma.JsonValue | null;
+  status: string;
+} {
+  return {
+    id: row.id,
+    branchId: row.branchId,
+    integrationType: row.integrationType,
+    providerName: row.providerName,
+    apiUrl: row.apiUrl,
+    apiKeyMasked: row.apiKey ? `••••${row.apiKey.slice(-4)}` : null,
+    hasSecretKey: !!row.secretKey,
+    configuration: row.configuration,
+    status: row.status,
+  };
+}
+
+export async function listIntegrations(actor: AuthUser) {
+  const rows = await prisma.integration.findMany({
+    where: { branchId: actor.branchId },
+    orderBy: [{ integrationType: "asc" }, { providerName: "asc" }],
+  });
+  return rows.map(toIntegrationResponse);
+}
+
+export async function createIntegration(actor: AuthUser, input: CreateIntegrationInput) {
+  const created = await prisma.integration.create({
+    data: {
+      branchId: actor.branchId,
+      integrationType: input.integrationType,
+      providerName: input.providerName,
+      apiUrl: input.apiUrl,
+      apiKey: input.apiKey,
+      secretKey: input.secretKey,
+      configuration: input.configuration as Prisma.InputJsonValue | undefined,
+      status: input.status ?? "active",
+    },
+  });
+
+  await writeAuditLog({
+    module: "integration",
+    action: "create",
+    tableName: "Integration",
+    recordId: String(created.id),
+    newValues: {
+      integrationType: created.integrationType,
+      providerName: created.providerName,
+      status: created.status,
+    },
+    user: actor,
+    branchId: actor.branchId,
+  });
+  return toIntegrationResponse(created);
+}
+
+export async function updateIntegration(actor: AuthUser, id: number, input: UpdateIntegrationInput) {
+  const current = await prisma.integration.findFirst({ where: { id, branchId: actor.branchId } });
+  if (!current) {
+    throw new NotFoundError("Integration not found");
+  }
+
+  const data: Prisma.IntegrationUncheckedUpdateInput = {
+    ...(input.integrationType ? { integrationType: input.integrationType } : {}),
+    ...(input.providerName ? { providerName: input.providerName } : {}),
+    ...(input.apiUrl !== undefined ? { apiUrl: input.apiUrl } : {}),
+    ...(input.apiKey !== undefined ? { apiKey: input.apiKey } : {}),
+    ...(input.secretKey !== undefined ? { secretKey: input.secretKey } : {}),
+    ...(input.configuration !== undefined
+      ? { configuration: input.configuration as Prisma.InputJsonValue }
+      : {}),
+    ...(input.status ? { status: input.status } : {}),
+  };
+
+  const updated = await prisma.integration.update({ where: { id }, data });
+
+  await writeAuditLog({
+    module: "integration",
+    action: "update",
+    tableName: "Integration",
+    recordId: String(id),
+    oldValues: {
+      integrationType: current.integrationType,
+      providerName: current.providerName,
+      status: current.status,
+    },
+    newValues: {
+      ...(input.integrationType ? { integrationType: input.integrationType } : {}),
+      ...(input.providerName ? { providerName: input.providerName } : {}),
+      ...(input.status ? { status: input.status } : {}),
+    },
+    user: actor,
+    branchId: actor.branchId,
+  });
+  return toIntegrationResponse(updated);
+}
+
+export async function deleteIntegration(actor: AuthUser, id: number) {
+  const current = await prisma.integration.findFirst({ where: { id, branchId: actor.branchId } });
+  if (!current) {
+    throw new NotFoundError("Integration not found");
+  }
+
+  await prisma.integration.delete({ where: { id } });
+
+  await writeAuditLog({
+    module: "integration",
+    action: "delete",
+    tableName: "Integration",
+    recordId: String(id),
+    oldValues: {
+      integrationType: current.integrationType,
+      providerName: current.providerName,
+    },
+    user: actor,
+    branchId: actor.branchId,
+  });
+}
+
+export async function testIntegration(actor: AuthUser, id: number) {
+  const current = await prisma.integration.findFirst({ where: { id, branchId: actor.branchId } });
+  if (!current) {
+    throw new NotFoundError("Integration not found");
+  }
+
+  await writeAuditLog({
+    module: "integration",
+    action: "test",
+    tableName: "Integration",
+    recordId: String(id),
+    newValues: { providerName: current.providerName, ...(current.apiUrl ? { apiUrl: current.apiUrl } : {}) },
+    user: actor,
+    branchId: actor.branchId,
+  });
+
+  if (current.status !== "active") {
+    return {
+      success: false,
+      message: `Integration "${current.providerName}" is not active. Enable it before testing.`,
+      latencyMs: 0,
+    };
+  }
+  if (!current.apiUrl && !current.apiKey) {
+    return {
+      success: false,
+      message: `Missing connection details for "${current.providerName}". Provide an API URL or key first.`,
+      latencyMs: 0,
+    };
+  }
+  return {
+    success: true,
+    message: `Connection configuration for "${current.providerName}" is valid (no live request performed).`,
+    latencyMs: 0,
+  };
 }

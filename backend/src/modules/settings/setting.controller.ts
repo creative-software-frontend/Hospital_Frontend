@@ -171,3 +171,32 @@ export const deletePrintTemplate = asyncHandler(async (req: Request, res: Respon
   await settingService.deletePrintTemplate(req.user!, Number(req.params.id));
   success(res, { message: "Print template deleted successfully" });
 });
+
+export const listIntegrations = asyncHandler(async (req: Request, res: Response) => {
+  const integrations = await settingService.listIntegrations(req.user!);
+  success(res, { integrations });
+});
+
+export const createIntegration = asyncHandler(async (req: Request, res: Response) => {
+  const integration = await settingService.createIntegration(req.user!, req.body);
+  success(res, { integration });
+});
+
+export const updateIntegration = asyncHandler(async (req: Request, res: Response) => {
+  const integration = await settingService.updateIntegration(
+    req.user!,
+    Number(req.params.id),
+    req.body,
+  );
+  success(res, { integration });
+});
+
+export const deleteIntegration = asyncHandler(async (req: Request, res: Response) => {
+  await settingService.deleteIntegration(req.user!, Number(req.params.id));
+  success(res, { message: "Integration deleted successfully" });
+});
+
+export const testIntegration = asyncHandler(async (req: Request, res: Response) => {
+  const result = await settingService.testIntegration(req.user!, Number(req.params.id));
+  success(res, { result });
+});

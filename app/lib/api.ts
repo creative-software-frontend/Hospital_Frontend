@@ -955,6 +955,48 @@ export type CreatePrintTemplateInput = {
 
 export type UpdatePrintTemplateInput = Partial<CreatePrintTemplateInput>;
 
+export const INTEGRATION_TYPES = ["sms", "payment", "email", "lab", "other"] as const;
+
+export type IntegrationType = (typeof INTEGRATION_TYPES)[number];
+
+export const INTEGRATION_TYPE_LABELS: Record<IntegrationType, string> = {
+  sms: "SMS Gateway",
+  payment: "Online Payment",
+  email: "Email Service",
+  lab: "Lab Interface",
+  other: "Other",
+};
+
+export interface Integration {
+  id: number;
+  branchId: number;
+  integrationType: IntegrationType;
+  providerName: string;
+  apiUrl: string | null;
+  apiKeyMasked: string | null;
+  hasSecretKey: boolean;
+  configuration: Record<string, unknown> | null;
+  status: "active" | "inactive";
+}
+
+export type CreateIntegrationInput = {
+  integrationType: IntegrationType;
+  providerName: string;
+  apiUrl?: string | null;
+  apiKey?: string | null;
+  secretKey?: string | null;
+  configuration?: Record<string, unknown>;
+  status?: "active" | "inactive";
+};
+
+export type UpdateIntegrationInput = Partial<CreateIntegrationInput>;
+
+export interface IntegrationTestResult {
+  success: boolean;
+  message: string;
+  latencyMs: number;
+}
+
 export const settingsApi = {
   system: {
     list: (branchId?: number) =>
@@ -1094,6 +1136,25 @@ export const settingsApi = {
       }),
     remove: (id: number) =>
       request<{ message: string }>(`/settings/print-templates/${id}`, { method: "DELETE" }),
+  },
+  integrations: {
+    list: () => request<{ integrations: Integration[] }>("/settings/integrations"),
+    create: (input: CreateIntegrationInput) =>
+      request<{ integration: Integration }>("/settings/integrations", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    update: (id: number, input: UpdateIntegrationInput) =>
+      request<{ integration: Integration }>(`/settings/integrations/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+    remove: (id: number) =>
+      request<{ message: string }>(`/settings/integrations/${id}`, { method: "DELETE" }),
+    test: (id: number) =>
+      request<{ result: IntegrationTestResult }>(`/settings/integrations/${id}/test`, {
+        method: "POST",
+      }),
   },
 };
 

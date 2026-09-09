@@ -22,6 +22,7 @@ import { HrSettingsView } from "@/app/dashboard/settings/hr/HrSettingsView";
 import { InventorySettingsView } from "@/app/dashboard/settings/inventory/InventorySettingsView";
 import { NotificationSettingsView } from "@/app/dashboard/settings/notification/NotificationSettingsView";
 import { PrintDocumentView } from "@/app/dashboard/settings/print-document/PrintDocumentView";
+import { ApiIntegrationView } from "@/app/dashboard/settings/api-integration/ApiIntegrationView";
 import { MockSettingsView } from "@/app/dashboard/settings/mock/MockSettingsView";
 
 export const SettingsPageView = ({
@@ -109,6 +110,10 @@ export const SettingsPageView = ({
 
   if (pageKey === "print-document") {
     return <PrintDocumentView />;
+  }
+
+  if (pageKey === "api-integration") {
+    return <ApiIntegrationView />;
   }
 
   return <MockSettingsView page={page} />;

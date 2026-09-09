@@ -5,11 +5,13 @@ import { requirePermission } from "../../middleware/permission.middleware";
 import * as settingController from "./setting.controller";
 import {
   listSystemSettingsQuerySchema,
+  createIntegrationSchema,
   createPrintTemplateSchema,
   updateAccountingSettingSchema,
   updateBillingSettingSchema,
   updateEmergencySettingSchema,
   updateHrSettingSchema,
+  updateIntegrationSchema,
   updateInventorySettingSchema,
   updateNotificationSettingSchema,
   updateIpdSettingSchema,
@@ -255,6 +257,39 @@ router.delete(
   "/print-templates/:id",
   requirePermission("printSetting", "update"),
   settingController.deletePrintTemplate,
+);
+
+// API & Integration
+router.get(
+  "/integrations",
+  requirePermission("integrationSetting", "read"),
+  settingController.listIntegrations,
+);
+
+router.post(
+  "/integrations",
+  validate({ body: createIntegrationSchema }),
+  requirePermission("integrationSetting", "create"),
+  settingController.createIntegration,
+);
+
+router.patch(
+  "/integrations/:id",
+  validate({ body: updateIntegrationSchema }),
+  requirePermission("integrationSetting", "update"),
+  settingController.updateIntegration,
+);
+
+router.delete(
+  "/integrations/:id",
+  requirePermission("integrationSetting", "update"),
+  settingController.deleteIntegration,
+);
+
+router.post(
+  "/integrations/:id/test",
+  requirePermission("integrationSetting", "update"),
+  settingController.testIntegration,
 );
 
 export default router;

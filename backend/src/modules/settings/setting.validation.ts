@@ -249,3 +249,22 @@ export const updatePrintTemplateSchema = createPrintTemplateSchema.partial();
 
 export type CreatePrintTemplateInput = z.infer<typeof createPrintTemplateSchema>;
 export type UpdatePrintTemplateInput = z.infer<typeof updatePrintTemplateSchema>;
+
+/* API & Integration (Settings → API & Integration) -------------------------- */
+
+export const INTEGRATION_TYPES = ["sms", "payment", "email", "lab", "other"] as const;
+
+export const createIntegrationSchema = z.object({
+  integrationType: z.enum(INTEGRATION_TYPES),
+  providerName: z.string().trim().min(1, "providerName is required").max(128),
+  apiUrl: optionalString(512),
+  apiKey: optionalString(512),
+  secretKey: optionalString(512),
+  configuration: z.record(z.string(), z.unknown()).optional(),
+  status: z.enum(SETTING_STATUS_VALUES).optional(),
+});
+
+export const updateIntegrationSchema = createIntegrationSchema.partial();
+
+export type CreateIntegrationInput = z.infer<typeof createIntegrationSchema>;
+export type UpdateIntegrationInput = z.infer<typeof updateIntegrationSchema>;
