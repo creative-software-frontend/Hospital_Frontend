@@ -1158,6 +1158,70 @@ export type CreateMasterDataInput = {
 
 export type UpdateMasterDataInput = Partial<CreateMasterDataInput>;
 
+export interface LocalizationSetting {
+  id: number;
+  branchId: number;
+  language: string;
+  currency: string;
+  currencySymbol: string;
+  dateFormat: string;
+  timeFormat: "12h" | "24h";
+  timezone: string;
+  numberFormat: string | null;
+  weekStartDay: number;
+}
+
+export type UpdateLocalizationInput = {
+  language?: string;
+  currency?: string;
+  currencySymbol?: string;
+  dateFormat?: string;
+  timeFormat?: "12h" | "24h";
+  timezone?: string;
+  numberFormat?: string | null;
+  weekStartDay?: number;
+};
+
+export const LOCALIZATION_LANGUAGES = ["English", "Bangla", "Arabic", "Hindi", "French", "Spanish"];
+
+export const LOCALIZATION_CURRENCIES = [
+  { code: "BDT", label: "Bangladeshi Taka", symbol: "৳" },
+  { code: "USD", label: "US Dollar", symbol: "$" },
+  { code: "GBP", label: "British Pound", symbol: "£" },
+  { code: "EUR", label: "Euro", symbol: "€" },
+  { code: "INR", label: "Indian Rupee", symbol: "₹" },
+  { code: "SAR", label: "Saudi Riyal", symbol: "﷼" },
+];
+
+export const LOCALIZATION_DATE_FORMATS = [
+  "DD-MM-YYYY",
+  "DD/MM/YYYY",
+  "MM-DD-YYYY",
+  "MM/DD/YYYY",
+  "YYYY-MM-DD",
+  "DD MMM YYYY",
+];
+
+export const LOCALIZATION_TIMEZONES = [
+  "Asia/Dhaka",
+  "Asia/Kolkata",
+  "Asia/Dubai",
+  "Asia/Karachi",
+  "Europe/London",
+  "America/New_York",
+  "UTC",
+];
+
+export const LOCALIZATION_WEEK_DAYS: Record<number, string> = {
+  0: "Sunday",
+  1: "Monday",
+  2: "Tuesday",
+  3: "Wednesday",
+  4: "Thursday",
+  5: "Friday",
+  6: "Saturday",
+};
+
 export const settingsApi = {
   system: {
     list: (branchId?: number) =>
@@ -1362,6 +1426,14 @@ export const settingsApi = {
       }),
     remove: (id: number) =>
       request<{ message: string }>(`/settings/master-data/${id}`, { method: "DELETE" }),
+  },
+  localization: {
+    get: () => request<{ localization: LocalizationSetting }>("/settings/localization"),
+    update: (input: UpdateLocalizationInput) =>
+      request<{ localization: LocalizationSetting }>("/settings/localization", {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
   },
 };
 

@@ -1433,3 +1433,66 @@ export async function deleteMasterData(actor: AuthUser, id: number) {
     branchId: actor.branchId,
   });
 }
+
+/* ---------------------------------------------------------------------------
+ * Localization
+ * ------------------------------------------------------------------------- */
+
+export async function getLocalizationSetting(actor: AuthUser) {
+  const existing = await prisma.localizationSetting.findFirst({
+    where: { branchId: actor.branchId, language: "English" },
+  });
+  if (existing) return existing;
+
+  return prisma.localizationSetting.create({
+    data: {
+      branchId: actor.branchId,
+      language: "English",
+      currency: "BDT",
+      currencySymbol: "৳",
+      dateFormat: "DD-MM-YYYY",
+      timeFormat: "24h",
+      timezone: "Asia/Dhaka",
+      numberFormat: "en-US",
+      weekStartDay: 1,
+    },
+  });
+}
+
+export async function updateLocalizationSetting(
+  actor: AuthUser,
+  input: UpdateLocalizationSettingInput,
+) {
+  const current = await getLocalizationSetting(actor);
+
+  const updated = await prisma.localizationSetting.update({
+    where: { id: current.id },
+    data: { ...input },
+  });
+
+  await writeAuditLog({
+    module: "localizationSetting",
+    action: "update",
+    tableName: "LocalizationSetting",
+    recordId: String(updated.id),
+    oldValues: {
+      language: current.language,
+      currency: current.currency,
+      currencySymbol: current.currencySymbol,
+      dateFormat: current.dateFormat,
+      timeFormat: current.timeFormat,
+      timezone: current.timezone,
+    },
+    newValues: {
+      ...(input.language ? { language: input.language } : {}),
+      ...(input.currency ? { currency: input.currency } : {}),
+      ...(input.currencySymbol ? { currencySymbol: input.currencySymbol } : {}),
+      ...(input.dateFormat ? { dateFormat: input.dateFormat } : {}),
+      ...(input.timeFormat ? { timeFormat: input.timeFormat } : {}),
+      ...(input.timezone ? { timezone: input.timezone } : {}),
+    },
+    user: actor,
+    branchId: actor.branchId,
+  });
+  return updated;
+}

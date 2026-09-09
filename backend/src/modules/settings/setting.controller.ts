@@ -272,3 +272,13 @@ export const deleteMasterData = asyncHandler(async (req: Request, res: Response)
   await settingService.deleteMasterData(req.user!, Number(req.params.id));
   success(res, { message: "Master data item deleted successfully" });
 });
+
+export const getLocalizationSetting = asyncHandler(async (req: Request, res: Response) => {
+  const localization = await settingService.getLocalizationSetting(req.user!);
+  success(res, { localization });
+});
+
+export const updateLocalizationSetting = asyncHandler(async (req: Request, res: Response) => {
+  const localization = await settingService.updateLocalizationSetting(req.user!, req.body);
+  success(res, { localization });
+});

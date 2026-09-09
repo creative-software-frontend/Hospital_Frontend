@@ -16,6 +16,7 @@ import {
   updateHrSettingSchema,
   updateIntegrationSchema,
   updateInventorySettingSchema,
+  updateLocalizationSettingSchema,
   updateMasterDataSchema,
   updateNotificationSettingSchema,
   updateIpdSettingSchema,
@@ -381,6 +382,20 @@ router.delete(
   "/master-data/:id",
   requirePermission("masterData", "update"),
   settingController.deleteMasterData,
+);
+
+// Localization
+router.get(
+  "/localization",
+  requirePermission("localizationSetting", "read"),
+  settingController.getLocalizationSetting,
+);
+
+router.patch(
+  "/localization",
+  validate({ body: updateLocalizationSettingSchema }),
+  requirePermission("localizationSetting", "update"),
+  settingController.updateLocalizationSetting,
 );
 
 export default router;

@@ -26,6 +26,7 @@ import { ApiIntegrationView } from "@/app/dashboard/settings/api-integration/Api
 import { BackupDatabaseView } from "@/app/dashboard/settings/backup-database/BackupDatabaseView";
 import { ReportsView } from "@/app/dashboard/settings/reports/ReportsView";
 import { MasterDataView } from "@/app/dashboard/settings/master-data/MasterDataView";
+import { LocalizationView } from "@/app/dashboard/settings/localization/LocalizationView";
 import { MockSettingsView } from "@/app/dashboard/settings/mock/MockSettingsView";
 
 export const SettingsPageView = ({
@@ -129,6 +130,10 @@ export const SettingsPageView = ({
 
   if (pageKey === "master-data") {
     return <MasterDataView />;
+  }
+
+  if (pageKey === "localization") {
+    return <LocalizationView />;
   }
 
   return <MockSettingsView page={page} />;

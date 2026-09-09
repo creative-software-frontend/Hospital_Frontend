@@ -202,6 +202,10 @@ const PERMISSIONS: PermissionDef[] = [
   { module: "masterData", action: "read", description: "View master/reference data" },
   { module: "masterData", action: "create", description: "Create master data items" },
   { module: "masterData", action: "update", description: "Update master data items" },
+
+  // Localization (Group B)
+  { module: "localizationSetting", action: "read", description: "View localization settings" },
+  { module: "localizationSetting", action: "update", description: "Update localization settings" },
 ];
 
 const MATRIX: Record<RoleKey, string[]> = {
@@ -231,6 +235,7 @@ const MATRIX: Record<RoleKey, string[]> = {
     "backupSetting:read", "backupSetting:update",
     "reportSetting:read", "reportSetting:create", "reportSetting:update",
     "masterData:read", "masterData:create", "masterData:update",
+    "localizationSetting:read", "localizationSetting:update",
   ],
   DOCTOR: [
     "auth:read", "patient:read", "patient:create", "patient:update",
@@ -1029,6 +1034,26 @@ async function seed() {
     }
   }
   console.log("Master data ready.");
+
+  const localizationDefault = await prisma.localizationSetting.findFirst({
+    where: { branchId: branch.id, language: "English" },
+  });
+  if (!localizationDefault) {
+    await prisma.localizationSetting.create({
+      data: {
+        branchId: branch.id,
+        language: "English",
+        currency: "BDT",
+        currencySymbol: "৳",
+        dateFormat: "DD-MM-YYYY",
+        timeFormat: "24h",
+        timezone: "Asia/Dhaka",
+        numberFormat: "en-US",
+        weekStartDay: 1,
+      },
+    });
+  }
+  console.log("Localization ready.");
 
   console.log("Seed complete.");
 }
