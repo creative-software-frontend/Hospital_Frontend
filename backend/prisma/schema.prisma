@@ -222,6 +222,7 @@ model Branch {
   documentTemplates      DocumentTemplate[]
   reportSettings         ReportSetting[]
   localizationSettings   LocalizationSetting[]
+  masterDataItems        MasterData[]
 
   @@index([code])
 }
@@ -1751,6 +1752,23 @@ model LocalizationSetting {
   branch Branch? @relation(fields: [branchId], references: [id])
 
   @@unique([branchId, language])
+  @@index([branchId])
+}
+
+model MasterData {
+  id        Int      @id @default(autoincrement())
+  branchId  Int
+  category  String
+  label     String
+  code      String?
+  sortOrder Int      @default(0)
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch Branch? @relation(fields: [branchId], references: [id])
+
+  @@unique([branchId, category, label])
   @@index([branchId])
 }
 

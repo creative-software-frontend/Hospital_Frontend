@@ -1109,6 +1109,55 @@ export type CreateReportSettingInput = {
 
 export type UpdateReportSettingInput = Partial<CreateReportSettingInput>;
 
+export const MASTER_DATA_CATEGORIES = [
+  "cities",
+  "areas",
+  "visit_types",
+  "blood_groups",
+  "payment_methods",
+  "document_types",
+] as const;
+
+export type MasterDataCategory = (typeof MASTER_DATA_CATEGORIES)[number];
+
+export const MASTER_DATA_CATEGORY_LABELS: Record<MasterDataCategory, string> = {
+  cities: "Cities",
+  areas: "Areas",
+  visit_types: "Visit Types",
+  blood_groups: "Blood Groups",
+  payment_methods: "Payment Methods",
+  document_types: "Document Types",
+};
+
+export const MASTER_DATA_CATEGORY_EXAMPLES: Record<MasterDataCategory, string> = {
+  cities: "Dhaka, Chattogram, Sylhet",
+  areas: "Dhanmondi, Gulshan, Banani",
+  visit_types: "New, Follow-up, Emergency",
+  blood_groups: "A+, B-, O+, AB+",
+  payment_methods: "Cash, Card, bKash, Rocket",
+  document_types: "NID, Passport, Birth Cert",
+};
+
+export interface MasterDataItem {
+  id: number;
+  branchId: number;
+  category: MasterDataCategory;
+  label: string;
+  code: string | null;
+  sortOrder: number;
+  status: "active" | "inactive";
+}
+
+export type CreateMasterDataInput = {
+  category: MasterDataCategory;
+  label: string;
+  code?: string | null;
+  sortOrder?: number;
+  status?: "active" | "inactive";
+};
+
+export type UpdateMasterDataInput = Partial<CreateMasterDataInput>;
+
 export const settingsApi = {
   system: {
     list: (branchId?: number) =>
@@ -1295,6 +1344,24 @@ export const settingsApi = {
       }),
     remove: (id: number) =>
       request<{ message: string }>(`/settings/reports/${id}`, { method: "DELETE" }),
+  },
+  masterData: {
+    list: (category?: MasterDataCategory) =>
+      request<{ items: MasterDataItem[] }>(
+        `/settings/master-data${qs(category ? { category } : {})}`,
+      ),
+    create: (input: CreateMasterDataInput) =>
+      request<{ item: MasterDataItem }>("/settings/master-data", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    update: (id: number, input: UpdateMasterDataInput) =>
+      request<{ item: MasterDataItem }>(`/settings/master-data/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+    remove: (id: number) =>
+      request<{ message: string }>(`/settings/master-data/${id}`, { method: "DELETE" }),
   },
 };
 

@@ -6,6 +6,7 @@ import * as settingController from "./setting.controller";
 import {
   listSystemSettingsQuerySchema,
   createIntegrationSchema,
+  createMasterDataSchema,
   createPrintTemplateSchema,
   createReportSettingSchema,
   updateAccountingSettingSchema,
@@ -15,6 +16,7 @@ import {
   updateHrSettingSchema,
   updateIntegrationSchema,
   updateInventorySettingSchema,
+  updateMasterDataSchema,
   updateNotificationSettingSchema,
   updateIpdSettingSchema,
   updateLabSettingSchema,
@@ -352,6 +354,33 @@ router.delete(
   "/reports/:id",
   requirePermission("reportSetting", "update"),
   settingController.deleteReportSetting,
+);
+
+// Master Data
+router.get(
+  "/master-data",
+  requirePermission("masterData", "read"),
+  settingController.listMasterData,
+);
+
+router.post(
+  "/master-data",
+  validate({ body: createMasterDataSchema }),
+  requirePermission("masterData", "create"),
+  settingController.createMasterData,
+);
+
+router.patch(
+  "/master-data/:id",
+  validate({ body: updateMasterDataSchema }),
+  requirePermission("masterData", "update"),
+  settingController.updateMasterData,
+);
+
+router.delete(
+  "/master-data/:id",
+  requirePermission("masterData", "update"),
+  settingController.deleteMasterData,
 );
 
 export default router;

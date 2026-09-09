@@ -5,6 +5,7 @@ import { writeAuditLog } from "../../utils/audit";
 import type { AuthUser } from "../../types/auth";
 import type {
   CreateIntegrationInput,
+  CreateMasterDataInput,
   CreatePrintTemplateInput,
   CreateReportSettingInput,
   ListSystemSettingsQuery,
@@ -24,6 +25,8 @@ import type {
   UpdatePrescriptionSettingInput,
   UpdatePrintTemplateInput,
   UpdateReportSettingInput,
+  UpdateMasterDataInput,
+  UpdateLocalizationSettingInput,
   UpdateSecuritySettingInput,
   UpsertSystemSettingInput,
 } from "./setting.validation";
@@ -1309,6 +1312,122 @@ export async function deleteReportSetting(actor: AuthUser, id: number) {
     oldValues: {
       reportName: current.reportName,
       reportType: current.reportType,
+    },
+    user: actor,
+    branchId: actor.branchId,
+  });
+}
+
+/* ---------------------------------------------------------------------------
+ * Master Data
+ * ------------------------------------------------------------------------- */
+
+export async function listMasterData(actor: AuthUser, category?: string) {
+  return prisma.masterData.findMany({
+    where: { branchId: actor.branchId, ...(category ? { category } : {}) },
+    orderBy: [{ category: "asc" }, { sortOrder: "asc" }, { label: "asc" }],
+  });
+}
+
+export async function createMasterData(actor: AuthUser, input: CreateMasterDataInput) {
+  try {
+    const created = await prisma.masterData.create({
+      data: {
+        branchId: actor.branchId,
+        category: input.category,
+        label: input.label,
+        code: input.code ?? null,
+        sortOrder: input.sortOrder ?? 0,
+        status: input.status ?? "active",
+      },
+    });
+
+    await writeAuditLog({
+      module: "masterData",
+      action: "create",
+      tableName: "MasterData",
+      recordId: String(created.id),
+      newValues: {
+        category: created.category,
+        label: created.label,
+        code: created.code,
+        status: created.status,
+      },
+      user: actor,
+      branchId: actor.branchId,
+    });
+    return created;
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      throw new ConflictError(
+        `Master data "${input.label}" already exists in category "${input.category}"`,
+      );
+    }
+    throw err;
+  }
+}
+
+export async function updateMasterData(actor: AuthUser, id: number, input: UpdateMasterDataInput) {
+  const current = await prisma.masterData.findFirst({ where: { id, branchId: actor.branchId } });
+  if (!current) {
+    throw new NotFoundError("Master data item not found");
+  }
+
+  try {
+    const updated = await prisma.masterData.update({
+      where: { id },
+      data: { ...input },
+    });
+
+    await writeAuditLog({
+      module: "masterData",
+      action: "update",
+      tableName: "MasterData",
+      recordId: String(id),
+      oldValues: {
+        category: current.category,
+        label: current.label,
+        code: current.code,
+        status: current.status,
+      },
+      newValues: {
+        ...(input.category ? { category: input.category } : {}),
+        ...(input.label ? { label: input.label } : {}),
+        ...(input.code !== undefined ? { code: input.code } : {}),
+        ...(input.status ? { status: input.status } : {}),
+      },
+      user: actor,
+      branchId: actor.branchId,
+    });
+    return updated;
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      throw new ConflictError(
+        `Master data "${input.label ?? current.label}" already exists in category "${
+          input.category ?? current.category
+        }"`,
+      );
+    }
+    throw err;
+  }
+}
+
+export async function deleteMasterData(actor: AuthUser, id: number) {
+  const current = await prisma.masterData.findFirst({ where: { id, branchId: actor.branchId } });
+  if (!current) {
+    throw new NotFoundError("Master data item not found");
+  }
+
+  await prisma.masterData.delete({ where: { id } });
+
+  await writeAuditLog({
+    module: "masterData",
+    action: "delete",
+    tableName: "MasterData",
+    recordId: String(id),
+    oldValues: {
+      category: current.category,
+      label: current.label,
     },
     user: actor,
     branchId: actor.branchId,

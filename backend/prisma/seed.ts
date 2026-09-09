@@ -197,6 +197,11 @@ const PERMISSIONS: PermissionDef[] = [
   { module: "reportSetting", action: "read", description: "View report configurations" },
   { module: "reportSetting", action: "create", description: "Create report configurations" },
   { module: "reportSetting", action: "update", description: "Update report configurations" },
+
+  // Master Data (Group B)
+  { module: "masterData", action: "read", description: "View master/reference data" },
+  { module: "masterData", action: "create", description: "Create master data items" },
+  { module: "masterData", action: "update", description: "Update master data items" },
 ];
 
 const MATRIX: Record<RoleKey, string[]> = {
@@ -225,6 +230,7 @@ const MATRIX: Record<RoleKey, string[]> = {
     "integrationSetting:read", "integrationSetting:create", "integrationSetting:update",
     "backupSetting:read", "backupSetting:update",
     "reportSetting:read", "reportSetting:create", "reportSetting:update",
+    "masterData:read", "masterData:create", "masterData:update",
   ],
   DOCTOR: [
     "auth:read", "patient:read", "patient:create", "patient:update",
@@ -959,6 +965,70 @@ async function seed() {
     }
   }
   console.log("Reports ready.");
+
+  const DEFAULT_MASTER_DATA: Array<{ category: string; label: string; code?: string }> = [
+    // Cities
+    { category: "cities", label: "Dhaka", code: "DAC" },
+    { category: "cities", label: "Chattogram", code: "CGP" },
+    { category: "cities", label: "Sylhet", code: "SYL" },
+    { category: "cities", label: "Rajshahi", code: "RAJ" },
+    { category: "cities", label: "Khulna", code: "KHL" },
+    { category: "cities", label: "Barishal", code: "BRL" },
+    { category: "cities", label: "Rangpur", code: "RPR" },
+    { category: "cities", label: "Mymensingh", code: "MYM" },
+    // Areas
+    { category: "areas", label: "Dhanmondi" },
+    { category: "areas", label: "Gulshan" },
+    { category: "areas", label: "Banani" },
+    { category: "areas", label: "Uttara" },
+    { category: "areas", label: "Motijheel" },
+    { category: "areas", label: "Mirpur" },
+    // Visit types
+    { category: "visit_types", label: "New", code: "NEW" },
+    { category: "visit_types", label: "Follow-up", code: "FOLLOW_UP" },
+    { category: "visit_types", label: "Emergency", code: "EMERGENCY" },
+    { category: "visit_types", label: "Check-up", code: "CHECKUP" },
+    // Blood groups
+    { category: "blood_groups", label: "A+", code: "A_POS" },
+    { category: "blood_groups", label: "A-", code: "A_NEG" },
+    { category: "blood_groups", label: "B+", code: "B_POS" },
+    { category: "blood_groups", label: "B-", code: "B_NEG" },
+    { category: "blood_groups", label: "AB+", code: "AB_POS" },
+    { category: "blood_groups", label: "AB-", code: "AB_NEG" },
+    { category: "blood_groups", label: "O+", code: "O_POS" },
+    { category: "blood_groups", label: "O-", code: "O_NEG" },
+    // Payment methods
+    { category: "payment_methods", label: "Cash", code: "CASH" },
+    { category: "payment_methods", label: "Card", code: "CARD" },
+    { category: "payment_methods", label: "bKash", code: "BKASH" },
+    { category: "payment_methods", label: "Rocket", code: "ROCKET" },
+    { category: "payment_methods", label: "Nagad", code: "NAGAD" },
+    // Document types
+    { category: "document_types", label: "National ID", code: "NID" },
+    { category: "document_types", label: "Passport", code: "PP" },
+    { category: "document_types", label: "Birth Certificate", code: "BC" },
+    { category: "document_types", label: "Driving License", code: "DL" },
+    { category: "document_types", label: "TIN Certificate", code: "TIN" },
+    { category: "document_types", label: "Smart Card ID", code: "SC" },
+  ];
+
+  for (const item of DEFAULT_MASTER_DATA) {
+    const existing = await prisma.masterData.findFirst({
+      where: { branchId: branch.id, category: item.category, label: item.label },
+    });
+    if (!existing) {
+      await prisma.masterData.create({
+        data: {
+          branchId: branch.id,
+          category: item.category,
+          label: item.label,
+          code: item.code,
+          status: "active",
+        },
+      });
+    }
+  }
+  console.log("Master data ready.");
 
   console.log("Seed complete.");
 }

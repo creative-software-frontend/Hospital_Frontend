@@ -316,3 +316,44 @@ export const updateReportSettingSchema = createReportSettingSchema.partial();
 
 export type CreateReportSettingInput = z.infer<typeof createReportSettingSchema>;
 export type UpdateReportSettingInput = z.infer<typeof updateReportSettingSchema>;
+
+/* Master Data (Settings → Master Data) -------------------------------------- */
+
+export const MASTER_DATA_CATEGORIES = [
+  "cities",
+  "areas",
+  "visit_types",
+  "blood_groups",
+  "payment_methods",
+  "document_types",
+] as const;
+
+export const masterDataCategorySchema = z.enum(MASTER_DATA_CATEGORIES);
+
+export const createMasterDataSchema = z.object({
+  category: masterDataCategorySchema,
+  label: z.string().trim().min(1, "label is required").max(128),
+  code: z.string().trim().max(32).optional().nullable(),
+  sortOrder: z.number().int().min(0).optional(),
+  status: z.enum(SETTING_STATUS_VALUES).optional(),
+});
+
+export const updateMasterDataSchema = createMasterDataSchema.partial();
+
+export type CreateMasterDataInput = z.infer<typeof createMasterDataSchema>;
+export type UpdateMasterDataInput = z.infer<typeof updateMasterDataSchema>;
+
+/* Localization (Settings → Localization) ------------------------------------ */
+
+export const updateLocalizationSettingSchema = z.object({
+  language: z.string().trim().min(1).max(64).optional(),
+  currency: z.string().trim().min(1).max(16).optional(),
+  currencySymbol: z.string().trim().min(1).max(8).optional(),
+  dateFormat: z.string().trim().min(1).max(16).optional(),
+  timeFormat: z.enum(["12h", "24h"]).optional(),
+  timezone: z.string().trim().min(1).max(64).optional(),
+  numberFormat: z.string().trim().max(16).optional().nullable(),
+  weekStartDay: z.number().int().min(0).max(6).optional(),
+});
+
+export type UpdateLocalizationSettingInput = z.infer<typeof updateLocalizationSettingSchema>;
