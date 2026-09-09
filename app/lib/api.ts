@@ -997,6 +997,65 @@ export interface IntegrationTestResult {
   latencyMs: number;
 }
 
+export const BACKUP_TYPES = ["full", "incremental"] as const;
+export const BACKUP_FREQUENCIES = ["hourly", "daily", "weekly", "monthly"] as const;
+export const STORAGE_TYPES = ["local", "cloud", "cloud_local"] as const;
+
+export type BackupType = (typeof BACKUP_TYPES)[number];
+export type BackupFrequency = (typeof BACKUP_FREQUENCIES)[number];
+export type StorageType = (typeof STORAGE_TYPES)[number];
+
+export const BACKUP_TYPE_LABELS: Record<BackupType, string> = {
+  full: "Full",
+  incremental: "Incremental",
+};
+
+export const BACKUP_FREQUENCY_LABELS: Record<BackupFrequency, string> = {
+  hourly: "Hourly",
+  daily: "Daily",
+  weekly: "Weekly",
+  monthly: "Monthly",
+};
+
+export const STORAGE_TYPE_LABELS: Record<StorageType, string> = {
+  local: "Local only",
+  cloud: "Cloud only",
+  cloud_local: "Cloud + Local",
+};
+
+export interface BackupSetting {
+  id: number;
+  backupType: BackupType;
+  frequency: BackupFrequency;
+  storageType: StorageType;
+  storagePath: string | null;
+  retentionDays: number;
+  encryptionEnabled: boolean;
+  status: "active" | "inactive";
+}
+
+export type UpdateBackupSettingInput = {
+  backupType?: BackupType;
+  frequency?: BackupFrequency;
+  storageType?: StorageType;
+  storagePath?: string | null;
+  retentionDays?: number;
+  encryptionEnabled?: boolean;
+  status?: "active" | "inactive";
+};
+
+export interface BackupLog {
+  id: number;
+  backupType: BackupType;
+  fileName: string | null;
+  fileSize: number | null;
+  storageLocation: string | null;
+  startedAt: string;
+  completedAt: string | null;
+  status: "running" | "completed" | "failed";
+  errorMessage: string | null;
+}
+
 export const settingsApi = {
   system: {
     list: (branchId?: number) =>
@@ -1155,6 +1214,19 @@ export const settingsApi = {
       request<{ result: IntegrationTestResult }>(`/settings/integrations/${id}/test`, {
         method: "POST",
       }),
+  },
+  backup: {
+    get: () =>
+      request<{ backupSetting: BackupSetting; lastBackup: BackupLog | null }>("/settings/backup"),
+    update: (input: UpdateBackupSettingInput) =>
+      request<{ backupSetting: BackupSetting }>("/settings/backup", {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+    history: () => request<{ backups: BackupLog[] }>("/settings/backup/history"),
+    run: () => request<{ backup: BackupLog }>("/settings/backup/run", { method: "POST" }),
+    removeLog: (id: number) =>
+      request<{ message: string }>(`/settings/backup/history/${id}`, { method: "DELETE" }),
   },
 };
 

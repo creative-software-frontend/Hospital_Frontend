@@ -268,3 +268,21 @@ export const updateIntegrationSchema = createIntegrationSchema.partial();
 
 export type CreateIntegrationInput = z.infer<typeof createIntegrationSchema>;
 export type UpdateIntegrationInput = z.infer<typeof updateIntegrationSchema>;
+
+/* Backup & Database (Settings → Backup & Database) -------------------------- */
+
+export const BACKUP_TYPES = ["full", "incremental"] as const;
+export const BACKUP_FREQUENCIES = ["hourly", "daily", "weekly", "monthly"] as const;
+export const STORAGE_TYPES = ["local", "cloud", "cloud_local"] as const;
+
+export const updateBackupSettingSchema = z.object({
+  backupType: z.enum(BACKUP_TYPES).optional(),
+  frequency: z.enum(BACKUP_FREQUENCIES).optional(),
+  storageType: z.enum(STORAGE_TYPES).optional(),
+  storagePath: optionalString(512),
+  retentionDays: z.number().int().min(1).max(3650).optional(),
+  encryptionEnabled: z.boolean().optional(),
+  status: z.enum(SETTING_STATUS_VALUES).optional(),
+});
+
+export type UpdateBackupSettingInput = z.infer<typeof updateBackupSettingSchema>;

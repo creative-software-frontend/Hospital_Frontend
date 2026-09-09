@@ -8,6 +8,7 @@ import {
   createIntegrationSchema,
   createPrintTemplateSchema,
   updateAccountingSettingSchema,
+  updateBackupSettingSchema,
   updateBillingSettingSchema,
   updateEmergencySettingSchema,
   updateHrSettingSchema,
@@ -290,6 +291,38 @@ router.post(
   "/integrations/:id/test",
   requirePermission("integrationSetting", "update"),
   settingController.testIntegration,
+);
+
+// Backup & Database
+router.get(
+  "/backup",
+  requirePermission("backupSetting", "read"),
+  settingController.getBackupOverview,
+);
+
+router.patch(
+  "/backup",
+  validate({ body: updateBackupSettingSchema }),
+  requirePermission("backupSetting", "update"),
+  settingController.updateBackupSetting,
+);
+
+router.get(
+  "/backup/history",
+  requirePermission("backupSetting", "read"),
+  settingController.listBackupLogs,
+);
+
+router.post(
+  "/backup/run",
+  requirePermission("backupSetting", "update"),
+  settingController.runBackup,
+);
+
+router.delete(
+  "/backup/history/:id",
+  requirePermission("backupSetting", "update"),
+  settingController.deleteBackupLog,
 );
 
 export default router;

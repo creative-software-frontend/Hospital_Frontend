@@ -200,3 +200,28 @@ export const testIntegration = asyncHandler(async (req: Request, res: Response) 
   const result = await settingService.testIntegration(req.user!, Number(req.params.id));
   success(res, { result });
 });
+
+export const getBackupOverview = asyncHandler(async (_req: Request, res: Response) => {
+  const overview = await settingService.getBackupOverview();
+  success(res, overview);
+});
+
+export const updateBackupSetting = asyncHandler(async (req: Request, res: Response) => {
+  const backupSetting = await settingService.updateBackupSetting(req.user!, req.body);
+  success(res, { backupSetting });
+});
+
+export const listBackupLogs = asyncHandler(async (req: Request, res: Response) => {
+  const backups = await settingService.listBackupLogs(req.user!);
+  success(res, { backups });
+});
+
+export const runBackup = asyncHandler(async (req: Request, res: Response) => {
+  const backup = await settingService.runBackup(req.user!);
+  success(res, { backup });
+});
+
+export const deleteBackupLog = asyncHandler(async (req: Request, res: Response) => {
+  await settingService.deleteBackupLog(req.user!, Number(req.params.id));
+  success(res, { message: "Backup log deleted successfully" });
+});

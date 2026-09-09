@@ -188,6 +188,10 @@ const PERMISSIONS: PermissionDef[] = [
   { module: "integrationSetting", action: "read", description: "View API & integrations" },
   { module: "integrationSetting", action: "create", description: "Create API integrations" },
   { module: "integrationSetting", action: "update", description: "Update and test API integrations" },
+
+  // Backup & Database (Group B)
+  { module: "backupSetting", action: "read", description: "View backup & database settings" },
+  { module: "backupSetting", action: "update", description: "Update settings and run backups" },
 ];
 
 const MATRIX: Record<RoleKey, string[]> = {
@@ -214,6 +218,7 @@ const MATRIX: Record<RoleKey, string[]> = {
     "notificationSetting:read", "notificationSetting:update",
     "printSetting:read", "printSetting:create", "printSetting:update",
     "integrationSetting:read", "integrationSetting:create", "integrationSetting:update",
+    "backupSetting:read", "backupSetting:update",
   ],
   DOCTOR: [
     "auth:read", "patient:read", "patient:create", "patient:update",

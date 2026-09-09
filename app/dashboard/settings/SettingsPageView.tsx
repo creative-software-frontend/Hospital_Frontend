@@ -23,6 +23,7 @@ import { InventorySettingsView } from "@/app/dashboard/settings/inventory/Invent
 import { NotificationSettingsView } from "@/app/dashboard/settings/notification/NotificationSettingsView";
 import { PrintDocumentView } from "@/app/dashboard/settings/print-document/PrintDocumentView";
 import { ApiIntegrationView } from "@/app/dashboard/settings/api-integration/ApiIntegrationView";
+import { BackupDatabaseView } from "@/app/dashboard/settings/backup-database/BackupDatabaseView";
 import { MockSettingsView } from "@/app/dashboard/settings/mock/MockSettingsView";
 
 export const SettingsPageView = ({
@@ -114,6 +115,10 @@ export const SettingsPageView = ({
 
   if (pageKey === "api-integration") {
     return <ApiIntegrationView />;
+  }
+
+  if (pageKey === "backup-database") {
+    return <BackupDatabaseView />;
   }
 
   return <MockSettingsView page={page} />;
