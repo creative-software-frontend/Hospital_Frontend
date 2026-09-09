@@ -222,3 +222,30 @@ export const updateNotificationSettingSchema = z.object({
 });
 
 export type UpdateNotificationSettingInput = z.infer<typeof updateNotificationSettingSchema>;
+
+/* Print & document templates (Settings → Print & Document) ------------------ */
+
+export const PRINT_DOCUMENT_TYPES = [
+  "prescription",
+  "invoice",
+  "discharge_certificate",
+  "lab_report",
+  "admission_form",
+  "employee_id_card",
+] as const;
+
+export const createPrintTemplateSchema = z.object({
+  documentType: z.enum(PRINT_DOCUMENT_TYPES),
+  templateName: z.string().trim().min(1, "templateName is required").max(64),
+  header: optionalString(512),
+  footer: optionalString(512),
+  logo: optionalString(512),
+  signature: optionalString(512),
+  templateContent: optionalString(8192),
+  status: z.enum(SETTING_STATUS_VALUES).optional(),
+});
+
+export const updatePrintTemplateSchema = createPrintTemplateSchema.partial();
+
+export type CreatePrintTemplateInput = z.infer<typeof createPrintTemplateSchema>;
+export type UpdatePrintTemplateInput = z.infer<typeof updatePrintTemplateSchema>;

@@ -900,6 +900,61 @@ export type UpdateNotificationSettingInput = {
   status?: "active" | "inactive";
 };
 
+export const PRINT_DOCUMENT_TYPES = [
+  "prescription",
+  "invoice",
+  "discharge_certificate",
+  "lab_report",
+  "admission_form",
+  "employee_id_card",
+] as const;
+
+export type PrintDocumentType = (typeof PRINT_DOCUMENT_TYPES)[number];
+
+export const PRINT_DOCUMENT_TYPE_LABELS: Record<PrintDocumentType, string> = {
+  prescription: "Prescription",
+  invoice: "Invoice / Bill",
+  discharge_certificate: "Discharge Certificate",
+  lab_report: "Lab Report",
+  admission_form: "Admission Form",
+  employee_id_card: "Employee ID Card",
+};
+
+export const PRINT_TEMPLATE_SIZES: Record<PrintDocumentType, string> = {
+  prescription: "A4",
+  invoice: "Thermal 80mm",
+  discharge_certificate: "A4",
+  lab_report: "A4",
+  admission_form: "A4",
+  employee_id_card: "CR80",
+};
+
+export interface PrintTemplate {
+  id: number;
+  branchId: number;
+  documentType: PrintDocumentType;
+  templateName: string;
+  header: string | null;
+  footer: string | null;
+  logo: string | null;
+  signature: string | null;
+  templateContent: string | null;
+  status: "active" | "inactive";
+}
+
+export type CreatePrintTemplateInput = {
+  documentType: PrintDocumentType;
+  templateName: string;
+  header?: string | null;
+  footer?: string | null;
+  logo?: string | null;
+  signature?: string | null;
+  templateContent?: string | null;
+  status?: "active" | "inactive";
+};
+
+export type UpdatePrintTemplateInput = Partial<CreatePrintTemplateInput>;
+
 export const settingsApi = {
   system: {
     list: (branchId?: number) =>
@@ -1024,6 +1079,21 @@ export const settingsApi = {
         method: "PATCH",
         body: JSON.stringify(input),
       }),
+  },
+  print: {
+    list: () => request<{ templates: PrintTemplate[] }>("/settings/print-templates"),
+    create: (input: CreatePrintTemplateInput) =>
+      request<{ template: PrintTemplate }>("/settings/print-templates", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    update: (id: number, input: UpdatePrintTemplateInput) =>
+      request<{ template: PrintTemplate }>(`/settings/print-templates/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+    remove: (id: number) =>
+      request<{ message: string }>(`/settings/print-templates/${id}`, { method: "DELETE" }),
   },
 };
 

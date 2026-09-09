@@ -21,6 +21,7 @@ import { AccountingSettingsView } from "@/app/dashboard/settings/accounting/Acco
 import { HrSettingsView } from "@/app/dashboard/settings/hr/HrSettingsView";
 import { InventorySettingsView } from "@/app/dashboard/settings/inventory/InventorySettingsView";
 import { NotificationSettingsView } from "@/app/dashboard/settings/notification/NotificationSettingsView";
+import { PrintDocumentView } from "@/app/dashboard/settings/print-document/PrintDocumentView";
 import { MockSettingsView } from "@/app/dashboard/settings/mock/MockSettingsView";
 
 export const SettingsPageView = ({
@@ -104,6 +105,10 @@ export const SettingsPageView = ({
 
   if (pageKey === "notification") {
     return <NotificationSettingsView />;
+  }
+
+  if (pageKey === "print-document") {
+    return <PrintDocumentView />;
   }
 
   return <MockSettingsView page={page} />;

@@ -1,8 +1,9 @@
 import { prisma } from "../../lib/prisma";
-import { NotFoundError } from "../../errors/ApiError";
+import { ConflictError, NotFoundError } from "../../errors/ApiError";
 import { writeAuditLog } from "../../utils/audit";
 import type { AuthUser } from "../../types/auth";
 import type {
+  CreatePrintTemplateInput,
   ListSystemSettingsQuery,
   UpdateAccountingSettingInput,
   UpdateBillingSettingInput,
@@ -16,6 +17,7 @@ import type {
   UpdatePatientSettingInput,
   UpdatePharmacySettingInput,
   UpdatePrescriptionSettingInput,
+  UpdatePrintTemplateInput,
   UpdateSecuritySettingInput,
   UpsertSystemSettingInput,
 } from "./setting.validation";
@@ -748,4 +750,143 @@ export async function updateNotificationSetting(
     branchId: actor.branchId,
   });
   return updated;
+}
+
+/* ---------------------------------------------------------------------------
+ * Print & document templates
+ * ------------------------------------------------------------------------- */
+
+export async function listPrintTemplates(actor: AuthUser) {
+  return prisma.documentTemplate.findMany({
+    where: { branchId: actor.branchId },
+    orderBy: [{ documentType: "asc" }, { templateName: "asc" }],
+    select: {
+      id: true,
+      branchId: true,
+      documentType: true,
+      templateName: true,
+      header: true,
+      footer: true,
+      logo: true,
+      signature: true,
+      templateContent: true,
+      status: true,
+    },
+  });
+}
+
+export async function createPrintTemplate(actor: AuthUser, input: CreatePrintTemplateInput) {
+  const existing = await prisma.documentTemplate.findUnique({
+    where: {
+      branchId_documentType_templateName: {
+        branchId: actor.branchId,
+        documentType: input.documentType,
+        templateName: input.templateName,
+      },
+    },
+  });
+  if (existing) {
+    throw new ConflictError(
+      `A "${input.templateName}" template already exists for ${input.documentType}`,
+    );
+  }
+
+  const created = await prisma.documentTemplate.create({
+    data: {
+      branchId: actor.branchId,
+      documentType: input.documentType,
+      templateName: input.templateName,
+      header: input.header,
+      footer: input.footer,
+      logo: input.logo,
+      signature: input.signature,
+      templateContent: input.templateContent,
+      status: input.status ?? "active",
+    },
+  });
+
+  await writeAuditLog({
+    module: "printTemplate",
+    action: "create",
+    tableName: "DocumentTemplate",
+    recordId: String(created.id),
+    newValues: {
+      documentType: created.documentType,
+      templateName: created.templateName,
+      status: created.status,
+    },
+    user: actor,
+    branchId: actor.branchId,
+  });
+  return created;
+}
+
+export async function updatePrintTemplate(actor: AuthUser, id: number, input: UpdatePrintTemplateInput) {
+  const current = await prisma.documentTemplate.findFirst({
+    where: { id, branchId: actor.branchId },
+  });
+  if (!current) {
+    throw new NotFoundError("Print template not found");
+  }
+
+  const documentType = input.documentType ?? current.documentType;
+  const templateName = input.templateName ?? current.templateName;
+  const duplicate = await prisma.documentTemplate.findFirst({
+    where: {
+      branchId: actor.branchId,
+      documentType,
+      templateName,
+      NOT: { id },
+    },
+  });
+  if (duplicate) {
+    throw new ConflictError(
+      `A "${templateName}" template already exists for ${documentType}`,
+    );
+  }
+
+  const updated = await prisma.documentTemplate.update({
+    where: { id },
+    data: { ...input },
+  });
+
+  await writeAuditLog({
+    module: "printTemplate",
+    action: "update",
+    tableName: "DocumentTemplate",
+    recordId: String(id),
+    oldValues: {
+      documentType: current.documentType,
+      templateName: current.templateName,
+      status: current.status,
+    },
+    newValues: { ...input },
+    user: actor,
+    branchId: actor.branchId,
+  });
+  return updated;
+}
+
+export async function deletePrintTemplate(actor: AuthUser, id: number) {
+  const current = await prisma.documentTemplate.findFirst({
+    where: { id, branchId: actor.branchId },
+  });
+  if (!current) {
+    throw new NotFoundError("Print template not found");
+  }
+
+  await prisma.documentTemplate.delete({ where: { id } });
+
+  await writeAuditLog({
+    module: "printTemplate",
+    action: "delete",
+    tableName: "DocumentTemplate",
+    recordId: String(id),
+    oldValues: {
+      documentType: current.documentType,
+      templateName: current.templateName,
+    },
+    user: actor,
+    branchId: actor.branchId,
+  });
 }

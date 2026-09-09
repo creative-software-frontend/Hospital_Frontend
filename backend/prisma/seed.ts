@@ -178,6 +178,11 @@ const PERMISSIONS: PermissionDef[] = [
   // Notification settings (Group B)
   { module: "notificationSetting", action: "read", description: "View notification settings" },
   { module: "notificationSetting", action: "update", description: "Update notification settings" },
+
+  // Print & document templates (Group B)
+  { module: "printSetting", action: "read", description: "View print & document templates" },
+  { module: "printSetting", action: "create", description: "Create print & document templates" },
+  { module: "printSetting", action: "update", description: "Update print & document templates" },
 ];
 
 const MATRIX: Record<RoleKey, string[]> = {
@@ -202,6 +207,7 @@ const MATRIX: Record<RoleKey, string[]> = {
     "hrSetting:read", "hrSetting:update",
     "inventorySetting:read", "inventorySetting:update",
     "notificationSetting:read", "notificationSetting:update",
+    "printSetting:read", "printSetting:create", "printSetting:update",
   ],
   DOCTOR: [
     "auth:read", "patient:read", "patient:create", "patient:update",
@@ -732,6 +738,70 @@ async function seed() {
     });
   }
   console.log("Notification settings ready.");
+
+  const DEFAULT_PRINT_TEMPLATES = [
+    {
+      documentType: "prescription",
+      templateName: "A4 Standard",
+      header: "City Care Hospital",
+      footer: "This prescription is valid only with the doctor's signature.",
+    },
+    {
+      documentType: "invoice",
+      templateName: "Thermal 80mm",
+      header: "City Care Hospital",
+      footer: "Payment receipt. Subject to hospital billing policy.",
+    },
+    {
+      documentType: "discharge_certificate",
+      templateName: "A4",
+      header: "City Care Hospital",
+      footer: "We wish you a speedy recovery.",
+    },
+    {
+      documentType: "lab_report",
+      templateName: "A4",
+      header: "City Care Hospital Laboratory",
+      footer: "Results verified and approved by the laboratory.",
+    },
+    {
+      documentType: "admission_form",
+      templateName: "A4",
+      header: "City Care Hospital",
+      footer: "Please complete all sections before admission.",
+    },
+    {
+      documentType: "employee_id_card",
+      templateName: "CR80",
+      header: "City Care Hospital",
+      footer: "",
+    },
+  ];
+
+  for (const template of DEFAULT_PRINT_TEMPLATES) {
+    const existing = await prisma.documentTemplate.findUnique({
+      where: {
+        branchId_documentType_templateName: {
+          branchId: branch.id,
+          documentType: template.documentType,
+          templateName: template.templateName,
+        },
+      },
+    });
+    if (!existing) {
+      await prisma.documentTemplate.create({
+        data: {
+          branchId: branch.id,
+          documentType: template.documentType,
+          templateName: template.templateName,
+          header: template.header,
+          footer: template.footer,
+          status: "active",
+        },
+      });
+    }
+  }
+  console.log("Print & document templates ready.");
 
   console.log("Seed complete.");
 }

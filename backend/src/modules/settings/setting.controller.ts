@@ -147,3 +147,27 @@ export const updateNotificationSetting = asyncHandler(async (req: Request, res: 
   const notificationSetting = await settingService.updateNotificationSetting(req.user!, req.body);
   success(res, { notificationSetting });
 });
+
+export const listPrintTemplates = asyncHandler(async (req: Request, res: Response) => {
+  const templates = await settingService.listPrintTemplates(req.user!);
+  success(res, { templates });
+});
+
+export const createPrintTemplate = asyncHandler(async (req: Request, res: Response) => {
+  const template = await settingService.createPrintTemplate(req.user!, req.body);
+  success(res, { template });
+});
+
+export const updatePrintTemplate = asyncHandler(async (req: Request, res: Response) => {
+  const template = await settingService.updatePrintTemplate(
+    req.user!,
+    Number(req.params.id),
+    req.body,
+  );
+  success(res, { template });
+});
+
+export const deletePrintTemplate = asyncHandler(async (req: Request, res: Response) => {
+  await settingService.deletePrintTemplate(req.user!, Number(req.params.id));
+  success(res, { message: "Print template deleted successfully" });
+});

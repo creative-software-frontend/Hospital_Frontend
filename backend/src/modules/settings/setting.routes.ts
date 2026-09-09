@@ -5,6 +5,7 @@ import { requirePermission } from "../../middleware/permission.middleware";
 import * as settingController from "./setting.controller";
 import {
   listSystemSettingsQuerySchema,
+  createPrintTemplateSchema,
   updateAccountingSettingSchema,
   updateBillingSettingSchema,
   updateEmergencySettingSchema,
@@ -17,6 +18,7 @@ import {
   updatePatientSettingSchema,
   updatePharmacySettingSchema,
   updatePrescriptionSettingSchema,
+  updatePrintTemplateSchema,
   updateSecuritySettingSchema,
   upsertSystemSettingSchema,
 } from "./setting.validation";
@@ -226,6 +228,33 @@ router.patch(
   validate({ body: updateNotificationSettingSchema }),
   requirePermission("notificationSetting", "update"),
   settingController.updateNotificationSetting,
+);
+
+// Print & document templates
+router.get(
+  "/print-templates",
+  requirePermission("printSetting", "read"),
+  settingController.listPrintTemplates,
+);
+
+router.post(
+  "/print-templates",
+  validate({ body: createPrintTemplateSchema }),
+  requirePermission("printSetting", "create"),
+  settingController.createPrintTemplate,
+);
+
+router.patch(
+  "/print-templates/:id",
+  validate({ body: updatePrintTemplateSchema }),
+  requirePermission("printSetting", "update"),
+  settingController.updatePrintTemplate,
+);
+
+router.delete(
+  "/print-templates/:id",
+  requirePermission("printSetting", "update"),
+  settingController.deletePrintTemplate,
 );
 
 export default router;
