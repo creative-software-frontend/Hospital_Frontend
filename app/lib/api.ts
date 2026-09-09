@@ -1056,6 +1056,59 @@ export interface BackupLog {
   errorMessage: string | null;
 }
 
+export const REPORT_TYPES = [
+  "collection",
+  "patient_stats",
+  "doctor_performance",
+  "pharmacy_sales",
+  "lab_income",
+  "financial",
+  "management",
+] as const;
+
+export type ReportType = (typeof REPORT_TYPES)[number];
+
+export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
+  collection: "Daily Collection",
+  patient_stats: "Patient Statistics",
+  doctor_performance: "Doctor Performance",
+  pharmacy_sales: "Pharmacy Sales",
+  lab_income: "Lab Income",
+  financial: "Financial (P&L / Balance Sheet)",
+  management: "Management Dashboard",
+};
+
+export interface ReportSetting {
+  id: number;
+  branchId: number;
+  reportName: string;
+  reportType: ReportType;
+  templateId: number | null;
+  template: { id: number; documentType: PrintDocumentType; templateName: string } | null;
+  showLogo: boolean;
+  showHeader: boolean;
+  showFooter: boolean;
+  showSignature: boolean;
+  exportPdf: boolean;
+  exportExcel: boolean;
+  status: "active" | "inactive";
+}
+
+export type CreateReportSettingInput = {
+  reportName: string;
+  reportType: ReportType;
+  templateId?: number | null;
+  showLogo?: boolean;
+  showHeader?: boolean;
+  showFooter?: boolean;
+  showSignature?: boolean;
+  exportPdf?: boolean;
+  exportExcel?: boolean;
+  status?: "active" | "inactive";
+};
+
+export type UpdateReportSettingInput = Partial<CreateReportSettingInput>;
+
 export const settingsApi = {
   system: {
     list: (branchId?: number) =>
@@ -1227,6 +1280,21 @@ export const settingsApi = {
     run: () => request<{ backup: BackupLog }>("/settings/backup/run", { method: "POST" }),
     removeLog: (id: number) =>
       request<{ message: string }>(`/settings/backup/history/${id}`, { method: "DELETE" }),
+  },
+  reports: {
+    list: () => request<{ reports: ReportSetting[] }>("/settings/reports"),
+    create: (input: CreateReportSettingInput) =>
+      request<{ report: ReportSetting }>("/settings/reports", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    update: (id: number, input: UpdateReportSettingInput) =>
+      request<{ report: ReportSetting }>(`/settings/reports/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+    remove: (id: number) =>
+      request<{ message: string }>(`/settings/reports/${id}`, { method: "DELETE" }),
   },
 };
 

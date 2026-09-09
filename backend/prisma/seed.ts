@@ -192,6 +192,11 @@ const PERMISSIONS: PermissionDef[] = [
   // Backup & Database (Group B)
   { module: "backupSetting", action: "read", description: "View backup & database settings" },
   { module: "backupSetting", action: "update", description: "Update settings and run backups" },
+
+  // Reports (Group B)
+  { module: "reportSetting", action: "read", description: "View report configurations" },
+  { module: "reportSetting", action: "create", description: "Create report configurations" },
+  { module: "reportSetting", action: "update", description: "Update report configurations" },
 ];
 
 const MATRIX: Record<RoleKey, string[]> = {
@@ -219,6 +224,7 @@ const MATRIX: Record<RoleKey, string[]> = {
     "printSetting:read", "printSetting:create", "printSetting:update",
     "integrationSetting:read", "integrationSetting:create", "integrationSetting:update",
     "backupSetting:read", "backupSetting:update",
+    "reportSetting:read", "reportSetting:create", "reportSetting:update",
   ],
   DOCTOR: [
     "auth:read", "patient:read", "patient:create", "patient:update",
@@ -869,6 +875,90 @@ async function seed() {
     }
   }
   console.log("API & Integration ready.");
+
+  const printTemplates = await prisma.documentTemplate.findMany({
+    where: { branchId: branch.id },
+    select: { documentType: true, id: true },
+  });
+  const templateIdByType = new Map(printTemplates.map((t) => [t.documentType, t.id]));
+
+  const DEFAULT_REPORTS = [
+    {
+      reportName: "Daily Collection Report",
+      reportType: "collection",
+      templateDocumentType: "invoice" as string | null,
+      exportPdf: true,
+      exportExcel: true,
+    },
+    {
+      reportName: "Patient Statistics Report",
+      reportType: "patient_stats",
+      templateDocumentType: null,
+      exportPdf: true,
+      exportExcel: true,
+    },
+    {
+      reportName: "Doctor Performance Report",
+      reportType: "doctor_performance",
+      templateDocumentType: null,
+      exportPdf: true,
+      exportExcel: false,
+    },
+    {
+      reportName: "Pharmacy Sales Report",
+      reportType: "pharmacy_sales",
+      templateDocumentType: "invoice",
+      exportPdf: true,
+      exportExcel: true,
+    },
+    {
+      reportName: "Lab Income Report",
+      reportType: "lab_income",
+      templateDocumentType: "lab_report",
+      exportPdf: true,
+      exportExcel: true,
+    },
+    {
+      reportName: "Financial (P&L / Balance Sheet)",
+      reportType: "financial",
+      templateDocumentType: "invoice",
+      exportPdf: true,
+      exportExcel: true,
+    },
+    {
+      reportName: "Management Dashboard",
+      reportType: "management",
+      templateDocumentType: null,
+      exportPdf: false,
+      exportExcel: true,
+    },
+  ];
+
+  for (const report of DEFAULT_REPORTS) {
+    const existing = await prisma.reportSetting.findFirst({
+      where: { branchId: branch.id, reportType: report.reportType, reportName: report.reportName },
+    });
+    if (!existing) {
+      await prisma.reportSetting.create({
+        data: {
+          branchId: branch.id,
+          reportName: report.reportName,
+          reportType: report.reportType,
+          templateId: report.templateDocumentType
+            ? (templateIdByType.get(report.templateDocumentType) ?? null)
+            : null,
+          showLogo: true,
+          showHeader: true,
+          showFooter: true,
+          showSignature: true,
+          exportPdf: report.exportPdf,
+          exportExcel: report.exportExcel,
+          status: "active",
+        },
+      });
+    }
+  }
+  console.log("Reports ready.");
 
   console.log("Seed complete.");
 }

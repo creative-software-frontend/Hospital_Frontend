@@ -225,3 +225,27 @@ export const deleteBackupLog = asyncHandler(async (req: Request, res: Response) 
   await settingService.deleteBackupLog(req.user!, Number(req.params.id));
   success(res, { message: "Backup log deleted successfully" });
 });
+
+export const listReportSettings = asyncHandler(async (req: Request, res: Response) => {
+  const reports = await settingService.listReportSettings(req.user!);
+  success(res, { reports });
+});
+
+export const createReportSetting = asyncHandler(async (req: Request, res: Response) => {
+  const report = await settingService.createReportSetting(req.user!, req.body);
+  success(res, { report });
+});
+
+export const updateReportSetting = asyncHandler(async (req: Request, res: Response) => {
+  const report = await settingService.updateReportSetting(
+    req.user!,
+    Number(req.params.id),
+    req.body,
+  );
+  success(res, { report });
+});
+
+export const deleteReportSetting = asyncHandler(async (req: Request, res: Response) => {
+  await settingService.deleteReportSetting(req.user!, Number(req.params.id));
+  success(res, { message: "Report setting deleted successfully" });
+});

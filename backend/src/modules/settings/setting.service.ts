@@ -6,6 +6,7 @@ import type { AuthUser } from "../../types/auth";
 import type {
   CreateIntegrationInput,
   CreatePrintTemplateInput,
+  CreateReportSettingInput,
   ListSystemSettingsQuery,
   UpdateAccountingSettingInput,
   UpdateBackupSettingInput,
@@ -22,6 +23,7 @@ import type {
   UpdatePharmacySettingInput,
   UpdatePrescriptionSettingInput,
   UpdatePrintTemplateInput,
+  UpdateReportSettingInput,
   UpdateSecuritySettingInput,
   UpsertSystemSettingInput,
 } from "./setting.validation";
@@ -1183,6 +1185,131 @@ export async function deleteBackupLog(actor: AuthUser, id: number) {
     tableName: "BackupLog",
     recordId: String(id),
     oldValues: { fileName: current.fileName, status: current.status },
+    user: actor,
+    branchId: actor.branchId,
+  });
+}
+
+/* ---------------------------------------------------------------------------
+ * Reports
+ * ------------------------------------------------------------------------- */
+
+const REPORT_TEMPLATE_SELECT = {
+  select: { id: true, documentType: true, templateName: true },
+} as const;
+
+async function assertTemplateInBranch(actor: AuthUser, templateId: number | null | undefined) {
+  if (templateId == null) return null;
+  const template = await prisma.documentTemplate.findFirst({
+    where: { id: templateId, branchId: actor.branchId },
+    select: { id: true },
+  });
+  if (!template) {
+    throw new NotFoundError("Selected print template not found in this branch");
+  }
+  return template.id;
+}
+
+export async function listReportSettings(actor: AuthUser) {
+  return prisma.reportSetting.findMany({
+    where: { branchId: actor.branchId },
+    orderBy: { reportName: "asc" },
+    include: {
+      template: REPORT_TEMPLATE_SELECT,
+    },
+  });
+}
+
+export async function createReportSetting(actor: AuthUser, input: CreateReportSettingInput) {
+  await assertTemplateInBranch(actor, input.templateId);
+
+  const created = await prisma.reportSetting.create({
+    data: {
+      branchId: actor.branchId,
+      reportName: input.reportName,
+      reportType: input.reportType,
+      templateId: input.templateId ?? null,
+      showLogo: input.showLogo ?? true,
+      showHeader: input.showHeader ?? true,
+      showFooter: input.showFooter ?? true,
+      showSignature: input.showSignature ?? true,
+      exportPdf: input.exportPdf ?? true,
+      exportExcel: input.exportExcel ?? true,
+      status: input.status ?? "active",
+    },
+    include: { template: REPORT_TEMPLATE_SELECT },
+  });
+
+  await writeAuditLog({
+    module: "reportSetting",
+    action: "create",
+    tableName: "ReportSetting",
+    recordId: String(created.id),
+    newValues: {
+      reportName: created.reportName,
+      reportType: created.reportType,
+      status: created.status,
+    },
+    user: actor,
+    branchId: actor.branchId,
+  });
+  return created;
+}
+
+export async function updateReportSetting(actor: AuthUser, id: number, input: UpdateReportSettingInput) {
+  const current = await prisma.reportSetting.findFirst({ where: { id, branchId: actor.branchId } });
+  if (!current) {
+    throw new NotFoundError("Report setting not found");
+  }
+
+  await assertTemplateInBranch(actor, input.templateId);
+
+  const updated = await prisma.reportSetting.update({
+    where: { id },
+    data: { ...input },
+    include: { template: REPORT_TEMPLATE_SELECT },
+  });
+
+  await writeAuditLog({
+    module: "reportSetting",
+    action: "update",
+    tableName: "ReportSetting",
+    recordId: String(id),
+    oldValues: {
+      reportName: current.reportName,
+      reportType: current.reportType,
+      templateId: current.templateId,
+      status: current.status,
+    },
+    newValues: {
+      ...(input.reportName ? { reportName: input.reportName } : {}),
+      ...(input.reportType ? { reportType: input.reportType } : {}),
+      ...(input.templateId !== undefined ? { templateId: input.templateId } : {}),
+      ...(input.status ? { status: input.status } : {}),
+    },
+    user: actor,
+    branchId: actor.branchId,
+  });
+  return updated;
+}
+
+export async function deleteReportSetting(actor: AuthUser, id: number) {
+  const current = await prisma.reportSetting.findFirst({ where: { id, branchId: actor.branchId } });
+  if (!current) {
+    throw new NotFoundError("Report setting not found");
+  }
+
+  await prisma.reportSetting.delete({ where: { id } });
+
+  await writeAuditLog({
+    module: "reportSetting",
+    action: "delete",
+    tableName: "ReportSetting",
+    recordId: String(id),
+    oldValues: {
+      reportName: current.reportName,
+      reportType: current.reportType,
+    },
     user: actor,
     branchId: actor.branchId,
   });

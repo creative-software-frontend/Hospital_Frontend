@@ -7,6 +7,7 @@ import {
   listSystemSettingsQuerySchema,
   createIntegrationSchema,
   createPrintTemplateSchema,
+  createReportSettingSchema,
   updateAccountingSettingSchema,
   updateBackupSettingSchema,
   updateBillingSettingSchema,
@@ -22,6 +23,7 @@ import {
   updatePharmacySettingSchema,
   updatePrescriptionSettingSchema,
   updatePrintTemplateSchema,
+  updateReportSettingSchema,
   updateSecuritySettingSchema,
   upsertSystemSettingSchema,
 } from "./setting.validation";
@@ -323,6 +325,33 @@ router.delete(
   "/backup/history/:id",
   requirePermission("backupSetting", "update"),
   settingController.deleteBackupLog,
+);
+
+// Reports
+router.get(
+  "/reports",
+  requirePermission("reportSetting", "read"),
+  settingController.listReportSettings,
+);
+
+router.post(
+  "/reports",
+  validate({ body: createReportSettingSchema }),
+  requirePermission("reportSetting", "create"),
+  settingController.createReportSetting,
+);
+
+router.patch(
+  "/reports/:id",
+  validate({ body: updateReportSettingSchema }),
+  requirePermission("reportSetting", "update"),
+  settingController.updateReportSetting,
+);
+
+router.delete(
+  "/reports/:id",
+  requirePermission("reportSetting", "update"),
+  settingController.deleteReportSetting,
 );
 
 export default router;

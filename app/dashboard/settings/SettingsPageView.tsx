@@ -24,6 +24,7 @@ import { NotificationSettingsView } from "@/app/dashboard/settings/notification/
 import { PrintDocumentView } from "@/app/dashboard/settings/print-document/PrintDocumentView";
 import { ApiIntegrationView } from "@/app/dashboard/settings/api-integration/ApiIntegrationView";
 import { BackupDatabaseView } from "@/app/dashboard/settings/backup-database/BackupDatabaseView";
+import { ReportsView } from "@/app/dashboard/settings/reports/ReportsView";
 import { MockSettingsView } from "@/app/dashboard/settings/mock/MockSettingsView";
 
 export const SettingsPageView = ({
@@ -119,6 +120,10 @@ export const SettingsPageView = ({
 
   if (pageKey === "backup-database") {
     return <BackupDatabaseView />;
+  }
+
+  if (pageKey === "reports") {
+    return <ReportsView />;
   }
 
   return <MockSettingsView page={page} />;

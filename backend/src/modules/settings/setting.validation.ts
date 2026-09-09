@@ -286,3 +286,33 @@ export const updateBackupSettingSchema = z.object({
 });
 
 export type UpdateBackupSettingInput = z.infer<typeof updateBackupSettingSchema>;
+
+/* Reports (Settings → Reports) ---------------------------------------------- */
+
+export const REPORT_TYPES = [
+  "collection",
+  "patient_stats",
+  "doctor_performance",
+  "pharmacy_sales",
+  "lab_income",
+  "financial",
+  "management",
+] as const;
+
+export const createReportSettingSchema = z.object({
+  reportName: z.string().trim().min(1, "reportName is required").max(128),
+  reportType: z.enum(REPORT_TYPES),
+  templateId: z.number().int().positive().optional().nullable(),
+  showLogo: z.boolean().optional(),
+  showHeader: z.boolean().optional(),
+  showFooter: z.boolean().optional(),
+  showSignature: z.boolean().optional(),
+  exportPdf: z.boolean().optional(),
+  exportExcel: z.boolean().optional(),
+  status: z.enum(SETTING_STATUS_VALUES).optional(),
+});
+
+export const updateReportSettingSchema = createReportSettingSchema.partial();
+
+export type CreateReportSettingInput = z.infer<typeof createReportSettingSchema>;
+export type UpdateReportSettingInput = z.infer<typeof updateReportSettingSchema>;
