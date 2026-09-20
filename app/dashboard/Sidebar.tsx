@@ -42,11 +42,11 @@ export const Sidebar = ({
         setActiveSection("feature-detail");
     };
 
-    // Nested settings groups open by default; clicking toggles them.
-    const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+    // Nested settings groups default to collapsed; clicking expands them.
+    const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
     const toggleGroup = (groupKey: string) => {
-        setCollapsedGroups((prev) => {
+        setExpandedGroups((prev) => {
             const next = new Set(prev);
             if (next.has(groupKey)) {
                 next.delete(groupKey);
@@ -155,7 +155,7 @@ export const Sidebar = ({
                                                     if (sub.children?.length) {
                                                         const SubIcon = sub.icon;
                                                         const groupKey = `${feat.id}-${sIdx}`;
-                                                        const isGroupOpen = !collapsedGroups.has(groupKey);
+                                                        const isGroupOpen = expandedGroups.has(groupKey);
                                                         return (
                                                             <div key={sIdx} className="mt-0.5">
                                                                 <button
