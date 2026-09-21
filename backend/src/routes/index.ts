@@ -10,6 +10,8 @@ import settingsRoutes from "../modules/settings/setting.routes";
 import departmentRoutes from "../modules/departments/department.routes";
 import doctorRoutes from "../modules/doctors/doctor.routes";
 import serviceRoutes from "../modules/services/service.routes";
+import superAdminRoutes from "../modules/superadmin/superadmin.routes";
+import auditRoutes from "../modules/audit/audit.routes";
 
 const router = Router();
 
@@ -25,5 +27,7 @@ router.use("/settings", settingsRoutes);
 router.use("/departments", departmentRoutes);
 router.use("/doctors", doctorRoutes);
 router.use("/services", serviceRoutes);
+router.use("/superadmin", superAdminRoutes);
+router.use("/audit", auditRoutes);
 
 export default router;

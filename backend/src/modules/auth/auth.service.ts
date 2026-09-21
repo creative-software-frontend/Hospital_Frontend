@@ -9,6 +9,8 @@ import {
 } from "../../errors/ApiError";
 import { signAccessToken } from "../../utils/token";
 import { writeAuditLog } from "../../utils/audit";
+import { recordFailedLogin, clearFailedLogins } from "../../utils/loginAttempt";
+import { getPasswordPolicy } from "../../utils/passwordPolicy";
 import type { AuthUser } from "../../types/auth";
 import type { ChangePasswordInput, LoginInput } from "./auth.validation";
 
@@ -61,23 +63,21 @@ async function getUserWithRoles(identifier: string) {
   });
 }
 
-export async function login(input: LoginInput): Promise<LoginResult> {
+async function getMaxLoginAttempts(): Promise<number> {
+  const setting = await prisma.securitySetting.findFirst({ orderBy: { id: "asc" } });
+  return setting?.maxLoginAttempts ?? 5;
+}
+
+export async function login(
+  input: LoginInput,
+  meta?: { ip?: string },
+): Promise<LoginResult> {
   const identifier = input.identifier.trim();
+  const ip = meta?.ip;
   const user = await getUserWithRoles(identifier);
 
   // Generic failure for both "unknown identifier" and "wrong password".
   if (!user) {
-    throw new AuthenticationError(INVALID_CREDENTIALS);
-  }
-
-  const passwordMatches = await bcrypt.compare(input.password, user.password);
-  if (!passwordMatches) {
-    await writeAuditLog({
-      module: "AUTH",
-      action: "LOGIN_FAILED",
-      user: null,
-      branchId: user.branchId,
-    });
     throw new AuthenticationError(INVALID_CREDENTIALS);
   }
 
@@ -88,8 +88,48 @@ export async function login(input: LoginInput): Promise<LoginResult> {
       user: null,
       branchId: user.branchId,
     });
-    throw new AuthenticationError("Account is not active");
+    throw new AuthenticationError(
+      user.status === "LOCKED" ? "Account is locked" : "Account is not active",
+    );
   }
+
+  const passwordMatches = await bcrypt.compare(input.password, user.password);
+  if (!passwordMatches) {
+    const maxAttempts = await getMaxLoginAttempts();
+    const attempts = recordFailedLogin(identifier, ip);
+
+    await writeAuditLog({
+      module: "AUTH",
+      action: "LOGIN_FAILED",
+      user: null,
+      branchId: user.branchId,
+    });
+
+    // Durable, authoritative enforcement: the stored SecuritySetting value is
+    // honored by flipping the account to LOCKED, which the auth middleware
+    // rejects immediately (status is reloaded from the DB on every request).
+    if (attempts >= maxAttempts) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { status: "LOCKED" },
+      });
+      clearFailedLogins(identifier, ip);
+      await writeAuditLog({
+        module: "AUTH",
+        action: "LOGIN_ACCOUNT_LOCKED",
+        tableName: "User",
+        recordId: String(user.id),
+        user: null,
+        branchId: user.branchId,
+        newValues: { status: "LOCKED", maxLoginAttempts: maxAttempts },
+      });
+    }
+
+    throw new AuthenticationError(INVALID_CREDENTIALS);
+  }
+
+  // A successful login resets the failure counter.
+  clearFailedLogins(identifier, ip);
 
   // Record last login timestamp.
   await prisma.user.update({
@@ -187,6 +227,14 @@ export async function changePassword(authUser: AuthUser, input: ChangePasswordIn
   const isSame = await bcrypt.compare(input.newPassword, user.password);
   if (isSame) {
     throw new BusinessRuleError("New password must be different from the current password");
+  }
+
+  // Honor the live password policy from SecuritySetting (defaults to 8).
+  const { minLength } = await getPasswordPolicy();
+  if (input.newPassword.length < minLength) {
+    throw new BusinessRuleError(
+      `New password must be at least ${minLength} characters`,
+    );
   }
 
   const newHash = await bcrypt.hash(input.newPassword, config.bcryptSaltRounds);

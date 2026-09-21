@@ -30,6 +30,8 @@ import type { RolePermission, RoleStat } from "@/app/config/roleConfig";
 import { settingsData } from "@/app/data/settingsData";
 import { SettingsPageView } from "@/app/dashboard/settings/SettingsPageView";
 import { PatientModule } from "@/app/patients/PatientModule";
+import { SuperAdminOverviewStats } from "@/app/dashboard/superadmin/SuperAdminOverviewStats";
+import { RolePermissionEditorModal } from "@/app/dashboard/role-permissions/RolePermissionEditorModal";
 
 const iconMap: Record<string, IconType> = {
   FiUser,
@@ -76,50 +78,69 @@ export const DashboardContent = ({
   const [tableSearch, setTableSearch] = useState<string>("");
   const [pageSize] = useState<number>(50);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [editingRole, setEditingRole] = useState<{ seederKey: string; name: string } | null>(null);
+
+  const environment = useMemo(
+    () =>
+      typeof window !== "undefined" &&
+      ["localhost", "127.0.0.1"].includes(window.location.hostname)
+        ? "Development"
+        : "Production",
+    [],
+  );
 
 
   const roles = [
     {
+      seederKey: "SUPER_ADMIN",
       name: "Super Admin",
       access: "Full Access",
       desc: "Complete platform configuration, full settings, and absolute authorization overrides.",
     },
     {
+      seederKey: "ADMIN",
       name: "Hospital Admin",
       access: "Hospital Management",
       desc: "Oversees general operations, staff schedules, and hospital settings.",
     },
     {
+      seederKey: "DOCTOR",
       name: "Doctor",
       access: "Patient Consultation, Prescription",
       desc: "Handles patient diagnoses, medical charts, prescriptions, and follow-ups.",
     },
     {
+      seederKey: "NURSE",
       name: "Nurse",
       access: "Patient Monitoring",
       desc: "Monitors admitted patients, records daily vitals, and logs nursing notes.",
     },
     {
+      seederKey: "RECEPTIONIST",
       name: "Receptionist",
       access: "Registration, Appointment",
       desc: "Manages guest walks, registrations, patient admission paperwork, and bookings.",
     },
     {
+      seederKey: "PHARMACIST",
       name: "Pharmacist",
       access: "Medicine M anagement",
       desc: "Manages drug inventory, stock checks, expiry details, and sales.",
     },
     {
+      seederKey: "LAB_TECHNICIAN",
       name: "Lab Technician",
       access: "Lab Reports",
       desc: "Handles sample gathering, processing tests, and issuing laboratory reports.",
     },
     {
+      seederKey: "ACCOUNTANT",
       name: "Accountant",
       access: "Financial Management",
       desc: "Handles bookkeeping, incoming cash collections, billing, and balance sheets.",
     },
     {
+      seederKey: "HR_MANAGER",
       name: "HR Manager",
       access: "Employee Management",
       desc: "Manages staff contracts, payroll processing, leave logs, and shifts.",
@@ -253,7 +274,7 @@ ${tbody}
         </div>
         <div className="flex items-center gap-3">
           <span className="bg-[var(--primary-soft)]/35 text-[var(--primary-dark)] text-xs font-semibold px-3 py-1.5 rounded-full border border-[var(--primary)]/20">
-            Environment: Production
+            Environment: {environment}
           </span>
         </div>
       </header>
@@ -261,6 +282,10 @@ ${tbody}
       <main className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 news-scroll">
         {activeSection === "overview" && (
           <>
+            {permissions?.role === "super-admin" ? (
+              <SuperAdminOverviewStats />
+            ) : (
+            <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {roleStats &&
                 roleStats.map((stat: RoleStat, idx: number) => {
@@ -368,6 +393,8 @@ ${tbody}
                 )}
               </div>
             </div>
+            </>
+            )}
 
             <div className="bg-[var(--card)] border border-[var(--border)] p-6 rounded-2xl shadow-sm space-y-4">
               <div className="flex justify-between items-center pb-2 border-b border-[var(--border)]/60">
@@ -401,7 +428,8 @@ ${tbody}
         )}
 
         {activeSection === "role-permissions" && permissions?.canViewRolePermissions && (
-          <div className="space-y-6">
+          <>
+            <div className="space-y-6">
             <div className="bg-[var(--card)] p-6 rounded-3xl border border-[var(--border)] shadow-sm">
               <h3 className="font-extrabold text-[var(--primary-dark)] text-lg">Hospital Roles & Access Matrix</h3>
               <p className="text-xs text-[var(--muted)] mt-1.5 leading-relaxed">
@@ -442,11 +470,27 @@ ${tbody}
                       </div>
                       <p className="text-xs text-[var(--muted)] leading-relaxed pt-1">{r.desc}</p>
                     </div>
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingRole({ seederKey: r.seederKey, name: r.name })}
+                        className="w-full px-3 py-2 rounded-xl text-xs font-bold border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--primary-dark)] hover:border-[var(--primary)] transition-colors cursor-pointer"
+                      >
+                        Edit Permissions
+                      </button>
+                    </div>
                   </div>
                 );
               })}
             </div>
-          </div>
+            </div>
+          <RolePermissionEditorModal
+            open={editingRole !== null}
+            seederKey={editingRole?.seederKey ?? ""}
+            roleName={editingRole?.name ?? ""}
+            onClose={() => setEditingRole(null)}
+          />
+          </>
         )}
 
         {activeSection === "feature-detail" && selectedFeature && (

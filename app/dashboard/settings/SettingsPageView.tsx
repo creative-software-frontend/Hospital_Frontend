@@ -28,6 +28,7 @@ import { ReportsView } from "@/app/dashboard/settings/reports/ReportsView";
 import { MasterDataView } from "@/app/dashboard/settings/master-data/MasterDataView";
 import { LocalizationView } from "@/app/dashboard/settings/localization/LocalizationView";
 import { SystemMaintenanceView } from "@/app/dashboard/settings/system-maintenance/SystemMaintenanceView";
+import { AuditCenterView } from "@/app/dashboard/settings/audit/AuditCenterView";
 import { MockSettingsView } from "@/app/dashboard/settings/mock/MockSettingsView";
 
 export const SettingsPageView = ({
@@ -139,6 +140,10 @@ export const SettingsPageView = ({
 
   if (pageKey === "system-maintenance") {
     return <SystemMaintenanceView />;
+  }
+
+  if (pageKey === "audit-center") {
+    return <AuditCenterView />;
   }
 
   return <MockSettingsView page={page} />;

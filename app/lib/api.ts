@@ -201,6 +201,7 @@ export type UpdateUserInput = Partial<
 
 export interface RolePermissionSummary {
   permission: {
+    id: number;
     module: string;
     action: string;
     description: string | null;
@@ -218,7 +219,7 @@ export interface RoleRecord {
 
 export interface PermissionModule {
   module: string;
-  actions: { action: string; description: string | null }[];
+  actions: { id: number; action: string; description: string | null }[];
 }
 
 /* ---------------------------------------------------------------------------
@@ -436,6 +437,12 @@ export const roleApi = {
     request<{ roles: RoleRecord[] }>(
       `/roles${qs(status ? { status } : {})}`,
     ),
+
+  updatePermissions: (id: number, permissionIds: number[]) =>
+    request<{ role: RoleRecord }>(`/roles/${id}/permissions`, {
+      method: "PUT",
+      body: JSON.stringify({ permissionIds }),
+    }),
 };
 
 /* ---------------------------------------------------------------------------
@@ -446,6 +453,95 @@ export const permissionApi = {
   list: (module?: string) =>
     request<{ modules: PermissionModule[] }>(
       `/permissions${qs(module ? { module } : {})}`,
+    ),
+};
+
+/* ---------------------------------------------------------------------------
+ * Super Admin endpoints (real dashboard statistics — SUPER_ADMIN only)
+ * ------------------------------------------------------------------------- */
+
+export interface AuditActorEvent {
+  id: number;
+  module: string;
+  action: string;
+  tableName: string | null;
+  recordId: string | null;
+  ipAddress: string | null;
+  createdAt: string;
+  branch: { id: number; name: string } | null;
+  user: { id: number; name: string; email: string } | null;
+}
+
+export interface SuperAdminStats {
+  summary: {
+    branches: { total: number; active: number };
+    users: { total: number; active: number; locked: number; suspended: number };
+    patients: number;
+    doctors: number;
+    departments: number;
+    services: number;
+    roles: number;
+  };
+  activity: {
+    loginsToday: number;
+    activeUsersLast7Days: number;
+    auditEventsTotal: number;
+  };
+  breakdown: {
+    usersByStatus: { status: string; count: number }[];
+    usersByBranch: { branchId: number; branchName: string | null; count: number }[];
+    patientsByBranch: { branchId: number; branchName: string | null; count: number }[];
+  };
+  recentActivity: AuditActorEvent[];
+  generatedAt: string;
+  live: boolean;
+}
+
+export const superAdminApi = {
+  stats: () => request<{ stats: SuperAdminStats }>("/superadmin/stats"),
+};
+
+/* ---------------------------------------------------------------------------
+ * Audit endpoint (list/filter/paginate + CSV export)
+ * ------------------------------------------------------------------------- */
+
+export interface AuditLogRecord {
+  id: number;
+  userId: number | null;
+  branchId: number;
+  module: string;
+  action: string;
+  tableName: string | null;
+  recordId: string | null;
+  oldValues: Record<string, unknown> | null;
+  newValues: Record<string, unknown> | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+  user: { id: number; name: string; email: string } | null;
+  branch: { id: number; name: string; code: string } | null;
+}
+
+export interface AuditListResult {
+  data: AuditLogRecord[];
+  pagination: PaginationMeta;
+}
+
+export interface AuditListQuery {
+  page?: number;
+  limit?: number;
+  module?: string;
+  action?: string;
+  userId?: number;
+  branchId?: number;
+  from?: string;
+  to?: string;
+}
+
+export const auditApi = {
+  list: (query: AuditListQuery = {}) =>
+    rawRequest<AuditListResult>(
+      `/audit${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
     ),
 };
 

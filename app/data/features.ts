@@ -313,6 +313,7 @@ export const keyFeatures: Feature[] = [
             { id: "branch-settings", label: "Branch Settings", icon: FiGitBranch },
             { id: "user-role-management", label: "User & Role Management", icon: FiUsers },
             { id: "security", label: "Security", icon: FiLock },
+            { id: "audit-center", label: "Audit Center", icon: FiFileText },
             {
                 id: "hospital-configuration",
                 label: "Hospital Configuration",

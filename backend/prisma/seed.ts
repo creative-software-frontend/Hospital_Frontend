@@ -61,6 +61,7 @@ const PERMISSIONS: PermissionDef[] = [
   { module: "user", action: "create", description: "Create users" },
   { module: "user", action: "update", description: "Update users" },
   { module: "role", action: "read", description: "View roles and their permissions" },
+  { module: "role", action: "update", description: "Modify roles and their permissions" },
   { module: "permission", action: "read", description: "View the permission catalog" },
   { module: "audit", action: "read", description: "View audit logs" },
 

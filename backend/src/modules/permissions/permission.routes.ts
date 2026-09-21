@@ -21,15 +21,15 @@ router.get(
 
     const perms = await prisma.permission.findMany({
       where: requestedModule ? { module: requestedModule } : undefined,
-      select: { module: true, action: true, description: true },
+      select: { id: true, module: true, action: true, description: true },
       orderBy: [{ module: "asc" }, { action: "asc" }],
     });
 
     // Group by module for convenient consumption
-    const grouped = perms.reduce<Record<string, { module: string; actions: { action: string; description: string | null }[] }>>(
+    const grouped = perms.reduce<Record<string, { module: string; actions: { id: number; action: string; description: string | null }[] }>>(
       (acc, p) => {
         if (!acc[p.module]) acc[p.module] = { module: p.module, actions: [] };
-        acc[p.module].actions.push({ action: p.action, description: p.description });
+        acc[p.module].actions.push({ id: p.id, action: p.action, description: p.description });
         return acc;
       },
       {},

@@ -8,6 +8,7 @@ import {
   NotFoundError,
 } from "../../errors/ApiError";
 import { writeAuditLog } from "../../utils/audit";
+import { getPasswordPolicy } from "../../utils/passwordPolicy";
 import { parsePagination, buildPaginationMeta, type SortableField } from "../../utils/pagination";
 import type { AuthUser } from "../../types/auth";
 import type {
@@ -137,6 +138,11 @@ export async function createUser(actor: AuthUser, input: CreateUserInput): Promi
       throw new ConflictError("A user with this email already exists");
     }
     throw new ConflictError("A user with this username already exists");
+  }
+
+  const { minLength } = await getPasswordPolicy();
+  if (input.password.length < minLength) {
+    throw new BusinessRuleError(`Password must be at least ${minLength} characters`);
   }
 
   const passwordHash = await bcrypt.hash(input.password, config.bcryptSaltRounds);

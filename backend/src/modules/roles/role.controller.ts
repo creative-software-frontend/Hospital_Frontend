@@ -11,3 +11,8 @@ export const getRole = asyncHandler(async (req: Request, res: Response) => {
   const role = await roleService.getRole(Number(req.params.id));
   res.status(200).json({ success: true, data: { role } });
 });
+
+export const updateRolePermissions = asyncHandler(async (req: Request, res: Response) => {
+  const role = await roleService.updateRolePermissions(req.user!, Number(req.params.id), req.body);
+  res.status(200).json({ success: true, data: { role } });
+});

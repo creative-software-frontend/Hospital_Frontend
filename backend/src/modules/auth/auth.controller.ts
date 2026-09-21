@@ -8,7 +8,7 @@ import * as authService from "./auth.service";
  * Authenticates a user, sets the HTTP-only cookie, returns sanitized user.
  */
 export const login = asyncHandler(async (req: Request, res: Response) => {
-  const result = await authService.login(req.body);
+  const result = await authService.login(req.body, { ip: req.ip });
 
   setAuthCookie(res, result.accessToken);
 
