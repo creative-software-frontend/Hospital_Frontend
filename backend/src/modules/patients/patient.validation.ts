@@ -57,7 +57,6 @@ export const listPatientsQuerySchema = z.object({
 });
 
 export const createPatientSchema = z.object({
-  patientCode: z.string().trim().min(1, "patientCode is required").max(64),
   firstName: z.string().trim().min(1, "firstName is required").max(255),
   lastName: optionalString(255),
   dateOfBirth: z
@@ -92,7 +91,7 @@ export const createPatientSchema = z.object({
 });
 
 export const updatePatientSchema = createPatientSchema
-  .omit({ patientCode: true, branchId: true, contacts: true })
+  .omit({ branchId: true, contacts: true })
   .partial();
 
 export const updatePatientStatusSchema = z.object({

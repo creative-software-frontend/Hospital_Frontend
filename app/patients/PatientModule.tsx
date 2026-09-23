@@ -402,12 +402,12 @@ export function PatientModule({ role }: { role: UserRole | null }) {
           mode={editingPatient ? "edit" : "create"}
           patient={editingPatient}
           onClose={() => setFormOpen(false)}
-          onSaved={() => {
+          onSaved={(newCode) => {
             setFormOpen(false);
             if (editingPatient) {
               notify("success", `Patient ${editingPatient.patientCode} updated.`);
             } else {
-              notify("success", "Patient created successfully.");
+              notify("success", `Patient registered. Code: ${newCode ?? "generated"}.`);
               setPage(1);
             }
             refreshList();

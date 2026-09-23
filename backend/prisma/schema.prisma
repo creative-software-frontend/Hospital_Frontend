@@ -1782,3 +1782,13 @@ model SystemMaintenance {
   databaseOptimization DateTime?
   status               String    @default("active")
 }
+
+model CodeSequence {
+  id         Int      @id @default(autoincrement())
+  entity     String
+  branchId   Int
+  nextNumber Int      @default(1)
+  updatedAt  DateTime @updatedAt
+
+  @@unique([entity, branchId])
+}

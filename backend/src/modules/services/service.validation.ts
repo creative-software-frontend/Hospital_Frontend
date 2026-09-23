@@ -35,7 +35,6 @@ export const listServicesQuerySchema = z.object({
 });
 
 export const createServiceSchema = z.object({
-  serviceCode: z.string().trim().min(1, "serviceCode is required").max(64),
   name: z.string().trim().min(1, "name is required").max(255),
   departmentId: z.coerce.number().int().positive().optional().nullable(),
   categoryId: z.coerce.number().int().positive().optional().nullable(),
@@ -46,9 +45,7 @@ export const createServiceSchema = z.object({
   status: z.enum(SERVICE_STATUS_VALUES).optional(),
 });
 
-export const updateServiceSchema = createServiceSchema
-  .omit({ serviceCode: true })
-  .partial();
+export const updateServiceSchema = createServiceSchema.partial();
 
 export type ListServicesQuery = z.infer<typeof listServicesQuerySchema>;
 export type CreateServiceInput = z.infer<typeof createServiceSchema>;

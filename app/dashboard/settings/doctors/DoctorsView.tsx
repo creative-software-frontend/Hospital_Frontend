@@ -86,8 +86,8 @@ export function DoctorsView() {
       await doctorApi.update(editing.id, input);
       notify("success", `Doctor "${input.name}" updated.`);
     } else {
-      await doctorApi.create(input);
-      notify("success", `Doctor "${input.name}" created.`);
+      const created = await doctorApi.create(input);
+      notify("success", `Doctor "${input.name}" created. Code: ${created.doctor.doctorCode}.`);
     }
     setFormOpen(false);
     setEditing(null);
@@ -232,7 +232,6 @@ function DoctorFormModal({
 }) {
   const editing = !!doctor;
   const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
-  const [doctorCode, setDoctorCode] = useState(doctor?.doctorCode ?? "");
   const [name, setName] = useState(doctor?.name ?? "");
   const [departmentId, setDepartmentId] = useState<string>(doctor?.departmentId ? String(doctor.departmentId) : "");
   const [specialization, setSpecialization] = useState(doctor?.specialization ?? "");
@@ -261,14 +260,13 @@ function DoctorFormModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!name.trim() || (!editing && !doctorCode.trim())) {
-      setError(editing ? "Doctor name is required." : "Doctor name and code are required.");
+    if (!name.trim()) {
+      setError("Doctor name is required.");
       return;
     }
     setSaving(true);
     try {
       await onSubmit({
-        doctorCode: doctorCode.trim(),
         name: name.trim(),
         departmentId: departmentId ? Number(departmentId) : null,
         specialization: specialization.trim() || null,
@@ -300,10 +298,6 @@ function DoctorFormModal({
         <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">{editing ? "Edit Doctor" : "Add Doctor"}</h3>
 
         <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Doctor Code *</label>
-            <input value={doctorCode} onChange={(e) => setDoctorCode(e.target.value)} disabled={editing} className={`${INPUT_CLS} ${editing ? "opacity-50" : ""}`} />
-          </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Name *</label>
             <input value={name} onChange={(e) => setName(e.target.value)} className={INPUT_CLS} />

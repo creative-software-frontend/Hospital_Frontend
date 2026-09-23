@@ -2,10 +2,10 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import {
   AuthorizationError,
-  ConflictError,
   NotFoundError,
 } from "../../errors/ApiError";
 import { writeAuditLog } from "../../utils/audit";
+import { CODE_ENTITIES, generateBusinessCode } from "../../utils/codeGenerator";
 import { parsePagination, buildPaginationMeta, type SortableField } from "../../utils/pagination";
 import type { AuthUser } from "../../types/auth";
 import type {
@@ -102,32 +102,29 @@ export async function getDoctor(actor: AuthUser, id: number) {
 export async function createDoctor(actor: AuthUser, input: CreateDoctorInput) {
   await ensureBranch(actor.branchId);
 
-  const existing = await prisma.doctor.findFirst({
-    where: { branchId: actor.branchId, doctorCode: input.doctorCode },
-    select: { id: true },
-  });
-  if (existing) {
-    throw new ConflictError(`Doctor code "${input.doctorCode}" already exists in this branch`);
-  }
-
-  const row = await prisma.doctor.create({
-    data: {
-      branchId: actor.branchId,
-      doctorCode: input.doctorCode,
-      name: input.name,
-      departmentId: input.departmentId ?? null,
-      specialization: input.specialization,
-      qualification: input.qualification,
-      registrationNo: input.registrationNo,
-      phone: input.phone,
-      email: input.email,
-      consultationFee: input.consultationFee,
-      followupFee: input.followupFee,
-      emergencyFee: input.emergencyFee,
-      commissionType: input.commissionType ?? null,
-      commissionValue: input.commissionValue,
-      status: input.status ?? "active",
-    },
+  // Claim the next branch-scoped doctor code and create the record in one
+  // transaction: if creation fails the sequence increment rolls back too.
+  const row = await prisma.$transaction(async (tx) => {
+    const doctorCode = await generateBusinessCode(tx, CODE_ENTITIES.DOCTOR, actor.branchId);
+    return tx.doctor.create({
+      data: {
+        branchId: actor.branchId,
+        doctorCode,
+        name: input.name,
+        departmentId: input.departmentId ?? null,
+        specialization: input.specialization,
+        qualification: input.qualification,
+        registrationNo: input.registrationNo,
+        phone: input.phone,
+        email: input.email,
+        consultationFee: input.consultationFee,
+        followupFee: input.followupFee,
+        emergencyFee: input.emergencyFee,
+        commissionType: input.commissionType ?? null,
+        commissionValue: input.commissionValue,
+        status: input.status ?? "active",
+      },
+    });
   });
 
   await writeAuditLog({

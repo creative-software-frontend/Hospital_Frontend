@@ -111,7 +111,6 @@ export interface PatientContactInput {
 }
 
 export interface CreatePatientInput {
-  patientCode: string;
   firstName: string;
   lastName?: string | null;
   dateOfBirth?: string | null;
@@ -129,7 +128,7 @@ export interface CreatePatientInput {
 }
 
 export type UpdatePatientInput = Partial<
-  Omit<CreatePatientInput, "patientCode" | "contacts">
+  Omit<CreatePatientInput, "contacts">
 >;
 
 export interface PatientListQuery {
@@ -1651,7 +1650,6 @@ export interface DoctorListQuery {
 }
 
 export interface CreateDoctorInput {
-  doctorCode: string;
   name: string;
   departmentId?: number | null;
   specialization?: string | null;
@@ -1667,7 +1665,7 @@ export interface CreateDoctorInput {
   status?: ActiveStatus;
 }
 
-export type UpdateDoctorInput = Partial<Omit<CreateDoctorInput, "doctorCode">>;
+export type UpdateDoctorInput = Partial<CreateDoctorInput>;
 
 export interface ServiceCategoryRecord {
   id: number;
@@ -1708,7 +1706,6 @@ export interface ServiceListQuery {
 }
 
 export interface CreateServiceInput {
-  serviceCode: string;
   name: string;
   departmentId?: number | null;
   categoryId?: number | null;
@@ -1719,7 +1716,7 @@ export interface CreateServiceInput {
   status?: ActiveStatus;
 }
 
-export type UpdateServiceInput = Partial<Omit<CreateServiceInput, "serviceCode">>;
+export type UpdateServiceInput = Partial<CreateServiceInput>;
 
 export const departmentApi = {
   list: (query: DepartmentListQuery = {}) =>

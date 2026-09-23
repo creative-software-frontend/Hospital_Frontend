@@ -32,7 +32,6 @@ interface ContactDraft {
 }
 
 interface FormState {
-  patientCode: string;
   firstName: string;
   lastName: string;
   dateOfBirth: string;
@@ -49,7 +48,6 @@ interface FormState {
 }
 
 const EMPTY_FORM: FormState = {
-  patientCode: "",
   firstName: "",
   lastName: "",
   dateOfBirth: "",
@@ -68,7 +66,6 @@ const EMPTY_FORM: FormState = {
 function prefillFromPatient(p: PatientDetail | PatientListRecord | null): FormState {
   if (!p) return EMPTY_FORM;
   return {
-    patientCode: p.patientCode ?? "",
     firstName: p.firstName ?? "",
     lastName: p.lastName ?? "",
     dateOfBirth: p.dateOfBirth ? p.dateOfBirth.slice(0, 10) : "",
@@ -99,7 +96,7 @@ export function PatientFormModal({
   mode: "create" | "edit";
   patient: PatientDetail | PatientListRecord | null;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (patientCode?: string) => void;
 }) {
   const [form, setForm] = useState<FormState>(() => prefillFromPatient(patient));
   const [contacts, setContacts] = useState<ContactDraft[]>([]);
@@ -130,7 +127,6 @@ export function PatientFormModal({
     const hasBlood = (BLOOD_GROUP_OPTIONS as string[]).includes(form.bloodGroup);
     const hasMarital = MARITAL_STATUS_OPTIONS.some((m) => m.value === form.maritalStatus);
     return {
-      patientCode: form.patientCode.trim(),
       firstName: form.firstName.trim(),
       lastName: opt(form.lastName),
       dateOfBirth: opt(form.dateOfBirth),
@@ -150,10 +146,8 @@ export function PatientFormModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
-    if (!form.firstName.trim() || (mode === "create" && !form.patientCode.trim())) {
-      setFormError(mode === "create"
-        ? "Patient Code and First Name are required."
-        : "First Name is required.");
+    if (!form.firstName.trim()) {
+      setFormError("First Name is required.");
       return;
     }
 
@@ -171,11 +165,12 @@ export function PatientFormModal({
     setSubmitting(true);
     try {
       if (mode === "create") {
-        await patientApi.create(mappedContacts.length > 0 ? { ...input, contacts: mappedContacts } : input);
+        const created = await patientApi.create(mappedContacts.length > 0 ? { ...input, contacts: mappedContacts } : input);
+        onSaved(created.patient.patientCode);
       } else if (patient) {
         await patientApi.update(patient.id, input);
+        onSaved(patient.patientCode);
       }
-      onSaved();
     } catch (err) {
       if (err instanceof ValidationError) {
         setFieldErrors(err.fieldErrors ?? {});
@@ -227,19 +222,6 @@ export function PatientFormModal({
             <div>
               <h4 className="text-xs font-extrabold text-[var(--text)] mb-3 uppercase tracking-wider">Identity</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {mode === "create" && (
-                  <div>
-                    <label className={labelCls}>Patient Code *</label>
-                    <input
-                      className={inputCls}
-                      value={form.patientCode}
-                      onChange={set("patientCode")}
-                      placeholder="e.g. PT-1001 (unique per branch)"
-                      disabled={submitting}
-                    />
-                    {fieldError("patientCode")}
-                  </div>
-                )}
                 <div>
                   <label className={labelCls}>First Name *</label>
                   <input className={inputCls} value={form.firstName} onChange={set("firstName")} placeholder="First name" disabled={submitting} />

@@ -10,6 +10,7 @@ vi.mock("../lib/prisma", () => {
     count: vi.fn(),
     update: vi.fn(),
     updateMany: vi.fn(),
+    upsert: vi.fn(),
     findUniqueOrThrow: vi.fn(),
     delete: vi.fn(),
   });
@@ -18,6 +19,7 @@ vi.mock("../lib/prisma", () => {
     patient: makeModel(),
     patientContact: makeModel(),
     branch: makeModel(),
+    codeSequence: makeModel(),
     $transaction: vi.fn(async (arg: unknown) => {
       if (typeof arg === "function") {
         // interactive transaction — tx is just the client mock itself
@@ -60,6 +62,7 @@ const mockPrisma = (await import("../lib/prisma")).prisma as unknown as {
     findMany: ReturnType<typeof vi.fn>;
   };
   branch: { findUnique: ReturnType<typeof vi.fn> };
+  codeSequence: { upsert: ReturnType<typeof vi.fn> };
   $transaction: ReturnType<typeof vi.fn>;
 };
 
@@ -97,42 +100,52 @@ describe("patient service — create", () => {
     vi.clearAllMocks();
   });
 
-  it("creates a patient in the actor's branch when branchId omitted", async () => {
-    (mockPrisma.patient.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+  it("creates a patient in the actor's branch and auto-generates the patient code", async () => {
+    (mockPrisma.codeSequence.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({ nextNumber: 1 });
     (mockPrisma.patient.create as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: 10,
       branchId: 1,
-      patientCode: "PT-0001",
+      patientCode: "PAT-000001",
     });
 
     const actorLocal = { ...actor, roles: [{ id: 2, seederKey: "ADMIN", name: "Admin" }] };
     const result = await patientService.createPatient(actorLocal, {
-      patientCode: "PT-0001",
       firstName: "John",
       lastName: "Doe",
     });
 
+    expect(mockPrisma.codeSequence.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { entity_branchId: { entity: "Patient", branchId: 1 } },
+        update: { nextNumber: { increment: 1 } },
+        create: { entity: "Patient", branchId: 1, nextNumber: 1 },
+      }),
+    );
     expect(mockPrisma.patient.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           branch: { connect: { id: 1 } },
-          patientCode: "PT-0001",
+          patientCode: "PAT-000001",
           firstName: "John",
           createdById: 1,
         }),
       }),
     );
     expect(result.id).toBe(10);
+    expect(result.patientCode).toBe("PAT-000001");
   });
 
-  it("rejects duplicate patientCode with ConflictError", async () => {
-    (mockPrisma.patient.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 99 });
+  it("maps a unique-index violation on the generated code to ConflictError", async () => {
+    (mockPrisma.codeSequence.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({ nextNumber: 1 });
+    (mockPrisma.patient.create as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+        code: "P2002",
+        clientVersion: "5.22.0",
+      }),
+    );
 
     await expect(
-      patientService.createPatient(actor, {
-        patientCode: "PT-0001",
-        firstName: "John",
-      }),
+      patientService.createPatient(actor, { firstName: "John" }),
     ).rejects.toThrow("already exists");
   });
 
@@ -140,7 +153,6 @@ describe("patient service — create", () => {
     const actorLocal = { ...actor, roles: [{ id: 2, seederKey: "ADMIN", name: "Admin" }] };
     await expect(
       patientService.createPatient(actorLocal, {
-        patientCode: "X",
         firstName: "John",
         branchId: 2,
       }),
@@ -380,14 +392,13 @@ import {
 } from "../modules/patients/patient.validation";
 
 describe("patient validation", () => {
-  it("rejects missing firstName / patientCode", () => {
+  it("rejects missing firstName", () => {
     const res = createPatientSchema.safeParse({ email: "bad" });
     expect(res.success).toBe(false);
   });
 
   it("rejects bad email and bad blood group", () => {
     const res = createPatientSchema.safeParse({
-      patientCode: "P1",
       firstName: "John",
       email: "not-an-email",
       bloodGroup: "QQ",
@@ -397,7 +408,6 @@ describe("patient validation", () => {
 
   it("rejects future dateOfBirth", () => {
     const res = createPatientSchema.safeParse({
-      patientCode: "P1",
       firstName: "John",
       dateOfBirth: "2999-01-01",
     });
@@ -411,7 +421,6 @@ describe("patient validation", () => {
 
   it("accepts a valid patient payload with contacts", () => {
     const res = createPatientSchema.safeParse({
-      patientCode: "P-100",
       firstName: "Jane",
       lastName: "Smith",
       gender: "FEMALE",

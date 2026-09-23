@@ -2,10 +2,10 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import {
   AuthorizationError,
-  ConflictError,
   NotFoundError,
 } from "../../errors/ApiError";
 import { writeAuditLog } from "../../utils/audit";
+import { CODE_ENTITIES, generateBusinessCode } from "../../utils/codeGenerator";
 import { parsePagination, buildPaginationMeta, type SortableField } from "../../utils/pagination";
 import type { AuthUser } from "../../types/auth";
 import type {
@@ -96,27 +96,24 @@ export async function getService(actor: AuthUser, id: number) {
 export async function createService(actor: AuthUser, input: CreateServiceInput) {
   await ensureBranch(actor.branchId);
 
-  const existing = await prisma.service.findFirst({
-    where: { branchId: actor.branchId, serviceCode: input.serviceCode },
-    select: { id: true },
-  });
-  if (existing) {
-    throw new ConflictError(`Service code "${input.serviceCode}" already exists in this branch`);
-  }
-
-  const row = await prisma.service.create({
-    data: {
-      branchId: actor.branchId,
-      departmentId: input.departmentId ?? null,
-      categoryId: input.categoryId ?? null,
-      serviceCode: input.serviceCode,
-      name: input.name,
-      description: input.description,
-      price: input.price,
-      taxPercent: input.taxPercent ?? "0",
-      discountAllowed: input.discountAllowed ?? true,
-      status: input.status ?? "active",
-    },
+  // Claim the next branch-scoped service code and create the record in one
+  // transaction: if creation fails the sequence increment rolls back too.
+  const row = await prisma.$transaction(async (tx) => {
+    const serviceCode = await generateBusinessCode(tx, CODE_ENTITIES.SERVICE, actor.branchId);
+    return tx.service.create({
+      data: {
+        branchId: actor.branchId,
+        departmentId: input.departmentId ?? null,
+        categoryId: input.categoryId ?? null,
+        serviceCode,
+        name: input.name,
+        description: input.description,
+        price: input.price,
+        taxPercent: input.taxPercent ?? "0",
+        discountAllowed: input.discountAllowed ?? true,
+        status: input.status ?? "active",
+      },
+    });
   });
 
   await writeAuditLog({

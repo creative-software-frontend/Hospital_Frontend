@@ -87,8 +87,8 @@ export function ServicesView() {
       await serviceApi.update(editing.id, input);
       notify("success", `Service "${input.name}" updated.`);
     } else {
-      await serviceApi.create(input);
-      notify("success", `Service "${input.name}" created.`);
+      const created = await serviceApi.create(input);
+      notify("success", `Service "${input.name}" created. Code: ${created.service.serviceCode}.`);
     }
     setFormOpen(false);
     setEditing(null);
@@ -235,7 +235,6 @@ function ServiceFormModal({
   const editing = !!service;
   const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
   const [categories, setCategories] = useState<ServiceCategoryRecord[]>([]);
-  const [serviceCode, setServiceCode] = useState(service?.serviceCode ?? "");
   const [name, setName] = useState(service?.name ?? "");
   const [departmentId, setDepartmentId] = useState<string>(service?.departmentId ? String(service.departmentId) : "");
   const [categoryId, setCategoryId] = useState<string>(service?.categoryId ? String(service.categoryId) : "");
@@ -268,14 +267,13 @@ function ServiceFormModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!name.trim() || (!editing && !serviceCode.trim())) {
-      setError(editing ? "Service name is required." : "Service name and code are required.");
+    if (!name.trim()) {
+      setError("Service name is required.");
       return;
     }
     setSaving(true);
     try {
       await onSubmit({
-        serviceCode: serviceCode.trim(),
         name: name.trim(),
         departmentId: departmentId ? Number(departmentId) : null,
         categoryId: categoryId ? Number(categoryId) : null,
@@ -304,10 +302,6 @@ function ServiceFormModal({
         <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">{editing ? "Edit Service" : "Add Service"}</h3>
 
         <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Service Code *</label>
-            <input value={serviceCode} onChange={(e) => setServiceCode(e.target.value)} disabled={editing} className={`${INPUT_CLS} ${editing ? "opacity-50" : ""}`} />
-          </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Name *</label>
             <input value={name} onChange={(e) => setName(e.target.value)} className={INPUT_CLS} />

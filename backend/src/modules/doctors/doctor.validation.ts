@@ -51,7 +51,6 @@ export const listDoctorsQuerySchema = z.object({
 });
 
 export const createDoctorSchema = z.object({
-  doctorCode: z.string().trim().min(1, "doctorCode is required").max(64),
   name: z.string().trim().min(1, "name is required").max(255),
   departmentId: z.coerce.number().int().positive().optional().nullable(),
   specialization: optionalString(255),
@@ -67,9 +66,7 @@ export const createDoctorSchema = z.object({
   status: z.enum(DOCTOR_STATUS_VALUES).optional(),
 });
 
-export const updateDoctorSchema = createDoctorSchema
-  .omit({ doctorCode: true })
-  .partial();
+export const updateDoctorSchema = createDoctorSchema.partial();
 
 export type ListDoctorsQuery = z.infer<typeof listDoctorsQuerySchema>;
 export type CreateDoctorInput = z.infer<typeof createDoctorSchema>;

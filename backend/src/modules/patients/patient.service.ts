@@ -7,6 +7,7 @@ import {
   NotFoundError,
 } from "../../errors/ApiError";
 import { writeAuditLog } from "../../utils/audit";
+import { CODE_ENTITIES, generateBusinessCode } from "../../utils/codeGenerator";
 import { parsePagination, buildPaginationMeta, type SortableField } from "../../utils/pagination";
 import type { AuthUser } from "../../types/auth";
 import type {
@@ -198,18 +199,8 @@ export async function createPatient(actor: AuthUser, input: CreatePatientInput) 
     targetBranchId = actor.branchId;
   }
 
-  // Per-branch uniqueness of patient code (unique index [branchId, patientCode]).
-  const existing = await prisma.patient.findFirst({
-    where: { branchId: targetBranchId, patientCode: input.patientCode },
-    select: { id: true },
-  });
-  if (existing) {
-    throw new ConflictError(`Patient code "${input.patientCode}" already exists in this branch`);
-  }
-
-  const data: Prisma.PatientCreateInput = {
+  const data: Omit<Prisma.PatientCreateInput, "patientCode"> = {
     branch: { connect: { id: targetBranchId } },
-    patientCode: input.patientCode,
     firstName: input.firstName,
     lastName: input.lastName,
     gender: input.gender,
@@ -234,11 +225,19 @@ export async function createPatient(actor: AuthUser, input: CreatePatientInput) 
 
   let patient: { id: number; branchId: number; patientCode: string };
   try {
-    patient = await prisma.patient.create({ data, select: { id: true, branchId: true, patientCode: true } });
+    // Claim the next branch-scoped patient code and create the record in one
+    // transaction: if creation fails the sequence increment rolls back too.
+    patient = await prisma.$transaction(async (tx) => {
+      const patientCode = await generateBusinessCode(tx, CODE_ENTITIES.PATIENT, targetBranchId);
+      return tx.patient.create({
+        data: { ...data, patientCode },
+        select: { id: true, branchId: true, patientCode: true },
+      });
+    });
   } catch (err) {
-    // Race on the unique [branchId, patientCode] constraint.
+    // Final safety net: the unique [branchId, patientCode] index.
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      throw new ConflictError(`Patient code "${input.patientCode}" already exists in this branch`);
+      throw new ConflictError("Patient code already exists in this branch");
     }
     throw err;
   }
@@ -249,7 +248,7 @@ export async function createPatient(actor: AuthUser, input: CreatePatientInput) 
     tableName: "Patient",
     recordId: String(patient.id),
     newValues: {
-      patientCode: input.patientCode,
+      patientCode: patient.patientCode,
       firstName: input.firstName,
       lastName: input.lastName,
       branchId: targetBranchId,
