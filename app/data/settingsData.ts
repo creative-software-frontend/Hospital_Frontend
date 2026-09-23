@@ -18,18 +18,13 @@ export const settingsData: Record<string, SettingsPageData> = {
   "general-settings": {
     title: "General Settings",
     description:
-      "Core application preferences such as system locale, date format, timezone, and default security policies applied across the platform.",
+      "Core application preferences: system identity and maintenance mode. Locale, formats and currency are managed under Settings → Localization.",
     blocks: [
       {
         type: "fields",
         values: [
           { label: "System Name", value: "MediCare HMS" },
           { label: "Version", value: "v2.4.1" },
-          { label: "Default Date Format", value: "DD/MM/YYYY" },
-          { label: "Default Time Format", value: "24 Hour" },
-          { label: "Timezone", value: "Asia/Dhaka (GMT+6)" },
-          { label: "Currency", value: "BDT (৳)" },
-          { label: "Default Language", value: "English" },
           { label: "Maintenance Mode", value: "Off" },
         ],
       },

@@ -45,6 +45,37 @@ export type ListSystemSettingsQuery = z.infer<typeof listSystemSettingsQuerySche
 export type UpsertSystemSettingInput = z.infer<typeof upsertSystemSettingSchema>;
 export type UpdateSecuritySettingInput = z.infer<typeof updateSecuritySettingSchema>;
 
+/* Localization (Settings → Localization) ------------------------------------ */
+
+/**
+ * SINGLE currency catalog — the hospital's supported ISO 4217 codes.
+ * Mirrors the frontend `LOCALIZATION_CURRENCIES` list exactly. The currency set
+ * in Settings → Localization is the authoritative hospital-wide display currency.
+ */
+export const LOCALIZATION_CURRENCY_CODES = ["BDT", "USD", "GBP", "EUR", "INR", "SAR"] as const;
+
+export const updateLocalizationSettingSchema = z.object({
+  language: z.string().trim().min(1).max(64).optional(),
+  currency: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]{3}$/, "currency must be a 3-letter ISO 4217 code")
+    .refine(
+      (code) => (LOCALIZATION_CURRENCY_CODES as readonly string[]).includes(code),
+      { message: "currency is not in the supported Localization currency catalog" },
+    )
+    .optional(),
+  currencySymbol: z.string().trim().min(1).max(8).optional(),
+  dateFormat: z.string().trim().min(1).max(16).optional(),
+  timeFormat: z.enum(["12h", "24h"]).optional(),
+  timezone: z.string().trim().min(1).max(64).optional(),
+  numberFormat: z.string().trim().max(16).optional().nullable(),
+  weekStartDay: z.number().int().min(0).max(6).optional(),
+});
+
+export type UpdateLocalizationSettingInput = z.infer<typeof updateLocalizationSettingSchema>;
+
 /* Patient configuration settings ------------------------------------------- */
 
 export const updatePatientSettingSchema = z.object({
@@ -342,21 +373,6 @@ export const updateMasterDataSchema = createMasterDataSchema.partial();
 
 export type CreateMasterDataInput = z.infer<typeof createMasterDataSchema>;
 export type UpdateMasterDataInput = z.infer<typeof updateMasterDataSchema>;
-
-/* Localization (Settings → Localization) ------------------------------------ */
-
-export const updateLocalizationSettingSchema = z.object({
-  language: z.string().trim().min(1).max(64).optional(),
-  currency: z.string().trim().min(1).max(16).optional(),
-  currencySymbol: z.string().trim().min(1).max(8).optional(),
-  dateFormat: z.string().trim().min(1).max(16).optional(),
-  timeFormat: z.enum(["12h", "24h"]).optional(),
-  timezone: z.string().trim().min(1).max(64).optional(),
-  numberFormat: z.string().trim().max(16).optional().nullable(),
-  weekStartDay: z.number().int().min(0).max(6).optional(),
-});
-
-export type UpdateLocalizationSettingInput = z.infer<typeof updateLocalizationSettingSchema>;
 
 /* System Maintenance (Settings → System Maintenance) ------------------------ */
 

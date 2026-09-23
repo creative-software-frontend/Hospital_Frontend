@@ -86,8 +86,8 @@ describe("audit.service — listAuditLogs", () => {
       action: "USER_CREATED",
       userId: 5,
       branchId: 3,
-      from: "2026-09-01",
-      to: "2026-09-30",
+      from: new Date("2026-09-01"),
+      to: new Date("2026-09-30"),
     });
 
     expect(mockPrisma.auditLog.findMany).toHaveBeenCalledWith(
@@ -97,7 +97,7 @@ describe("audit.service — listAuditLogs", () => {
           module: "user",
           action: "USER_CREATED",
           userId: 5,
-          createdAt: { gte: "2026-09-01", lte: "2026-09-30" },
+          createdAt: { gte: new Date("2026-09-01"), lte: new Date("2026-09-30") },
         },
       }),
     );

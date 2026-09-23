@@ -32,6 +32,8 @@ import { SettingsPageView } from "@/app/dashboard/settings/SettingsPageView";
 import { PatientModule } from "@/app/patients/PatientModule";
 import { SuperAdminOverviewStats } from "@/app/dashboard/superadmin/SuperAdminOverviewStats";
 import { RolePermissionEditorModal } from "@/app/dashboard/role-permissions/RolePermissionEditorModal";
+import { useCurrency } from "@/app/hooks/useCurrency";
+import { formatCurrency } from "@/app/lib/currency";
 
 const iconMap: Record<string, IconType> = {
   FiUser,
@@ -79,6 +81,7 @@ export const DashboardContent = ({
   const [pageSize] = useState<number>(50);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [editingRole, setEditingRole] = useState<{ seederKey: string; name: string } | null>(null);
+  const { currency } = useCurrency();
 
   const environment = useMemo(
     () =>
@@ -233,9 +236,9 @@ export const DashboardContent = ({
 
     const thead = `<tr>${columns.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}</tr>`;
 
-    const tbody = rows
-      .map((row) => {
-        const tds = columns.map((c) => `<td>${escapeHtml(row?.[c])}</td>`).join("");
+const tbody = rows
+      .map((row: TableRow) => {
+        const tds = columns.map((c) => `<td>${escapeHtml(formatCellValue(c, row))}</td>`).join("");
         return `<tr>${tds}</tr>`;
       })
       .join("");
@@ -253,6 +256,13 @@ ${tbody}
 </table>
 </body>
 </html>`;
+  };
+
+  const formatCellValue = (col: string, row: TableRow) => {
+    if (filteredTable?.moneyColumns?.includes(col) && row[col] != null) {
+      return formatCurrency(Number(row[col]), currency);
+    }
+    return String(row[col] ?? "");
   };
 
   return (
@@ -302,7 +312,9 @@ ${tbody}
                         </div>
                       </div>
                       <div className="mt-4">
-                        <span className="text-2xl font-black tracking-tight text-[var(--text)]">{stat.value}</span>
+                        <span className="text-2xl font-black tracking-tight text-[var(--text)]">
+                          {stat.amount !== undefined ? formatCurrency(stat.amount, currency) : stat.value}
+                        </span>
                         <div className="flex items-center gap-1.5 mt-1.5 text-[10px] text-[var(--primary)] font-bold">
                           <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] animate-pulse" />
                           Live Status Update
@@ -552,7 +564,7 @@ ${tbody}
                             const tbody = rows
                               .map((row: TableRow) => {
                                 const tds = columns
-                                  .map((c: string) => `<td>${String(row?.[c] ?? "")}</td>`)
+                                  .map((c: string) => `<td>${formatCellValue(c, row)}</td>`)
                                   .join("");
                                 return `<tr>${tds}</tr>`;
                               })
@@ -665,7 +677,7 @@ ${tbody}
                                   key={col}
                                   className="text-[12px] text-[var(--text)] px-4 py-3 border-b border-[var(--border)]"
                                 >
-                                  {String(row[col] ?? "")}
+                                  {formatCellValue(col, row)}
                                 </td>
                               ))}
                             </tr>

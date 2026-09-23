@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createRateLimiter, clearRateLimitStore } from "../utils/rateLimit";
 import type { Request, Response } from "express";
 

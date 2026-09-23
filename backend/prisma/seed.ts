@@ -244,6 +244,7 @@ const MATRIX: Record<RoleKey, string[]> = {
     "systemMaintenance:read", "systemMaintenance:update",
   ],
   DOCTOR: [
+    "localizationSetting:read",
     "auth:read", "patient:read", "patient:create", "patient:update",
     "appointment:read", "appointment:update",
     "medicalRecord:read", "medicalRecord:create", "medicalRecord:update",
@@ -253,23 +254,28 @@ const MATRIX: Record<RoleKey, string[]> = {
     "department:read", "doctor:read", "service:read",
   ],
   PHARMACIST: [
+    "localizationSetting:read",
     "auth:read", "medicine:read", "medicine:update", "prescription:read",
     "stockMovement:read", "stockMovement:create", "inventory:read", "inventory:update",
   ],
   PATHOLOGIST: [
+    "localizationSetting:read",
     "auth:read", "labTest:read", "labOrder:read", "labOrder:update",
     "labResult:read", "labResult:create", "labResult:update",
   ],
-  RADIOLOGIST: ["auth:read", "imaging:read", "imaging:create", "imaging:update"],
+  RADIOLOGIST: ["localizationSetting:read", "auth:read", "imaging:read", "imaging:create", "imaging:update"],
   ACCOUNTANT: [
+    "localizationSetting:read",
     "auth:read", "invoice:read", "invoice:create", "payment:read", "payment:create",
     "account:read", "accountingTransaction:read", "accountingTransaction:create",
   ],
   RECEPTIONIST: [
+    "localizationSetting:read",
     "auth:read", "patient:read", "patient:create", "patient:update",
     "appointment:read", "appointment:create", "appointment:update", "bed:read",
   ],
   NURSE: [
+    "localizationSetting:read",
     "auth:read", "patient:read", "admission:read", "admission:update",
     "bed:read", "bed:update", "medicalRecord:read", "medicalRecord:create",
   ],
@@ -379,14 +385,11 @@ async function seed() {
   console.log(`Super admin ready: ${email}`);
 
   // 5. Default system settings (branch-scoped; idempotent per (branchId, group, key))
+  // Locale & formatting keys (currency, date/time formats, timezone, language) are owned by
+  // Settings → Localization, so they are intentionally NOT seeded into the "general" group.
   const generalDefaults: Array<{ key: string; value: string; dataType: string }> = [
     { key: "system_name", value: "MediCare HMS", dataType: "string" },
     { key: "version", value: "v2.4.1", dataType: "string" },
-    { key: "default_date_format", value: "DD/MM/YYYY", dataType: "string" },
-    { key: "default_time_format", value: "24 Hour", dataType: "string" },
-    { key: "timezone", value: "Asia/Dhaka", dataType: "string" },
-    { key: "currency", value: "BDT", dataType: "string" },
-    { key: "default_language", value: "English", dataType: "string" },
     { key: "maintenance_mode", value: "off", dataType: "boolean" },
   ];
   const SETTING_GROUP_GENERAL = "general";

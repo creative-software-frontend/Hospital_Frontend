@@ -12,6 +12,7 @@ import type { Feature } from "@/app/data/features";
 import type { UserRole } from "@/app/config/roleConfig";
 import { authStorage } from "@/app/lib/auth";
 import { authApi } from "@/app/lib/api";
+import { CurrencyProvider } from "@/app/hooks/useCurrency";
 
 export default function DashboardLayout({ role: initialRole }: { role?: UserRole }) {
     const router = useRouter();
@@ -62,6 +63,7 @@ export default function DashboardLayout({ role: initialRole }: { role?: UserRole
     }
 
     return (
+        <CurrencyProvider>
         <div className="flex h-screen bg-[var(--bg)] text-[var(--text)] font-sans overflow-hidden">
             <Sidebar
                 sidebarOpen={sidebarOpen}
@@ -162,5 +164,6 @@ export default function DashboardLayout({ role: initialRole }: { role?: UserRole
                 }
             `}</style>
         </div>
+        </CurrencyProvider>
     );
 }

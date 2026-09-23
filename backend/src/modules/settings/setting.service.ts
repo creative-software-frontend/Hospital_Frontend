@@ -198,10 +198,6 @@ export async function updateSecuritySetting(actor: AuthUser, input: UpdateSecuri
   return updated;
 }
 
-/* ---------------------------------------------------------------------------
- * Billing settings
- * ------------------------------------------------------------------------- */
-
 export async function getBillingSetting(actor: AuthUser) {
   return findOrCreateBranchSetting({
     findFirst: () =>
@@ -1439,18 +1435,37 @@ export async function deleteMasterData(actor: AuthUser, id: number) {
  * Localization
  * ------------------------------------------------------------------------- */
 
+const DEFAULT_CURRENCY = "BDT";
+const DEFAULT_CURRENCY_SYMBOL = "৳";
+
+/**
+ * The Localization currency is THE hospital-wide display currency (Settings →
+ * Localization → Currency). Every branch shares one value: reads reuse whichever
+ * existing row is present (all rows are kept in sync), and any currency change is
+ * propagated to every branch/language row. This is NOT an exchange-rate conversion;
+ * stored amounts are never modified.
+ */
+async function getCentralCurrencyDefaults() {
+  const any = await prisma.localizationSetting.findFirst({ orderBy: { id: "asc" } });
+  return {
+    currency: any?.currency ?? DEFAULT_CURRENCY,
+    currencySymbol: any?.currencySymbol ?? DEFAULT_CURRENCY_SYMBOL,
+  };
+}
+
 export async function getLocalizationSetting(actor: AuthUser) {
   const existing = await prisma.localizationSetting.findFirst({
     where: { branchId: actor.branchId, language: "English" },
   });
   if (existing) return existing;
 
+  const central = await getCentralCurrencyDefaults();
   return prisma.localizationSetting.create({
     data: {
       branchId: actor.branchId,
       language: "English",
-      currency: "BDT",
-      currencySymbol: "৳",
+      currency: central.currency,
+      currencySymbol: central.currencySymbol,
       dateFormat: "DD-MM-YYYY",
       timeFormat: "24h",
       timezone: "Asia/Dhaka",
@@ -1470,6 +1485,18 @@ export async function updateLocalizationSetting(
     where: { id: current.id },
     data: { ...input },
   });
+
+  // Currency is CENTRAL: a change to currency/currencySymbol is applied to every
+  // branch (and every language) row so no branch can override the shared value.
+  if (input.currency !== undefined || input.currencySymbol !== undefined) {
+    await prisma.localizationSetting.updateMany({
+      where: {},
+      data: {
+        ...(input.currency !== undefined ? { currency: input.currency } : {}),
+        ...(input.currencySymbol !== undefined ? { currencySymbol: input.currencySymbol } : {}),
+      },
+    });
+  }
 
   await writeAuditLog({
     module: "localizationSetting",

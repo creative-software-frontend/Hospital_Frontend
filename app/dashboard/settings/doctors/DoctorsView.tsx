@@ -16,6 +16,8 @@ import {
   errorMessage,
 } from "@/app/lib/api";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
+import { useCurrency } from "@/app/hooks/useCurrency";
+import { formatCurrency } from "@/app/lib/currency";
 
 const PAGE_SIZE = 10;
 
@@ -25,6 +27,7 @@ const STATUS_STYLES: Record<ActiveStatus, string> = {
 };
 
 export function DoctorsView() {
+  const { currency } = useCurrency();
   const [rows, setRows] = useState<DoctorRecord[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [loading, setLoading] = useState(true);
@@ -167,7 +170,7 @@ export function DoctorsView() {
                     <td className="text-[12px] font-bold text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">{d.name}</td>
                     <td className="text-[12px] text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">{d.specialization ?? "—"}</td>
                     <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">{d.department?.name ?? "—"}</td>
-                    <td className="text-[12px] font-semibold text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">{d.consultationFee ?? "—"}</td>
+                    <td className="text-[12px] font-semibold text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">{d.consultationFee ? formatCurrency(Number(d.consultationFee), currency) : "—"}</td>
                     <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">{d.phone ?? "—"}</td>
                     <td className="px-4 py-3 border-b border-[var(--border)]">
                       <span className={`inline-block text-[10px] font-bold capitalize px-2 py-0.5 rounded-md border ${STATUS_STYLES[d.status]}`}>{d.status}</span>

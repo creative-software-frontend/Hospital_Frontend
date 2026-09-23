@@ -17,6 +17,7 @@ import {
   errorMessage,
 } from "@/app/lib/api";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
+import { useCurrency } from "@/app/hooks/useCurrency";
 
 const INPUT_CLS =
   "w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15 text-[var(--text)]";
@@ -40,6 +41,7 @@ function Field({
 }
 
 export function LocalizationView() {
+  const { reload: reloadCurrency } = useCurrency();
   const [data, setData] = useState<LocalizationSetting | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -97,6 +99,7 @@ export function LocalizationView() {
       setDirty(false);
       notify("success", "Localization settings saved.");
       setReloadKey((k) => k + 1);
+      reloadCurrency();
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -108,6 +111,9 @@ export function LocalizationView() {
     LOCALIZATION_CURRENCIES.find((c) => c.code === code)?.symbol ?? "";
 
   const handleCurrency = (code: string) => {
+    // The Localization currency IS the hospital-wide display currency (single
+    // source of truth). Changed here, synced to every branch by the backend,
+    // and re-fetched by useCurrency() so all financial displays update.
     patch({ currency: code, currencySymbol: symbolFor(code) || data?.currencySymbol || "" });
   };
 

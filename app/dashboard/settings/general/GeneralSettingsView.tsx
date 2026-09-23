@@ -15,43 +15,27 @@ import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/To
 
 const GENERAL_GROUP = "general";
 
+// Locale & formatting keys belong to Settings → Localization (single source). If legacy
+// rows still exist in the "general" group they must NOT appear here (no duplicated fields).
+const LOCALIZATION_OWNED_KEYS = new Set([
+  "currency",
+  "currency_symbol",
+  "default_date_format",
+  "default_time_format",
+  "timezone",
+  "default_language",
+  "language",
+  "number_format",
+  "week_start_day",
+]);
+
 const SETTING_LABELS: Record<string, string> = {
   system_name: "System Name",
   version: "Version",
-  default_date_format: "Default Date Format",
-  default_time_format: "Default Time Format",
-  timezone: "Timezone",
-  currency: "Currency",
-  default_language: "Default Language",
   maintenance_mode: "Maintenance Mode",
 };
 
-const SELECT_OPTIONS: Record<string, { value: string; label: string }[]> = {
-  default_time_format: [
-    { value: "12-hour", label: "12 Hour" },
-    { value: "24-hour", label: "24 Hour" },
-  ],
-  default_language: [
-    { value: "en", label: "English" },
-    { value: "bn", label: "Bangla" },
-    { value: "hi", label: "Hindi" },
-    { value: "ar", label: "Arabic" },
-  ],
-  currency: [
-    { value: "BDT", label: "BDT (৳)" },
-    { value: "USD", label: "USD ($)" },
-    { value: "EUR", label: "EUR (€)" },
-    { value: "GBP", label: "GBP (£)" },
-    { value: "INR", label: "INR (₹)" },
-  ],
-  timezone: [
-    { value: "Asia/Dhaka", label: "Asia/Dhaka (GMT+6)" },
-    { value: "Asia/Kolkata", label: "Asia/Kolkata (GMT+5:30)" },
-    { value: "Asia/Kuala_Lumpur", label: "Asia/Kuala_Lumpur (GMT+8)" },
-    { value: "Asia/Singapore", label: "Asia/Singapore (GMT+8)" },
-    { value: "UTC", label: "UTC (GMT+0)" },
-  ],
-};
+const SELECT_OPTIONS: Record<string, { value: string; label: string }[]> = {};
 
 const dropdownKeys = new Set(Object.keys(SELECT_OPTIONS));
 
@@ -85,7 +69,7 @@ export function GeneralSettingsView() {
     try {
       const result = await settingsApi.system.list();
       const general = result.settings
-        .filter((s) => s.settingGroup === GENERAL_GROUP)
+        .filter((s) => s.settingGroup === GENERAL_GROUP && !LOCALIZATION_OWNED_KEYS.has(s.settingKey))
         .sort((a, b) => a.settingKey.localeCompare(b.settingKey));
       setSettings(general);
       const next: FormState = {};
@@ -148,7 +132,8 @@ export function GeneralSettingsView() {
           General Settings
         </h3>
         <p className="text-xs text-[var(--muted)] mt-1.5 leading-relaxed max-w-3xl">
-          Live from the backend: system locale, formats, timezone and default preferences.
+          Live from the backend: system name, version and maintenance mode. Locale,
+          formats and currency are managed in Settings → Localization.
         </p>
       </div>
 

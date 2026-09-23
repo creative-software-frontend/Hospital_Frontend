@@ -291,6 +291,8 @@ function BranchEditModal({
   const [phone, setPhone] = useState(branch.phone ?? "");
   const [email, setEmail] = useState(branch.email ?? "");
   const [timezone, setTimezone] = useState(branch.timezone ?? "");
+  // LEGACY per-branch currency (Branch.currency). The hospital-wide display currency is managed
+  // in Settings → Localization → Currency; this field does NOT control formatting.
   const [currency, setCurrency] = useState(branch.currency ?? "");
   const [status, setStatus] = useState<BranchStatus>(branch.status);
   const [saving, setSaving] = useState(false);

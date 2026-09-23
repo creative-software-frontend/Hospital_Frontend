@@ -87,6 +87,8 @@ export function AccountingSettingsView() {
     try {
       await settingsApi.accounting.update({
         fiscalYear: data.fiscalYear,
+        // LEGACY accounting config (AccountingSetting.baseCurrency). The hospital-wide display
+        // currency comes from Settings → Localization → Currency; this field does NOT control formatting.
         baseCurrency: data.baseCurrency,
         chartOfAccounts: data.chartOfAccounts,
         autoPostToLedger: data.autoPostToLedger,

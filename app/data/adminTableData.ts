@@ -1,4 +1,4 @@
-export type TableRow = Record<string, string>;
+export type TableRow = Record<string, string | number>;
 
 // ------------- Generic table schema per admin module -------------
 export type AdminTableColumns = string[];
@@ -6,6 +6,8 @@ export type AdminTableColumns = string[];
 export type AdminTableData = {
   columns: AdminTableColumns;
   rows: TableRow[];
+  // Columns holding monetary amounts — formatted with the CENTRAL currency (useCurrency) at render time.
+  moneyColumns?: string[];
 };
 
 // Patient table is already used for feature id = 1.
@@ -186,6 +188,7 @@ export const BED_WARD_TABLE: AdminTableData = {
 // Billing & accounts (feature id = 14)
 export const BILLING_TABLE: AdminTableData = {
   columns: ["Invoice ID", "Patient", "Amount", "Paid", "Due", "Method"],
+  moneyColumns: ["Amount", "Paid", "Due"],
   rows: Array.from({ length: 1000 }).map((_, i) => {
     const idx = i + 20001;
     const patient = i % 2 === 0 ? "John Doe" : "Jane Smith";
@@ -196,9 +199,9 @@ export const BILLING_TABLE: AdminTableData = {
     return {
       "Invoice ID": `INV-${idx}`,
       Patient: patient,
-      Amount: `$${amount}`,
-      Paid: `$${paid}`,
-      Due: `$${due}`,
+      Amount: amount,
+      Paid: paid,
+      Due: due,
       Method: method,
     };
   }),
@@ -352,12 +355,13 @@ export const PRESCRIPTION_TABLE: AdminTableData = {
 
 export const PHARMACY_TABLE: AdminTableData = {
   columns: ["Sale ID", "Patient", "Item", "Qty", "Total", "Status"],
+  moneyColumns: ["Total"],
   rows: Array.from({ length: 1000 }).map((_, i) => {
     const idx = i + 11001;
     const patient = i % 2 === 0 ? "John Doe" : "Jane Smith";
     const item = i % 2 === 0 ? "Amlodipine" : "Metformin";
     const qty = String(i % 5 === 0 ? 10 : i % 7 === 0 ? 20 : 30 + (i % 3) * 5);
-    const total = `$${10 + (i % 20)}`;
+    const total = 10 + (i % 20);
     const status = i % 4 === 0 ? "Processing" : "Delivered";
     return {
       "Sale ID": `PH-S-${idx}`,
@@ -461,6 +465,7 @@ export const NURSING_TABLE: AdminTableData = {
 
 export const FINANCIAL_TABLE: AdminTableData = {
   columns: ["Entry ID", "Type", "Description", "Amount", "Date", "Status"],
+  moneyColumns: ["Amount"],
   rows: Array.from({ length: 1000 }).map((_, i) => {
     const idx = i + 1001;
     const type = i % 2 === 0 ? "Income" : "Expense";
@@ -477,14 +482,13 @@ export const FINANCIAL_TABLE: AdminTableData = {
             ? "Equipment Maintenance"
             : "Staff Expenses";
     const amount = type === "Income" ? 500 + (i % 800) : 100 + (i % 400);
-    const amountStr = `$${amount}`;
     const date = i % 2 === 0 ? "Jun 19, 2026" : "Jun 20, 2026";
     const status = i % 4 === 0 ? "Pending" : i % 4 === 1 ? "Rejected" : "Approved";
     return {
       "Entry ID": `FIN-${idx}`,
       Type: type,
       Description: description,
-      Amount: amountStr,
+      Amount: amount,
       Date: date,
       Status: status,
     };

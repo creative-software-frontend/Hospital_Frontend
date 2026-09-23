@@ -1457,17 +1457,17 @@ model IpdSetting {
 }
 
 model PatientSetting {
-  id                  Int     @id @default(autoincrement())
-  branchId            Int
-  patientIdPrefix     String  @default("PT-")
-  autoGenerateId      Boolean @default(true)
-  defaultPatientType  String  @default("NEW")
-  requireGuardian     String  @default("MINORS_ONLY")
-  duplicateDetection  Boolean @default(true)
-  phoneRequired       Boolean @default(true)
-  emailRequired       Boolean @default(false)
-  status              String  @default("active")
-  updatedAt           DateTime @updatedAt
+  id                 Int      @id @default(autoincrement())
+  branchId           Int
+  patientIdPrefix    String   @default("PT-")
+  autoGenerateId     Boolean  @default(true)
+  defaultPatientType String   @default("NEW")
+  requireGuardian    String   @default("MINORS_ONLY")
+  duplicateDetection Boolean  @default(true)
+  phoneRequired      Boolean  @default(true)
+  emailRequired      Boolean  @default(false)
+  status             String   @default("active")
+  updatedAt          DateTime @updatedAt
 
   branch Branch? @relation(fields: [branchId], references: [id])
 

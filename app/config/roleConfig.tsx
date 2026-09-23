@@ -95,7 +95,11 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermission> = {
 // Role-specific dashboard stats configuration
 export interface RoleStat {
     label: string;
-    value: string;
+    /** Plain text value (counts, statuses, etc.). */
+    value?: string;
+    /** Numeric monetary amount — formatted with the hospital-wide currency
+     * (Settings → Localization → Currency) via useCurrency()/formatCurrency(). */
+    amount?: number;
     icon: string;
 }
 
@@ -104,13 +108,13 @@ export const getRoleStats = (role: UserRole): RoleStat[] => {
         'super-admin': [
             { label: "Total Patients", value: "12,840", icon: "FiUser" },
             { label: "Today's Appointments", value: "342", icon: "FiCalendar" },
-            { label: "Today's Revenue", value: "$18,250", icon: "FiDollarSign" },
+            { label: "Today's Revenue", amount: 18250, icon: "FiDollarSign" },
             { label: "Available Beds", value: "48 / 150", icon: "FiLayers" },
         ],
         'admin': [
             { label: "Active Staff", value: "142", icon: "FiUserCheck" },
             { label: "Doctors on Duty", value: "35", icon: "FiActivity" },
-            { label: "Daily Revenue", value: "$12,400", icon: "FiDollarSign" },
+            { label: "Daily Revenue", amount: 12400, icon: "FiDollarSign" },
             { label: "Pending Approvals", value: "8", icon: "FiSettings" },
         ],
         'doctor': [
@@ -119,7 +123,7 @@ export const getRoleStats = (role: UserRole): RoleStat[] => {
             { label: "Upcoming Appointments", value: "8", icon: "FiCalendar" },
         ],
         'pharmacist': [
-            { label: "Today's Sales", value: "$1,240", icon: "FiDollarSign" },
+            { label: "Today's Sales", amount: 1240, icon: "FiDollarSign" },
             { label: "Low Stock Items", value: "5", icon: "FiBriefcase" },
             { label: "Expiring Soon", value: "3", icon: "FiClock" },
         ],
@@ -134,9 +138,9 @@ export const getRoleStats = (role: UserRole): RoleStat[] => {
             { label: "Equipment Status", value: "All Active", icon: "FiSettings" },
         ],
         'accountant': [
-            { label: "Total Revenue Today", value: "$15,300", icon: "FiDollarSign" },
+            { label: "Total Revenue Today", amount: 15300, icon: "FiDollarSign" },
             { label: "Pending Bills", value: "24", icon: "FiFileText" },
-            { label: "Expenses Today", value: "$2,100", icon: "FiTrendingUp" },
+            { label: "Expenses Today", amount: 2100, icon: "FiTrendingUp" },
         ],
         'receptionist': [
             { label: "New Registrations", value: "45", icon: "FiUserPlus" },

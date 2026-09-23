@@ -17,6 +17,8 @@ import {
   errorMessage,
 } from "@/app/lib/api";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
+import { useCurrency } from "@/app/hooks/useCurrency";
+import { formatCurrency } from "@/app/lib/currency";
 
 const PAGE_SIZE = 10;
 
@@ -26,6 +28,7 @@ const STATUS_STYLES: Record<ActiveStatus, string> = {
 };
 
 export function ServicesView() {
+  const { currency } = useCurrency();
   const [rows, setRows] = useState<ServiceRecord[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [loading, setLoading] = useState(true);
@@ -168,7 +171,7 @@ export function ServicesView() {
                     <td className="text-[12px] font-bold text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">{s.name}</td>
                     <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">{s.category?.name ?? "—"}</td>
                     <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">{s.department?.name ?? "—"}</td>
-                    <td className="text-[12px] font-semibold text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">{s.price ?? "—"}</td>
+                    <td className="text-[12px] font-semibold text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">{s.price ? formatCurrency(Number(s.price), currency) : "—"}</td>
                     <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">{s.taxPercent ?? "0"}%</td>
                     <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">{s.discountAllowed ? "Yes" : "No"}</td>
                     <td className="px-4 py-3 border-b border-[var(--border)]">
