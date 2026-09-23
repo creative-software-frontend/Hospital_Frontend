@@ -13,6 +13,7 @@ import {
   errorMessage,
 } from "@/app/lib/api";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
+import { useCurrency } from "@/app/hooks/useCurrency";
 
 const PAGE_SIZE = 10;
 
@@ -22,6 +23,7 @@ const STATUS_STYLES: Record<BranchStatus, string> = {
 };
 
 export function BranchSettingsView() {
+  const { currency } = useCurrency();
   const [branches, setBranches] = useState<BranchRecord[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [loading, setLoading] = useState(true);
@@ -185,7 +187,7 @@ export function BranchSettingsView() {
                       {b.timezone || "—"}
                     </td>
                     <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">
-                      {b.currency || "—"}
+                      {`${currency.currencyCode} (${currency.currencySymbol})`}
                     </td>
                     <td className="px-4 py-3 border-b border-[var(--border)]">
                       <span
@@ -282,6 +284,7 @@ function BranchEditModal({
   onClose: () => void;
   onSaved: (message: string) => void;
 }) {
+  const { currency } = useCurrency();
   const [name, setName] = useState(branch.name);
   const [registrationNo, setRegistrationNo] = useState(branch.registrationNo ?? "");
   const [address, setAddress] = useState(branch.address ?? "");
@@ -291,9 +294,6 @@ function BranchEditModal({
   const [phone, setPhone] = useState(branch.phone ?? "");
   const [email, setEmail] = useState(branch.email ?? "");
   const [timezone, setTimezone] = useState(branch.timezone ?? "");
-  // LEGACY per-branch currency (Branch.currency). The hospital-wide display currency is managed
-  // in Settings → Localization → Currency; this field does NOT control formatting.
-  const [currency, setCurrency] = useState(branch.currency ?? "");
   const [status, setStatus] = useState<BranchStatus>(branch.status);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -320,7 +320,9 @@ function BranchEditModal({
         phone: phone.trim() || null,
         email: email.trim() || null,
         timezone: timezone.trim() || null,
-        currency: currency.trim() || null,
+        // Mirror the hospital-wide currency (Settings → Localization → Currency) into the
+        // legacy Branch.currency column; branches share one global currency.
+        currency: currency.currencyCode,
         status,
       });
       onSaved(`Branch "${name.trim()}" updated.`);
@@ -405,7 +407,15 @@ function BranchEditModal({
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Currency</label>
-            <input value={currency} onChange={(e) => setCurrency(e.target.value)} className={INPUT_CLS} />
+            <input
+              type="text"
+              readOnly
+              value={`${currency.currencyCode} (${currency.currencySymbol})`}
+              className={`${INPUT_CLS} opacity-70 cursor-not-allowed`}
+            />
+            <p className="text-[10px] text-[var(--muted)] mt-1">
+              Hospital-wide — managed in Settings → Localization → Currency.
+            </p>
           </div>
         </div>
 
@@ -445,6 +455,7 @@ function BranchCreateModal({
   onClose: () => void;
   onSaved: (message: string) => void;
 }) {
+  const { currency } = useCurrency();
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [registrationNo, setRegistrationNo] = useState("");
@@ -455,7 +466,6 @@ function BranchCreateModal({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [timezone, setTimezone] = useState("");
-  const [currency, setCurrency] = useState("");
   const [status, setStatus] = useState<BranchStatus>("active");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -487,7 +497,9 @@ function BranchCreateModal({
         phone: phone.trim() || null,
         email: email.trim() || null,
         timezone: timezone.trim() || null,
-        currency: currency.trim() || null,
+        // Mirror the hospital-wide currency (Settings → Localization → Currency) into the
+        // legacy Branch.currency column; branches share one global currency.
+        currency: currency.currencyCode,
         status,
       });
       onSaved(`Branch "${name.trim()}" created.`);
@@ -577,7 +589,15 @@ function BranchCreateModal({
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Currency</label>
-            <input value={currency} onChange={(e) => setCurrency(e.target.value)} className={INPUT_CLS} />
+            <input
+              type="text"
+              readOnly
+              value={`${currency.currencyCode} (${currency.currencySymbol})`}
+              className={`${INPUT_CLS} opacity-70 cursor-not-allowed`}
+            />
+            <p className="text-[10px] text-[var(--muted)] mt-1">
+              Hospital-wide — managed in Settings → Localization → Currency.
+            </p>
           </div>
         </div>
 

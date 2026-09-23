@@ -11,11 +11,10 @@ import {
   errorMessage,
 } from "@/app/lib/api";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
+import { useCurrency } from "@/app/hooks/useCurrency";
 
 const INPUT_CLS =
   "w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15 text-[var(--text)]";
-
-const CURRENCY_OPTIONS = ["BDT", "USD", "EUR", "GBP", "INR"];
 
 const FREQUENCY_OPTIONS = ["daily", "weekly", "monthly", "quarterly", "yearly"];
 
@@ -40,6 +39,7 @@ function Toggle({
 }
 
 export function AccountingSettingsView() {
+  const { currency } = useCurrency();
   const [data, setData] = useState<AccountingSetting | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -87,9 +87,9 @@ export function AccountingSettingsView() {
     try {
       await settingsApi.accounting.update({
         fiscalYear: data.fiscalYear,
-        // LEGACY accounting config (AccountingSetting.baseCurrency). The hospital-wide display
-        // currency comes from Settings → Localization → Currency; this field does NOT control formatting.
-        baseCurrency: data.baseCurrency,
+        // Mirror the hospital-wide currency (Settings → Localization → Currency) into the
+        // legacy AccountingSetting.baseCurrency column so it never drifts from the single source.
+        baseCurrency: currency.currencyCode,
         chartOfAccounts: data.chartOfAccounts,
         autoPostToLedger: data.autoPostToLedger,
         trialBalanceFrequency: data.trialBalanceFrequency,
@@ -124,7 +124,8 @@ export function AccountingSettingsView() {
         </span>
         <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">Accounting Settings</h3>
         <p className="text-xs text-[var(--muted)] mt-1.5 leading-relaxed max-w-3xl">
-          Live from the backend: fiscal year, base currency, chart of accounts and ledger posting rules.
+          Live from the backend: fiscal year, chart of accounts and ledger posting rules. Currency
+          is the hospital-wide value from Settings → Localization → Currency.
         </p>
       </div>
 
@@ -181,7 +182,17 @@ export function AccountingSettingsView() {
             </div>
             <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-3 space-y-1.5">
               <label className="block text-xs font-bold text-[var(--muted)]">Base Currency</label>
-              {select(CURRENCY_OPTIONS, data.baseCurrency, (v) => patch({ baseCurrency: v }))}
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={`${currency.currencyCode} (${currency.currencySymbol})`}
+                  className={`${INPUT_CLS} opacity-70 cursor-not-allowed`}
+                />
+              </div>
+              <p className="text-[10px] text-[var(--muted)]">
+                Hospital-wide currency — managed in Settings → Localization → Currency.
+              </p>
             </div>
             <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-3 space-y-1.5">
               <label className="block text-xs font-bold text-[var(--muted)]">Chart of Accounts</label>
