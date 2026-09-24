@@ -6,6 +6,21 @@ export const BLOOD_GROUP_VALUES = [
 ] as const;
 export const MARITAL_STATUS_VALUES = ["SINGLE", "MARRIED", "DIVORCED", "WIDOWED"] as const;
 export const PATIENT_STATUS_VALUES = ["active", "inactive"] as const;
+export const OCCUPATION_VALUES = [
+  "Business",
+  "Doctor",
+  "Engineer",
+  "Farmer",
+  "Government Service",
+  "Housewife",
+  "Laborer",
+  "Private Service",
+  "Retired",
+  "Student",
+  "Teacher",
+  "Unemployed",
+  "Other",
+] as const;
 
 const phoneSchema = z
   .string()
@@ -57,8 +72,7 @@ export const listPatientsQuerySchema = z.object({
 });
 
 export const createPatientSchema = z.object({
-  firstName: z.string().trim().min(1, "firstName is required").max(255),
-  lastName: optionalString(255),
+  name: z.string().trim().min(1, "name is required").max(255),
   dateOfBirth: z
     .string()
     .refine((v) => !Number.isNaN(Date.parse(v)), "Invalid date")
@@ -73,7 +87,7 @@ export const createPatientSchema = z.object({
   address: optionalString(500),
   district: optionalString(255),
   nationalId: optionalString(64),
-  occupation: optionalString(255),
+  occupation: z.enum(OCCUPATION_VALUES).optional(),
   photo: optionalString(500),
   branchId: z.coerce.number().int().positive().optional(),
   contacts: z

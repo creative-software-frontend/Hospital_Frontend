@@ -20,7 +20,7 @@ import {
   calcAge,
 } from "@/app/lib/api";
 import {
-  bloodGroupLabel, genderLabel, maritalStatusLabel,
+  bloodGroupLabel, genderLabel, maritalStatusLabel, occupationLabel,
 } from "@/app/patients/constants";
 import type { PatientCapabilities } from "@/app/lib/roles";
 import type { ToastKind } from "@/app/patients/Toast";
@@ -183,7 +183,7 @@ export function PatientProfileModal({
                 Patient Profile {p?.status === "inactive" && <span className="text-rose-500">• Inactive</span>}
               </span>
               <h3 className="font-black text-lg text-[var(--primary-dark)]">
-                {p?.firstName ?? patient.firstName} {p?.lastName ?? patient.lastName}
+                {p?.name ?? patient.name}
               </h3>
             </div>
           </div>
@@ -257,7 +257,7 @@ export function PatientProfileModal({
                     ["Date of Birth", p.dateOfBirth ? formatDate(p.dateOfBirth) : "—"],
                     ["Marital Status", maritalStatusLabel(p.maritalStatus)],
                     ["National ID", p.nationalId ?? "—"],
-                    ["Occupation", p.occupation ?? "—"],
+                    ["Occupation", occupationLabel(p.occupation)],
                     ["Status", p.status === "active" ? "Active" : "Inactive"],
                   ]}
                 />

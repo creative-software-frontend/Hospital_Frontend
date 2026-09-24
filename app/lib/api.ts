@@ -48,6 +48,20 @@ export type BloodGroup =
   | "AB_POS" | "AB_NEG" | "O_POS" | "O_NEG";
 export type MaritalStatus = "SINGLE" | "MARRIED" | "DIVORCED" | "WIDOWED";
 export type PatientStatus = "active" | "inactive";
+export type Occupation =
+  | "Business"
+  | "Doctor"
+  | "Engineer"
+  | "Farmer"
+  | "Government Service"
+  | "Housewife"
+  | "Laborer"
+  | "Private Service"
+  | "Retired"
+  | "Student"
+  | "Teacher"
+  | "Unemployed"
+  | "Other";
 
 export interface PatientContact {
   id: number;
@@ -61,8 +75,7 @@ export interface PatientContact {
 export interface PatientListRecord {
   id: number;
   patientCode: string;
-  firstName: string;
-  lastName: string | null;
+  name: string;
   gender: Gender | null;
   dateOfBirth: string | null;
   bloodGroup: BloodGroup | null;
@@ -81,7 +94,7 @@ export interface PatientListRecord {
 
 export interface PatientDetail extends PatientListRecord {
   nationalId: string | null;
-  occupation: string | null;
+  occupation: Occupation | null;
   photo: string | null;
   deletedAt: string | null;
   createdById: number | null;
@@ -111,8 +124,7 @@ export interface PatientContactInput {
 }
 
 export interface CreatePatientInput {
-  firstName: string;
-  lastName?: string | null;
+  name: string;
   dateOfBirth?: string | null;
   gender?: Gender | null;
   bloodGroup?: BloodGroup | null;
@@ -122,7 +134,7 @@ export interface CreatePatientInput {
   address?: string | null;
   district?: string | null;
   nationalId?: string | null;
-  occupation?: string | null;
+  occupation?: Occupation | null;
   photo?: string | null;
   contacts?: PatientContactInput[];
 }

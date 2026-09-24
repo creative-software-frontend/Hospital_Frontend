@@ -21,7 +21,9 @@ import {
   GENDER_OPTIONS,
   BLOOD_GROUP_OPTIONS,
   MARITAL_STATUS_OPTIONS,
+  OCCUPATION_OPTIONS,
 } from "@/app/patients/constants";
+import type { Occupation } from "@/app/lib/api";
 
 interface ContactDraft {
   name: string;
@@ -32,8 +34,7 @@ interface ContactDraft {
 }
 
 interface FormState {
-  firstName: string;
-  lastName: string;
+  name: string;
   dateOfBirth: string;
   gender: string;
   bloodGroup: string;
@@ -48,8 +49,7 @@ interface FormState {
 }
 
 const EMPTY_FORM: FormState = {
-  firstName: "",
-  lastName: "",
+  name: "",
   dateOfBirth: "",
   gender: "",
   bloodGroup: "",
@@ -66,8 +66,7 @@ const EMPTY_FORM: FormState = {
 function prefillFromPatient(p: PatientDetail | PatientListRecord | null): FormState {
   if (!p) return EMPTY_FORM;
   return {
-    firstName: p.firstName ?? "",
-    lastName: p.lastName ?? "",
+    name: p.name ?? "",
     dateOfBirth: p.dateOfBirth ? p.dateOfBirth.slice(0, 10) : "",
     gender: p.gender ?? "",
     bloodGroup: p.bloodGroup ?? "",
@@ -126,9 +125,9 @@ export function PatientFormModal({
     const hasGender = GENDER_OPTIONS.some((g) => g.value === form.gender);
     const hasBlood = (BLOOD_GROUP_OPTIONS as string[]).includes(form.bloodGroup);
     const hasMarital = MARITAL_STATUS_OPTIONS.some((m) => m.value === form.maritalStatus);
+    const hasOccupation = OCCUPATION_OPTIONS.some((o) => o.value === form.occupation);
     return {
-      firstName: form.firstName.trim(),
-      lastName: opt(form.lastName),
+      name: form.name.trim(),
       dateOfBirth: opt(form.dateOfBirth),
       gender: hasGender ? (form.gender as Gender) : undefined,
       bloodGroup: hasBlood ? (form.bloodGroup as BloodGroup) : undefined,
@@ -138,7 +137,7 @@ export function PatientFormModal({
       address: opt(form.address),
       district: opt(form.district),
       nationalId: opt(form.nationalId),
-      occupation: opt(form.occupation),
+      occupation: hasOccupation ? (form.occupation as Occupation) : undefined,
       photo: opt(form.photo),
     };
   };
@@ -146,8 +145,8 @@ export function PatientFormModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
-    if (!form.firstName.trim()) {
-      setFormError("First Name is required.");
+    if (!form.name.trim()) {
+      setFormError("Name is required.");
       return;
     }
 
@@ -222,15 +221,10 @@ export function PatientFormModal({
             <div>
               <h4 className="text-xs font-extrabold text-[var(--text)] mb-3 uppercase tracking-wider">Identity</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>First Name *</label>
-                  <input className={inputCls} value={form.firstName} onChange={set("firstName")} placeholder="First name" disabled={submitting} />
-                  {fieldError("firstName")}
-                </div>
-                <div>
-                  <label className={labelCls}>Last Name</label>
-                  <input className={inputCls} value={form.lastName} onChange={set("lastName")} placeholder="Last name" disabled={submitting} />
-                  {fieldError("lastName")}
+                <div className="sm:col-span-2">
+                  <label className={labelCls}>Name *</label>
+                  <input className={inputCls} value={form.name} onChange={set("name")} placeholder="Full name" disabled={submitting} />
+                  {fieldError("name")}
                 </div>
                 <div>
                   <label className={labelCls}>Date of Birth</label>
@@ -281,7 +275,12 @@ export function PatientFormModal({
                 </div>
                 <div>
                   <label className={labelCls}>Occupation</label>
-                  <input className={inputCls} value={form.occupation} onChange={set("occupation")} placeholder="Occupation" disabled={submitting} />
+                  <select className={selectCls} value={form.occupation} onChange={set("occupation")} disabled={submitting}>
+                    <option value="">Select occupation</option>
+                    {OCCUPATION_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
                   {fieldError("occupation")}
                 </div>
               </div>

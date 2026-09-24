@@ -38,8 +38,7 @@ function enforceBranchAccess(actor: AuthUser, targetBranchId: number): void {
 const PATIENT_LIST_SELECT: Prisma.PatientSelect = {
   id: true,
   patientCode: true,
-  firstName: true,
-  lastName: true,
+  name: true,
   gender: true,
   dateOfBirth: true,
   bloodGroup: true,
@@ -81,8 +80,7 @@ const PATIENT_DETAIL_SELECT: Prisma.PatientSelect = {
 };
 
 const SCALAR_FIELD_SELECT: Prisma.PatientSelect = {
-  firstName: true,
-  lastName: true,
+  name: true,
   gender: true,
   dateOfBirth: true,
   bloodGroup: true,
@@ -145,8 +143,7 @@ function buildListWhere(actor: AuthUser, query: ListPatientsQuery): Prisma.Patie
   const search = query.search?.trim();
   if (search) {
     where.OR = [
-      { firstName: { contains: search } },
-      { lastName: { contains: search } },
+      { name: { contains: search } },
       { patientCode: { contains: search } },
       { phone: { contains: search } },
       { email: { contains: search } },
@@ -156,12 +153,7 @@ function buildListWhere(actor: AuthUser, query: ListPatientsQuery): Prisma.Patie
   // Targeted filters
   const exactFilters: Prisma.PatientWhereInput[] = [];
   if (query.name) {
-    exactFilters.push({
-      OR: [
-        { firstName: { contains: query.name } },
-        { lastName: { contains: query.name } },
-      ],
-    });
+    exactFilters.push({ name: { contains: query.name } });
   }
   if (query.phone) {
     exactFilters.push({ phone: { contains: query.phone } });
@@ -201,8 +193,7 @@ export async function createPatient(actor: AuthUser, input: CreatePatientInput) 
 
   const data: Omit<Prisma.PatientCreateInput, "patientCode"> = {
     branch: { connect: { id: targetBranchId } },
-    firstName: input.firstName,
-    lastName: input.lastName,
+    name: input.name,
     gender: input.gender,
     dateOfBirth: input.dateOfBirth,
     bloodGroup: input.bloodGroup,
@@ -249,8 +240,7 @@ export async function createPatient(actor: AuthUser, input: CreatePatientInput) 
     recordId: String(patient.id),
     newValues: {
       patientCode: patient.patientCode,
-      firstName: input.firstName,
-      lastName: input.lastName,
+      name: input.name,
       branchId: targetBranchId,
       contactCount: input.contacts?.length ?? 0,
     },
@@ -302,8 +292,7 @@ export async function updatePatient(actor: AuthUser, id: number, input: UpdatePa
   const newValues: Record<string, unknown> = {};
 
   const scalarFields: Array<keyof UpdatePatientInput> = [
-    "firstName",
-    "lastName",
+    "name",
     "gender",
     "dateOfBirth",
     "bloodGroup",

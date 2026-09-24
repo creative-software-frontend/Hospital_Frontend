@@ -21,8 +21,6 @@ export const SORTABLE_FIELDS = [
   "status",
   "branchId",
   "code",
-  "firstName",
-  "lastName",
   "patientCode",
   "phone",
   "gender",

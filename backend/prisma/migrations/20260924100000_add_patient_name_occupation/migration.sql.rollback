@@ -1,0 +1,14 @@
+-- AlterTable
+-- Reverse: re-create firstName/lastName from `name` and drop `name`.
+-- (Used only for rollback in dev; not applied in production.)
+
+ALTER TABLE `Patient` ADD COLUMN `firstName` VARCHAR(191) NULL;
+ALTER TABLE `Patient` ADD COLUMN `lastName` VARCHAR(191) NULL;
+
+UPDATE `Patient`
+SET `firstName` = SUBSTRING_INDEX(`name`, ' ', 1),
+    `lastName` = NULLIF(TRIM(SUBSTRING(`name`, LENGTH(SUBSTRING_INDEX(`name`, ' ', 1)) + 2)), '');
+
+ALTER TABLE `Patient` MODIFY COLUMN `firstName` VARCHAR(191) NOT NULL;
+
+ALTER TABLE `Patient` DROP COLUMN `name`;

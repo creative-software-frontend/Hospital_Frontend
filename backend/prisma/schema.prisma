@@ -585,8 +585,7 @@ model Patient {
   id            Int            @id @default(autoincrement())
   branchId      Int
   patientCode   String
-  firstName     String
-  lastName      String?
+  name          String
   gender        Gender?
   dateOfBirth   DateTime?
   bloodGroup    BloodGroup?

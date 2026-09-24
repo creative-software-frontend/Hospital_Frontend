@@ -82,8 +82,7 @@ const SAMPLE_PATIENT = {
   id: 10,
   branchId: 1,
   patientCode: "PT-0001",
-  firstName: "John",
-  lastName: "Doe",
+  name: "John Doe",
   gender: "MALE",
   dateOfBirth: new Date("1990-01-01"),
   bloodGroup: "O_POS",
@@ -110,8 +109,7 @@ describe("patient service — create", () => {
 
     const actorLocal = { ...actor, roles: [{ id: 2, seederKey: "ADMIN", name: "Admin" }] };
     const result = await patientService.createPatient(actorLocal, {
-      firstName: "John",
-      lastName: "Doe",
+      name: "John Doe",
     });
 
     expect(mockPrisma.codeSequence.upsert).toHaveBeenCalledWith(
@@ -126,7 +124,7 @@ describe("patient service — create", () => {
         data: expect.objectContaining({
           branch: { connect: { id: 1 } },
           patientCode: "PAT-000001",
-          firstName: "John",
+          name: "John Doe",
           createdById: 1,
         }),
       }),
@@ -145,7 +143,7 @@ describe("patient service — create", () => {
     );
 
     await expect(
-      patientService.createPatient(actor, { firstName: "John" }),
+      patientService.createPatient(actor, { name: "John" }),
     ).rejects.toThrow("already exists");
   });
 
@@ -153,7 +151,7 @@ describe("patient service — create", () => {
     const actorLocal = { ...actor, roles: [{ id: 2, seederKey: "ADMIN", name: "Admin" }] };
     await expect(
       patientService.createPatient(actorLocal, {
-        firstName: "John",
+        name: "John",
         branchId: 2,
       }),
     ).rejects.toThrow("You do not have permission");
@@ -392,23 +390,24 @@ import {
 } from "../modules/patients/patient.validation";
 
 describe("patient validation", () => {
-  it("rejects missing firstName", () => {
+  it("rejects missing name", () => {
     const res = createPatientSchema.safeParse({ email: "bad" });
     expect(res.success).toBe(false);
   });
 
-  it("rejects bad email and bad blood group", () => {
+  it("rejects bad email, bad blood group and invalid occupation", () => {
     const res = createPatientSchema.safeParse({
-      firstName: "John",
+      name: "John",
       email: "not-an-email",
       bloodGroup: "QQ",
+      occupation: "Astronaut",
     });
     expect(res.success).toBe(false);
   });
 
   it("rejects future dateOfBirth", () => {
     const res = createPatientSchema.safeParse({
-      firstName: "John",
+      name: "John",
       dateOfBirth: "2999-01-01",
     });
     expect(res.success).toBe(false);
@@ -421,10 +420,10 @@ describe("patient validation", () => {
 
   it("accepts a valid patient payload with contacts", () => {
     const res = createPatientSchema.safeParse({
-      firstName: "Jane",
-      lastName: "Smith",
+      name: "Jane Smith",
       gender: "FEMALE",
       bloodGroup: "O_POS",
+      occupation: "Teacher",
       phone: "+8801711111111",
       email: "jane@example.com",
       maritalStatus: "MARRIED",

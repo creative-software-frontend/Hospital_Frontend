@@ -127,7 +127,7 @@ export function PatientModule({ role }: { role: UserRole | null }) {
 
   const confirmMessage = useMemo(() => {
     if (!confirm) return "";
-    const name = `${confirm.patient.firstName} ${confirm.patient.lastName ?? ""}`.trim();
+    const name = confirm.patient.name;
     if (confirm.kind === "delete") {
       return `Patient "${name}" (${confirm.patient.patientCode}) will be soft-deleted and disappear from the list. Records are preserved.`;
     }
@@ -287,7 +287,7 @@ export function PatientModule({ role }: { role: UserRole | null }) {
                     className="hover:bg-[var(--primary-soft)]/10 transition-colors cursor-pointer"
                   >
                     <td className="text-[12px] text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">
-                      <span className="font-bold">{p.firstName} {p.lastName ?? ""}</span>
+                      <span className="font-bold">{p.name}</span>
                       {p.dateOfBirth && (
                         <span className="block text-[10px] text-[var(--muted)]">{formatDate(p.dateOfBirth)}</span>
                       )}
