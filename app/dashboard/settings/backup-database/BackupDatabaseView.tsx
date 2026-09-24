@@ -5,7 +5,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { FiRefreshCcw, FiSave, FiPlay, FiTrash2 } from "react-icons/fi";
+import { FiRefreshCcw, FiSave, FiPlay, FiTrash2, FiDownload } from "react-icons/fi";
 import {
   settingsApi,
   type ActiveStatus,
@@ -69,6 +69,8 @@ export function BackupDatabaseView() {
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+const [downloadingId, setDownloadingId] = useState<number | null>(null);
+const [clearingAll, setClearingAll] = useState(false);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const [dirty, setDirty] = useState(false);
@@ -163,6 +165,44 @@ export function BackupDatabaseView() {
     }
   };
 
+  const handleDownload = async (log: BackupLog) => {
+    if (downloadingId === log.id) return;
+    setDownloadingId(log.id);
+    setError("");
+    try {
+      const file = await settingsApi.backup.download(log.id);
+      const url = URL.createObjectURL(file.blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      notify("success", `Downloaded "${file.fileName}" (${(file.fileSize / 1024).toFixed(1)} KB).`);
+    } catch (err) {
+      notify("error", errorMessage(err));
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const handleClearAll = async () => {
+    if (clearingAll) return;
+    if (!window.confirm("Delete ALL backup files and history records? This cannot be undone.")) return;
+    setClearingAll(true);
+    setError("");
+    try {
+      const { deleted } = await settingsApi.backup.clear();
+      notify("success", `Cleared ${deleted} backup file(s).`);
+      setReloadKey((k) => k + 1);
+    } catch (err) {
+      notify("error", errorMessage(err));
+    } finally {
+      setClearingAll(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="card p-5 rounded-2xl border border-[var(--border)] shadow-sm">
@@ -197,6 +237,18 @@ export function BackupDatabaseView() {
               title="Refresh"
             >
               <FiRefreshCcw className="w-4 h-4" />
+            </button>
+            <button
+    onClick={handleClearAll}              disabled={clearingAll || logs.length === 0}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-[var(--muted)] border border-[var(--border)] bg-[var(--bg)] hover:text-red-600 hover:border-red-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="Delete all backup logs and files"
+            >
+              {clearingAll ? (
+                <span className="inline-block animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-red-500" />
+              ) : (
+                <FiTrash2 className="w-3.5 h-3.5" />
+              )}
+              Clear All
             </button>
             <button
               onClick={runNow}
@@ -341,14 +393,24 @@ export function BackupDatabaseView() {
                       <span className={`inline-block text-[10px] font-bold capitalize px-2 py-0.5 rounded-md border ${LOG_STATUS_STYLES[log.status]}`}>{log.status}</span>
                     </td>
                     <td className="px-4 py-3 border-b border-[var(--border)]">
-                      <button
-                        onClick={() => removeLog(log)}
-                        disabled={deletingId === log.id}
-                        className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-red-600 hover:border-red-300 disabled:opacity-50 transition-colors"
-                        title="Delete backup log"
-                      >
-                        <FiTrash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleDownload(log)}
+                          disabled={downloadingId === log.id}
+                          className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--primary)] hover:border-[var(--primary)] disabled:opacity-50 transition-colors"
+                          title="Download backup file"
+                        >
+                          {downloadingId === log.id ? <span className="inline-block w-3.5 h-3.5 animate-spin rounded-full border-b-2 border-[var(--primary)]" /> : <FiDownload className="w-3.5 h-3.5" />}
+                        </button>
+                        <button
+                          onClick={() => removeLog(log)}
+                          disabled={deletingId === log.id}
+                          className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-red-600 hover:border-red-300 disabled:opacity-50 transition-colors"
+                          title="Delete backup log"
+                        >
+                          <FiTrash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

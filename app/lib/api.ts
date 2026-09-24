@@ -386,6 +386,72 @@ function qs(params?: Record<string, string | number | boolean | null | undefined
 }
 
 /* ---------------------------------------------------------------------------
+ * Binary download helper
+ *
+ * Returns the raw bytes (Blob) plus a filename taken from the server's
+ * `Content-Disposition: attachment; filename="…"` header. Reuses the same
+ * cookie-credentials and error-mapping rules as `rawRequest` so downloaded
+ * files are real bytes, never a stubbed object.
+ * ------------------------------------------------------------------------- */
+
+export interface DownloadedFile {
+  blob: Blob;
+  fileName: string;
+  fileSize: number;
+}
+
+function parseDownloadFileName(disposition: string | null): string | null {
+  if (!disposition) return null;
+  const utf = /filename\*=UTF-8''([^;]+)/i.exec(disposition);
+  if (utf?.[1]) {
+    try {
+      return decodeURIComponent(utf[1]);
+    } catch {
+      /* fall through to plain filename */
+    }
+  }
+  const plain = /filename="([^"]+)"/.exec(disposition) ?? /filename=([^;\s]+)/.exec(disposition);
+  if (plain?.[1]) {
+    try {
+      return decodeURIComponent(plain[1]);
+    } catch {
+      return plain[1];
+    }
+  }
+  return null;
+}
+
+async function downloadFile(path: string): Promise<DownloadedFile> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      credentials: "include",
+    });
+  } catch {
+    throw new ApiError(0, "NETWORK_ERROR", "Cannot reach the server. Is the backend running?");
+  }
+
+  if (!res.ok) {
+    let errBody: ErrorBody | null = null;
+    try {
+      errBody = (await res.json()) as ErrorBody | null;
+    } catch {
+      // non-JSON error page
+    }
+    throw toApiError(
+      res.status,
+      errBody?.code || "ERROR",
+      errBody?.message || `Request failed (${res.status})`,
+      errBody?.details,
+    );
+  }
+
+  const blob = await res.blob();
+  const fileName = parseDownloadFileName(res.headers.get("Content-Disposition")) ?? "hospital_backup.sql";
+  return { blob, fileName, fileSize: Number(res.headers.get("Content-Length") ?? blob.size) || blob.size };
+}
+
+/* ---------------------------------------------------------------------------
  * Auth endpoints
  * ------------------------------------------------------------------------- */
 
@@ -1520,6 +1586,11 @@ export const settingsApi = {
     run: () => request<{ backup: BackupLog }>("/settings/backup/run", { method: "POST" }),
     removeLog: (id: number) =>
       request<{ message: string }>(`/settings/backup/history/${id}`, { method: "DELETE" }),
+    download: (id: number) => downloadFile(`/settings/backup/history/${id}/download`),
+    clear: () =>
+      request<{ message: string; deleted: number }>("/settings/backup/history", {
+        method: "DELETE",
+      }),
   },
   reports: {
     list: () => request<{ reports: ReportSetting[] }>("/settings/reports"),

@@ -331,6 +331,18 @@ router.delete(
   settingController.deleteBackupLog,
 );
 
+router.delete(
+  "/backup/history",
+  requirePermission("backupSetting", "update"),
+  settingController.clearBackupLogs,
+);
+
+router.get(
+  "/backup/history/:id/download",
+  requirePermission("backupSetting", "read"),
+  settingController.downloadBackupLog,
+);
+
 // Reports
 router.get(
   "/reports",

@@ -10,7 +10,6 @@ import type {
   CreateReportSettingInput,
   ListSystemSettingsQuery,
   UpdateAccountingSettingInput,
-  UpdateBackupSettingInput,
   UpdateBillingSettingInput,
   UpdateEmergencySettingInput,
   UpdateHrSettingInput,
@@ -1075,120 +1074,6 @@ export async function testIntegration(actor: AuthUser, id: number) {
   };
 }
 
-/* ---------------------------------------------------------------------------
- * Backup & Database
- * ------------------------------------------------------------------------- */
-
-export async function getBackupSetting() {
-  let setting = await prisma.backupSetting.findFirst({ orderBy: { id: "asc" } });
-  if (!setting) {
-    setting = await prisma.backupSetting.create({
-      data: {
-        backupType: "full",
-        frequency: "daily",
-        storageType: "cloud_local",
-        storagePath: "",
-        retentionDays: 30,
-        encryptionEnabled: true,
-        status: "active",
-      },
-    });
-  }
-  return setting;
-}
-
-export async function getBackupOverview() {
-  const backupSetting = await getBackupSetting();
-  const lastBackup = await prisma.backupLog.findFirst({ orderBy: { startedAt: "desc" } });
-  return { backupSetting, lastBackup };
-}
-
-export async function updateBackupSetting(actor: AuthUser, input: UpdateBackupSettingInput) {
-  const current = await getBackupSetting();
-  const updated = await prisma.backupSetting.update({
-    where: { id: current.id },
-    data: { ...input },
-  });
-
-  await writeAuditLog({
-    module: "backupSetting",
-    action: "update",
-    tableName: "BackupSetting",
-    recordId: String(current.id),
-    oldValues: {
-      backupType: current.backupType,
-      frequency: current.frequency,
-      retentionDays: current.retentionDays,
-      storageType: current.storageType,
-    },
-    newValues: { ...input },
-    user: actor,
-    branchId: actor.branchId,
-  });
-  return updated;
-}
-
-export async function listBackupLogs(_actor: AuthUser) {
-  return prisma.backupLog.findMany({ orderBy: { startedAt: "desc" }, take: 100 });
-}
-
-export async function runBackup(actor: AuthUser) {
-  const setting = await getBackupSetting();
-  const startedAt = new Date();
-  const stamp = [
-    startedAt.getFullYear(),
-    String(startedAt.getMonth() + 1).padStart(2, "0"),
-    String(startedAt.getDate()).padStart(2, "0"),
-    "_",
-    String(startedAt.getHours()).padStart(2, "0"),
-    String(startedAt.getMinutes()).padStart(2, "0"),
-    String(startedAt.getSeconds()).padStart(2, "0"),
-  ].join("");
-  const fileName = `hospital_backup_${stamp}.sql.gz`;
-  const fileSize = Math.round(8 + Math.random() * 40);
-
-  const created = await prisma.backupLog.create({
-    data: {
-      backupType: setting.backupType,
-      fileName,
-      fileSize,
-      storageLocation: setting.storageType,
-      status: "completed",
-      startedAt,
-      completedAt: new Date(startedAt.getTime() + 1500),
-    },
-  });
-
-  await writeAuditLog({
-    module: "backupSetting",
-    action: "run",
-    tableName: "BackupLog",
-    recordId: String(created.id),
-    newValues: { fileName, fileSize, status: "completed" },
-    user: actor,
-    branchId: actor.branchId,
-  });
-  return created;
-}
-
-export async function deleteBackupLog(actor: AuthUser, id: number) {
-  const current = await prisma.backupLog.findUnique({ where: { id } });
-  if (!current) {
-    throw new NotFoundError("Backup log not found");
-  }
-
-  await prisma.backupLog.delete({ where: { id } });
-
-  await writeAuditLog({
-    module: "backupSetting",
-    action: "delete",
-    tableName: "BackupLog",
-    recordId: String(id),
-    oldValues: { fileName: current.fileName, status: current.status },
-    user: actor,
-    branchId: actor.branchId,
-  });
-}
 
 /* ---------------------------------------------------------------------------
  * Reports

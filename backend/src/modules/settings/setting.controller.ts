@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { success, list } from "../../utils/apiResponse";
 import * as settingService from "./setting.service";
+import * as backupService from "./backup.service";
 
 export const listSystemSettings = asyncHandler(async (req: Request, res: Response) => {
   const settings = await settingService.listSystemSettings(req.user!, req.query as never);
@@ -202,28 +203,46 @@ export const testIntegration = asyncHandler(async (req: Request, res: Response) 
 });
 
 export const getBackupOverview = asyncHandler(async (_req: Request, res: Response) => {
-  const overview = await settingService.getBackupOverview();
+  const overview = await backupService.getBackupOverview();
   success(res, overview);
 });
 
 export const updateBackupSetting = asyncHandler(async (req: Request, res: Response) => {
-  const backupSetting = await settingService.updateBackupSetting(req.user!, req.body);
+  const backupSetting = await backupService.updateBackupSetting(req.user!, req.body);
   success(res, { backupSetting });
 });
 
 export const listBackupLogs = asyncHandler(async (req: Request, res: Response) => {
-  const backups = await settingService.listBackupLogs(req.user!);
+  const backups = await backupService.listBackupLogs(req.user!);
   success(res, { backups });
 });
 
 export const runBackup = asyncHandler(async (req: Request, res: Response) => {
-  const backup = await settingService.runBackup(req.user!);
+  const backup = await backupService.runBackup(req.user!);
   success(res, { backup });
 });
 
+export const downloadBackupLog = asyncHandler(async (req: Request, res: Response) => {
+  const { fileName, filePath, fileSize } = await backupService.resolveBackupFile(
+    Number(req.params.id),
+  );
+  res.setHeader("Content-Type", "application/sql");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="${fileName}"`,
+  );
+  res.setHeader("Content-Length", String(fileSize));
+  res.download(filePath, fileName);
+});
+
 export const deleteBackupLog = asyncHandler(async (req: Request, res: Response) => {
-  await settingService.deleteBackupLog(req.user!, Number(req.params.id));
+  await backupService.deleteBackupLog(req.user!, Number(req.params.id));
   success(res, { message: "Backup log deleted successfully" });
+});
+
+export const clearBackupLogs = asyncHandler(async (req: Request, res: Response) => {
+  const result = await backupService.clearBackupLogs(req.user!);
+  success(res, { message: "All backup logs deleted", ...result });
 });
 
 export const listReportSettings = asyncHandler(async (req: Request, res: Response) => {
