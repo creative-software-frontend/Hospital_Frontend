@@ -7,7 +7,6 @@ import { GeneralSettingsView } from "@/app/dashboard/settings/general/GeneralSet
 import { BranchSettingsView } from "@/app/dashboard/settings/branches/BranchSettingsView";
 import { SecuritySettingsView } from "@/app/dashboard/settings/security/SecuritySettingsView";
 import { DepartmentsView } from "@/app/dashboard/settings/departments/DepartmentsView";
-import { DoctorsView } from "@/app/dashboard/settings/doctors/DoctorsView";
 import { ServicesView } from "@/app/dashboard/settings/services/ServicesView";
 import { PatientConfigurationView } from "@/app/dashboard/settings/patient/PatientConfigurationView";
 import { OpdSettingsView } from "@/app/dashboard/settings/clinical/opd/OpdSettingsView";
@@ -56,10 +55,6 @@ export const SettingsPageView = ({
 
   if (pageKey === "hc-departments") {
     return <DepartmentsView />;
-  }
-
-  if (pageKey === "hc-doctors") {
-    return <DoctorsView />;
   }
 
   if (pageKey === "hc-services") {

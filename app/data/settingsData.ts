@@ -105,13 +105,12 @@ export const settingsData: Record<string, SettingsPageData> = {
 
   "hospital-configuration": {
     title: "Hospital Configuration",
-    description: "Configure core hospital entities including departments, doctors, patients, and services.",
+    description: "Configure core hospital entities including departments, patients, and services.",
     blocks: [
       {
         type: "list",
         items: [
           "Departments: Cardiology, Neurology, Orthopedics, Pediatrics, Radiology, Pathology, General Medicine, Emergency",
-          "Doctors: linked to departments with consultation schedules",
           "Patients: registered with unique patient IDs",
           "Services: billable items tied to OPD, IPD, and specialty",
         ],
@@ -133,23 +132,6 @@ export const settingsData: Record<string, SettingsPageData> = {
           { Department: "Pediatrics", Code: "PED", "Head of Department": "Dr. Farhana Akter", "No. of Beds": "25" },
           { Department: "Radiology", Code: "RAD", "Head of Department": "Dr. Tanvir Ahmed", "No. of Beds": "5" },
           { Department: "Emergency", Code: "EMRG", "Head of Department": "Dr. Monir Hossain", "No. of Beds": "12" },
-        ],
-      },
-    ],
-  },
-
-  "hc-doctors": {
-    title: "Doctors",
-    description: "Manage doctor profiles, specialty, designation, and consultation schedule.",
-    blocks: [
-      {
-        type: "table",
-        columns: ["Doctor ID", "Name", "Specialty", "Designation", "Consultation Fee"],
-        rows: [
-          { "Doctor ID": "DOC-001", Name: "Dr. Shahed Chowdhury", Specialty: "Cardiologist", Designation: "Senior Consultant", "Consultation Fee": "1500" },
-          { "Doctor ID": "DOC-002", Name: "Dr. Nusrat Kabir", Specialty: "Neurologist", Designation: "Consultant", "Consultation Fee": "1200" },
-          { "Doctor ID": "DOC-003", Name: "Dr. Rafiq Uddin", Specialty: "Orthopedic", Designation: "Consultant", "Consultation Fee": "1000" },
-          { "Doctor ID": "DOC-004", Name: "Dr. Farhana Akter", Specialty: "Pediatrician", Designation: "Junior Consultant", "Consultation Fee": "800" },
         ],
       },
     ],

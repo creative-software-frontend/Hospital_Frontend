@@ -1,5 +1,7 @@
-// app/dashboard/settings/doctors/DoctorsView.tsx
-// Live "Doctors" page backed by GET/POST/PATCH /api/doctors.
+// app/doctors/DoctorModule.tsx
+// Live "Doctor Management" module (feature id = 2 in the dashboard).
+// Lists doctors from GET /api/doctors with server-side pagination,
+// search, and drives the create/edit flows.
 
 "use client";
 
@@ -26,7 +28,7 @@ const STATUS_STYLES: Record<ActiveStatus, string> = {
   inactive: "bg-slate-100 text-slate-500 border-slate-200",
 };
 
-export function DoctorsView() {
+export function DoctorModule() {
   const { currency } = useCurrency();
   const [rows, setRows] = useState<DoctorRecord[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
@@ -101,7 +103,7 @@ export function DoctorsView() {
     <div className="space-y-6">
       <div className="card p-5 rounded-2xl border border-[var(--border)] shadow-sm">
         <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">
-          Settings Module
+          Doctor Management
         </span>
         <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">Doctors</h3>
         <p className="text-xs text-[var(--muted)] mt-1.5 leading-relaxed max-w-3xl">

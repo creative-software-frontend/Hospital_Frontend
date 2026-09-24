@@ -320,7 +320,6 @@ export const keyFeatures: Feature[] = [
                 icon: FiServer,
                 children: [
                     { id: "hc-departments", label: "Departments", icon: FiFolder },
-                    { id: "hc-doctors", label: "Doctors", icon: FiActivity },
                     { id: "hc-patients", label: "Patients", icon: FiUser },
                     { id: "hc-services", label: "Services", icon: FiTag },
                 ],
