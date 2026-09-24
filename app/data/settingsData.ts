@@ -105,14 +105,36 @@ export const settingsData: Record<string, SettingsPageData> = {
 
   "hospital-configuration": {
     title: "Hospital Configuration",
-    description: "Configure core hospital entities including departments, patients, and services.",
+    description: "Configure core hospital identity, departments, patients, and services.",
     blocks: [
       {
         type: "list",
         items: [
+          "Hospital Information: name, logo, address, phone, email, website, district, thana",
           "Departments: Cardiology, Neurology, Orthopedics, Pediatrics, Radiology, Pathology, General Medicine, Emergency",
           "Patients: registered with unique patient IDs",
           "Services: billable items tied to OPD, IPD, and specialty",
+        ],
+      },
+    ],
+  },
+
+  "hc-hospital-information": {
+    title: "Hospital Information",
+    description: "Central hospital identity — name, logo, contact details, and location.",
+    blocks: [
+      {
+        type: "fields",
+        values: [
+          { label: "Hospital Name", value: "MediCare HMS" },
+          { label: "Logo", value: "/images/hospitalogo.png" },
+          { label: "Address", value: "12 Dhaka Medical Road" },
+          { label: "Phone", value: "+880 2 0000000" },
+          { label: "Email", value: "info@medicare.example" },
+          { label: "Website", value: "https://medicare.example" },
+          { label: "District", value: "Dhaka" },
+          { label: "Thana", value: "Motijheel" },
+          { label: "Registration No.", value: "HD-2024-0001" },
         ],
       },
     ],

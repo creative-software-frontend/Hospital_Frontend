@@ -319,6 +319,7 @@ export const keyFeatures: Feature[] = [
                 label: "Hospital Configuration",
                 icon: FiServer,
                 children: [
+                    { id: "hc-hospital-information", label: "Hospital Information", icon: FiHome },
                     { id: "hc-departments", label: "Departments", icon: FiFolder },
                     { id: "hc-patients", label: "Patients", icon: FiUser },
                     { id: "hc-services", label: "Services", icon: FiTag },

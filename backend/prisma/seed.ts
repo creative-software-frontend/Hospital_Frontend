@@ -415,6 +415,42 @@ async function seed() {
   }
   console.log(`System settings ready: ${generalDefaults.length}`);
 
+  // 5b. Default hospital identity settings (branch-scoped; single source of truth
+  // for central hospital info shown in Settings → Hospital Configuration).
+  const hospitalDefaults: Array<{ key: string; value: string; dataType: string }> = [
+    { key: "hospital_name", value: "MediCare Hospital", dataType: "string" },
+    { key: "hospital_logo", value: "/images/hospitalogo.png", dataType: "string" },
+    { key: "hospital_address", value: "12 Dhaka Medical Road", dataType: "string" },
+    { key: "hospital_phone", value: "+880 2 0000000", dataType: "string" },
+    { key: "hospital_email", value: "info@medicare.example", dataType: "string" },
+    { key: "hospital_website", value: "https://medicare.example", dataType: "string" },
+    { key: "hospital_district", value: "Dhaka", dataType: "string" },
+    { key: "hospital_thana", value: "Motijheel", dataType: "string" },
+    { key: "hospital_registration_no", value: "HD-2024-0001", dataType: "string" },
+  ];
+  const SETTING_GROUP_HOSPITAL = "hospital";
+  for (const def of hospitalDefaults) {
+    await prisma.systemSetting.upsert({
+      where: {
+        branchId_settingGroup_settingKey: {
+          branchId: branch.id,
+          settingGroup: SETTING_GROUP_HOSPITAL,
+          settingKey: def.key,
+        },
+      },
+      update: { settingValue: def.value, dataType: def.dataType },
+      create: {
+        branchId: branch.id,
+        settingGroup: SETTING_GROUP_HOSPITAL,
+        settingKey: def.key,
+        settingValue: def.value,
+        dataType: def.dataType,
+        status: "active",
+      },
+    });
+  }
+  console.log(`Hospital settings ready: ${hospitalDefaults.length}`);
+
   // 6. Default security settings (single global row)
   const securityExists = await prisma.securitySetting.findFirst();
   if (!securityExists) {
