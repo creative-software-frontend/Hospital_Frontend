@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 const passwordSchema = z
-  .string({ required_error: "Password is required" })
+  .string()
+  .min(1, "Password is required")
   .min(8, "Password must be at least 8 characters")
   .max(255);
 
