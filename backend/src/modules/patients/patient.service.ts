@@ -7,6 +7,7 @@ import {
   NotFoundError,
 } from "../../errors/ApiError";
 import { writeAuditLog } from "../../utils/audit";
+import { assertAddressChain } from "../settings/setting.service";
 import { CODE_ENTITIES, generateBusinessCode } from "../../utils/codeGenerator";
 import { parsePagination, buildPaginationMeta, type SortableField } from "../../utils/pagination";
 import type { AuthUser } from "../../types/auth";
@@ -44,8 +45,12 @@ const PATIENT_LIST_SELECT: Prisma.PatientSelect = {
   bloodGroup: true,
   phone: true,
   email: true,
+  whatsapp: true,
   address: true,
   district: true,
+  division: true,
+  upazila: true,
+  thana: true,
   maritalStatus: true,
   status: true,
   branchId: true,
@@ -87,8 +92,12 @@ const SCALAR_FIELD_SELECT: Prisma.PatientSelect = {
   maritalStatus: true,
   phone: true,
   email: true,
+  whatsapp: true,
   address: true,
   district: true,
+  division: true,
+  upazila: true,
+  thana: true,
   nationalId: true,
   occupation: true,
   photo: true,
@@ -97,6 +106,88 @@ const SCALAR_FIELD_SELECT: Prisma.PatientSelect = {
 /* ---------------------------------------------------------------------------
  * Helpers
  * ------------------------------------------------------------------------- */
+
+/**
+ * Honors the branch's PatientSetting "required contact" toggles. The setting
+ * decides which contact channels must be present, so the values submitted for
+ * this branch are validated here (after the merge on update, so clearing a
+ * previously stored value is rejected too).
+ */
+async function assertRequiredContactChannels(
+  branchId: number,
+  values: { phone?: string | null; email?: string | null; whatsapp?: string | null },
+): Promise<void> {
+  const setting = await prisma.patientSetting.findFirst({
+    where: { branchId },
+    orderBy: { id: "asc" },
+    select: { phoneRequired: true, emailRequired: true, whatsappRequired: true },
+  });
+  if (!setting) return;
+
+  if (setting.whatsappRequired && !values.whatsapp?.trim()) {
+    throw new BusinessRuleError("WhatsApp number is required by this branch's patient configuration");
+  }
+  if (setting.phoneRequired && !values.phone?.trim()) {
+    throw new BusinessRuleError("Phone number is required by this branch's patient configuration");
+  }
+  if (setting.emailRequired && !values.email?.trim()) {
+    throw new BusinessRuleError("Email is required by this branch's patient configuration");
+  }
+}
+
+type AddressInput = {
+  division?: string | null;
+  district?: string | null;
+  upazila?: string | null;
+  thana?: string | null;
+};
+
+/**
+ * Runs the submitted address levels through Master Data so only a real
+ * division -> district -> (upazila | thana) chain is stored, and the stored
+ * values are labels rather than the dropdown codes.
+ *
+ * On update the levels are merged with what is already on the record, so
+ * changing only the district still validates the upazila that is kept.
+ */
+async function resolveAddressChain(
+  actor: AuthUser,
+  input: AddressInput,
+  current?: { division: string | null; district: string | null; upazila: string | null; thana: string | null },
+) {
+  const pick = (field: keyof AddressInput) => {
+    const submitted = input[field];
+    if (submitted === undefined) return current ? current[field] : undefined;
+    // An empty string means "cleared", not "keep the old value".
+    return submitted?.trim() ? submitted : null;
+  };
+
+  const merged: AddressInput = {
+    division: pick("division"),
+    district: pick("district"),
+    upazila: pick("upazila"),
+    thana: pick("thana"),
+  };
+
+  const touched = (Object.keys(merged) as Array<keyof AddressInput>).some(
+    (field) => input[field] !== undefined,
+  );
+
+  // Nothing about the address is being changed, so leave the record alone.
+  if (!touched && !current) {
+    return { division: null, district: null, upazila: null, thana: null };
+  }
+  if (!touched && current) {
+    return {
+      division: current.division,
+      district: current.district,
+      upazila: current.upazila,
+      thana: current.thana,
+    };
+  }
+
+  return assertAddressChain(actor, merged);
+}
 
 /** Fetches a non-deleted patient and enforces branch authorization. */
 async function getActivePatientForActor(
@@ -147,6 +238,7 @@ function buildListWhere(actor: AuthUser, query: ListPatientsQuery): Prisma.Patie
       { patientCode: { contains: search } },
       { phone: { contains: search } },
       { email: { contains: search } },
+      { whatsapp: { contains: search } },
     ];
   }
 
@@ -160,6 +252,9 @@ function buildListWhere(actor: AuthUser, query: ListPatientsQuery): Prisma.Patie
   }
   if (query.email) {
     exactFilters.push({ email: { contains: query.email } });
+  }
+  if (query.whatsapp) {
+    exactFilters.push({ whatsapp: { contains: query.whatsapp } });
   }
 
   if (exactFilters.length > 0) {
@@ -191,6 +286,16 @@ export async function createPatient(actor: AuthUser, input: CreatePatientInput) 
     targetBranchId = actor.branchId;
   }
 
+  await assertRequiredContactChannels(targetBranchId, {
+    phone: input.phone,
+    email: input.email,
+    whatsapp: input.whatsapp,
+  });
+
+  // Resolves the cascade to labels and rejects a broken chain (an upazila that
+  // does not belong to the chosen district, both a thana and an upazila, ...).
+  const addressChain = await resolveAddressChain(actor, input);
+
   const data: Omit<Prisma.PatientCreateInput, "patientCode"> = {
     branch: { connect: { id: targetBranchId } },
     name: input.name,
@@ -200,8 +305,12 @@ export async function createPatient(actor: AuthUser, input: CreatePatientInput) 
     maritalStatus: input.maritalStatus,
     phone: input.phone,
     email: input.email,
+    whatsapp: input.whatsapp,
     address: input.address,
-    district: input.district,
+    district: addressChain.district,
+    division: addressChain.division,
+    upazila: addressChain.upazila,
+    thana: addressChain.thana,
     nationalId: input.nationalId,
     occupation: input.occupation,
     photo: input.photo,
@@ -299,12 +408,38 @@ export async function updatePatient(actor: AuthUser, id: number, input: UpdatePa
     "maritalStatus",
     "phone",
     "email",
+    "whatsapp",
     "address",
-    "district",
     "nationalId",
     "occupation",
     "photo",
   ];
+
+  // The cascade levels are handled separately: they must be validated together
+  // and written as labels, not as the raw dropdown codes.
+  const ADDRESS_FIELDS = ["division", "district", "upazila", "thana"] as const;
+  const addressTouched = ADDRESS_FIELDS.some((f) => input[f] !== undefined);
+  if (addressTouched) {
+    const current = await prisma.patient.findUnique({
+      where: { id },
+      select: { division: true, district: true, upazila: true, thana: true },
+    });
+    const chain = await resolveAddressChain(actor, input, {
+      division: current?.division ?? null,
+      district: current?.district ?? null,
+      upazila: current?.upazila ?? null,
+      thana: current?.thana ?? null,
+    });
+    for (const field of ADDRESS_FIELDS) {
+      const submitted = input[field];
+      if (submitted === undefined) continue;
+      const resolved = chain[field];
+      if (resolved !== (current?.[field] ?? null)) {
+        (data as Record<string, unknown>)[field] = resolved;
+        newValues[field] = resolved;
+      }
+    }
+  }
 
   for (const field of scalarFields) {
     if (input[field] !== undefined) {
@@ -324,6 +459,14 @@ export async function updatePatient(actor: AuthUser, id: number, input: UpdatePa
           oldValues[field] = oldVal instanceof Date ? oldVal.toISOString() : oldVal;
         }
       }
+
+      // Validate the post-update state so a required channel cannot be
+      // cleared by an update that omits it or blanks it out.
+      await assertRequiredContactChannels(existing.branchId, {
+        phone: input.phone !== undefined ? input.phone : full.phone,
+        email: input.email !== undefined ? input.email : full.email,
+        whatsapp: input.whatsapp !== undefined ? input.whatsapp : full.whatsapp,
+      });
     }
 
     data.updatedById = actor.id;

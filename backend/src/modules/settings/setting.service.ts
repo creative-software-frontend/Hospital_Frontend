@@ -1,7 +1,9 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
-import { ConflictError, NotFoundError } from "../../errors/ApiError";
+import { ConflictError, NotFoundError, ValidationError } from "../../errors/ApiError";
 import { writeAuditLog } from "../../utils/audit";
+import { BLOOD_GROUP_VALUES } from "../patients/patient.validation";
+import { ADDRESS_CATEGORY, isAddressCategory, isAddressParentCategory } from "../../lib/bangladeshAddress";
 import type { AuthUser } from "../../types/auth";
 import type {
   CreateIntegrationInput,
@@ -264,6 +266,7 @@ export async function getPatientSetting(actor: AuthUser) {
         duplicateDetection: true,
         phoneRequired: true,
         emailRequired: false,
+        whatsappRequired: false,
         status: "active",
       },
     });
@@ -288,6 +291,9 @@ export async function updatePatientSetting(actor: AuthUser, input: UpdatePatient
       patientIdPrefix: current.patientIdPrefix,
       autoGenerateId: current.autoGenerateId,
       defaultPatientType: current.defaultPatientType,
+      phoneRequired: current.phoneRequired,
+      emailRequired: current.emailRequired,
+      whatsappRequired: current.whatsappRequired,
     },
     newValues: { ...input },
     user: actor,
@@ -1211,6 +1217,252 @@ export async function listMasterData(actor: AuthUser, category?: string) {
   });
 }
 
+/**
+ * Categories whose values are stored in a database ENUM column. A master data
+ * row can only offer codes the column accepts, so an out-of-date or hand-edited
+ * master list can never make a record unsavable: illegal codes are dropped and,
+ * if that leaves nothing usable, the enum itself becomes the source of truth.
+ */
+const ENUM_BACKED_CATEGORIES: Record<string, { values: readonly string[]; labels: Record<string, string> }> = {
+  blood_groups: {
+    values: BLOOD_GROUP_VALUES,
+    labels: {
+      A_POS: "A+",
+      A_NEG: "A-",
+      B_POS: "B+",
+      B_NEG: "B-",
+      AB_POS: "AB+",
+      AB_NEG: "AB-",
+      O_POS: "O+",
+      O_NEG: "O-",
+    },
+  },
+};
+
+export interface MasterDataOption {
+  code: string;
+  label: string;
+  sortOrder: number;
+  /** True when the option comes from the enum fallback rather than master data. */
+  fallback: boolean;
+}
+
+/**
+ * Resolves a category into dropdown options. This is the single place other
+ * features read from, so master data becomes authoritative for the UI. For
+ * enum-backed categories the value set is still guaranteed to be writable.
+ */
+export async function listMasterDataOptions(
+  actor: AuthUser,
+  category: string,
+): Promise<MasterDataOption[]> {
+  const rows = await prisma.masterData.findMany({
+    where: { branchId: actor.branchId, category, status: "active" },
+    orderBy: [{ sortOrder: "asc" }, { label: "asc" }],
+    select: { code: true, label: true, sortOrder: true },
+  });
+
+  const enumSpec = ENUM_BACKED_CATEGORIES[category];
+
+  const usable: MasterDataOption[] = [];
+  for (const row of rows) {
+    if (enumSpec) {
+      // Enum-backed columns are strict: only a code the column accepts can be
+      // offered, so master data can never produce an unsavable value.
+      if (!row.code || !(enumSpec.values as readonly string[]).includes(row.code)) continue;
+      usable.push({ code: row.code, label: row.label, sortOrder: row.sortOrder, fallback: false });
+    } else {
+      // These back free-text or optional columns, where the label is itself the
+      // stored value, so a row without a code is still usable.
+      const value = row.code ?? row.label;
+      if (!value) continue;
+      usable.push({ code: value, label: row.label, sortOrder: row.sortOrder, fallback: false });
+    }
+  }
+
+  // Empty (or entirely invalid) master data must not leave a dropdown blank.
+  if (usable.length === 0 && enumSpec) {
+    return enumSpec.values.map((value, index) => ({
+      code: value,
+      label: enumSpec.labels[value] ?? value,
+      sortOrder: index,
+      fallback: true,
+    }));
+  }
+
+  return usable;
+}
+
+/* ---------------------------------------------------------------------------
+ * Bangladesh address cascade (division -> district -> upazila | thana)
+ *
+ * Read from Master Data rather than the national dataset directly, so an admin
+ * can add a local unit and the address form picks it up like any other value.
+ * `npm run seed:address` is what loads the official data in.
+ * ------------------------------------------------------------------------- */
+
+export interface AddressChoice {
+  code: string;
+  label: string;
+  /** Present for locality level: a district can hold thanas and upazilas. */
+  type?: "thana" | "upazila";
+}
+
+async function addressChildren(
+  actor: AuthUser,
+  category: string,
+  parentCode?: string,
+): Promise<AddressChoice[]> {
+  const rows = await prisma.masterData.findMany({
+    where: {
+      branchId: actor.branchId,
+      category,
+      status: "active",
+      ...(parentCode ? { parentCode } : { parentCode: null }),
+    },
+    orderBy: [{ sortOrder: "asc" }, { label: "asc" }],
+    select: { code: true, label: true },
+  });
+
+  return rows
+    .filter((r): r is { code: string; label: string } => Boolean(r.code))
+    .map((r) => ({ code: r.code, label: r.label }));
+}
+
+export function listDivisions(actor: AuthUser) {
+  return addressChildren(actor, ADDRESS_CATEGORY.divisions);
+}
+
+export function listDistricts(actor: AuthUser, divisionCode?: string) {
+  return addressChildren(actor, ADDRESS_CATEGORY.districts, divisionCode);
+}
+
+/**
+ * Both upazilas and thanas sit directly under a district, so they are returned
+ * together. Which one applies depends on the district, not on the user.
+ */
+export async function listLocalities(actor: AuthUser, districtCode?: string) {
+  const [upazilas, thanas] = await Promise.all([
+    addressChildren(actor, ADDRESS_CATEGORY.upazilas, districtCode),
+    addressChildren(actor, ADDRESS_CATEGORY.thanas, districtCode),
+  ]);
+
+  return [
+    ...thanas.map((t) => ({ ...t, type: "thana" as const })),
+    ...upazilas.map((u) => ({ ...u, type: "upazila" as const })),
+  ];
+}
+
+/**
+ * Rejects an address whose levels do not form a real chain, so a patient can
+ * never end up with, say, a Savar upazila filed under a Chattogram district.
+ * Returns the resolved chain so callers can store consistent values.
+ */
+export async function assertAddressChain(
+  actor: AuthUser,
+  input: { division?: string | null; district?: string | null; upazila?: string | null; thana?: string | null },
+): Promise<{ division: string | null; district: string | null; upazila: string | null; thana: string | null }> {
+  const { division, district, upazila, thana } = input;
+
+  if (upazila && thana) {
+    throw new ValidationError("Choose either an upazila or a thana, not both");
+  }
+
+  if ((upazila || thana) && !district) {
+    throw new ValidationError("district is required when an upazila or thana is selected");
+  }
+  // A district without a division is not an error: the division is derived
+  // from the district's parent link below.
+
+  const resolve = async (
+    value: string,
+    category: string,
+    parentCode: string | null | undefined,
+    field: string,
+    parentLabel?: string,
+  ): Promise<{ code: string; label: string; parentCode: string | null }> => {
+    const row = await prisma.masterData.findFirst({
+      where: {
+        branchId: actor.branchId,
+        category,
+        status: "active",
+        // undefined leaves the parent unconstrained, null demands a top-level
+        // row, and a code demands that exact parent. Districts need the middle
+        // case when the division has not been chosen yet.
+        ...(parentCode === undefined ? {} : { parentCode }),
+        // Codes come from the cascading dropdowns, but records written before
+        // the cascade existed hold plain labels ("Dhaka"), so both are accepted.
+        OR: [{ code: value }, { label: value }],
+      },
+      select: { code: true, label: true, parentCode: true },
+    });
+    if (!row?.code) {
+      // A value that exists but under a different parent is the common mistake
+      // here, so name the parent rather than reporting a bare "invalid value".
+      throw new ValidationError(
+        parentLabel
+          ? `${field} "${value}" does not belong to ${parentLabel}`
+          : `Invalid ${field}: ${value}`,
+      );
+    }
+    return { code: row.code, label: row.label, parentCode: row.parentCode };
+  };
+
+  let divisionRow: { code: string; label: string } | null = null;
+  let districtRow: { code: string; label: string; parentCode: string | null } | null = null;
+
+  if (division) {
+    divisionRow = await resolve(division, ADDRESS_CATEGORY.divisions, null, "division");
+  }
+
+  if (district) {
+    if (divisionRow) {
+      districtRow = await resolve(
+        district,
+        ADDRESS_CATEGORY.districts,
+        divisionRow.code,
+        "district",
+        `division "${divisionRow.label}"`,
+      );
+    } else {
+      // Records written before the cascade existed have a district but no
+      // division. The district's parent link is enough to fill it in, so those
+      // records stay editable instead of being rejected.
+      districtRow = await resolve(district, ADDRESS_CATEGORY.districts, undefined, "district");
+      if (districtRow.parentCode) {
+        divisionRow = await resolve(
+          districtRow.parentCode,
+          ADDRESS_CATEGORY.divisions,
+          null,
+          "division",
+        );
+      }
+    }
+  }
+
+  const locality = upazila || thana;
+  let localityRow: { label: string } | null = null;
+  if (locality && districtRow) {
+    const category = upazila ? ADDRESS_CATEGORY.upazilas : ADDRESS_CATEGORY.thanas;
+    localityRow = await resolve(
+      locality,
+      category,
+      districtRow.code,
+      upazila ? "upazila" : "thana",
+      `district "${districtRow.label}"`,
+    );
+  }
+
+  // Labels are stored rather than codes so reports and printed records read
+  // correctly without a join.
+  return {
+    division: divisionRow?.label ?? null,
+    district: districtRow?.label ?? null,
+    upazila: upazila ? (localityRow?.label ?? null) : null,
+    thana: thana ? (localityRow?.label ?? null) : null,
+  };
+}
+
 export async function createMasterData(actor: AuthUser, input: CreateMasterDataInput) {
   try {
     const created = await prisma.masterData.create({
@@ -1219,6 +1471,7 @@ export async function createMasterData(actor: AuthUser, input: CreateMasterDataI
         category: input.category,
         label: input.label,
         code: input.code ?? null,
+        parentCode: input.parentCode ?? null,
         sortOrder: input.sortOrder ?? 0,
         status: input.status ?? "active",
       },
@@ -1233,6 +1486,7 @@ export async function createMasterData(actor: AuthUser, input: CreateMasterDataI
         category: created.category,
         label: created.label,
         code: created.code,
+        parentCode: created.parentCode,
         status: created.status,
       },
       user: actor,
@@ -1270,12 +1524,14 @@ export async function updateMasterData(actor: AuthUser, id: number, input: Updat
         category: current.category,
         label: current.label,
         code: current.code,
+        parentCode: current.parentCode,
         status: current.status,
       },
       newValues: {
         ...(input.category ? { category: input.category } : {}),
         ...(input.label ? { label: input.label } : {}),
         ...(input.code !== undefined ? { code: input.code } : {}),
+        ...(input.parentCode !== undefined ? { parentCode: input.parentCode } : {}),
         ...(input.status ? { status: input.status } : {}),
       },
       user: actor,
@@ -1294,10 +1550,56 @@ export async function updateMasterData(actor: AuthUser, id: number, input: Updat
   }
 }
 
+/** Counts the patients whose stored address still names a master data label. */
+async function countPatientsUsingAddress(labels: string[]): Promise<number> {
+  const unique = [...new Set(labels.filter(Boolean))];
+  if (unique.length === 0) return 0;
+  return prisma.patient.count({
+    where: {
+      deletedAt: null,
+      OR: [
+        { division: { in: unique } },
+        { district: { in: unique } },
+        { upazila: { in: unique } },
+        { thana: { in: unique } },
+      ],
+    },
+  });
+}
+
 export async function deleteMasterData(actor: AuthUser, id: number) {
   const current = await prisma.masterData.findFirst({ where: { id, branchId: actor.branchId } });
   if (!current) {
     throw new NotFoundError("Master data item not found");
+  }
+
+  // Deleting a division would leave its districts, and every upazila and thana
+  // beneath them, pointing at a parent that no longer exists. Those rows would
+  // disappear from every cascade dropdown while still looking intact, so a
+  // parent has to go last. Only the two address levels that can actually hold
+  // children are checked; flat categories never have any.
+  if (isAddressParentCategory(current.category) && current.code) {
+    const childCount = await prisma.masterData.count({
+      where: { branchId: actor.branchId, parentCode: current.code, id: { not: id } },
+    });
+    if (childCount > 0) {
+      throw new ConflictError(
+        `"${current.label}" still has ${childCount} item(s) filed under it. ` +
+          `Remove or move those first, or mark "${current.label}" inactive to hide it instead.`,
+      );
+    }
+  }
+
+  // Patients store the label, not the code, so a row that a patient address
+  // names cannot be removed without stranding that record.
+  if (isAddressCategory(current.category)) {
+    const inUse = await countPatientsUsingAddress([current.label]);
+    if (inUse > 0) {
+      throw new ConflictError(
+        `"${current.label}" is used by ${inUse} patient record(s) and cannot be deleted. ` +
+          `Mark it inactive instead so it stops appearing in new entries.`,
+      );
+    }
   }
 
   await prisma.masterData.delete({ where: { id } });
@@ -1310,6 +1612,8 @@ export async function deleteMasterData(actor: AuthUser, id: number) {
     oldValues: {
       category: current.category,
       label: current.label,
+      code: current.code,
+      parentCode: current.parentCode,
     },
     user: actor,
     branchId: actor.branchId,

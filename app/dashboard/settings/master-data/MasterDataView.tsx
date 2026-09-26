@@ -14,6 +14,8 @@ import {
   MASTER_DATA_CATEGORIES,
   MASTER_DATA_CATEGORY_LABELS,
   MASTER_DATA_CATEGORY_EXAMPLES,
+  MASTER_DATA_CATEGORY_PARENT,
+  ADDRESS_CATEGORIES,
   errorMessage,
 } from "@/app/lib/api";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
@@ -32,6 +34,7 @@ export function MasterDataView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [parentFilter, setParentFilter] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<MasterDataItem | null>(null);
@@ -72,19 +75,58 @@ export function MasterDataView() {
       blood_groups: 0,
       payment_methods: 0,
       document_types: 0,
+      divisions: 0,
+      districts: 0,
+      upazilas: 0,
+      thanas: 0,
     };
     for (const item of items) map[item.category] += 1;
-    return map;
+    return map as Record<MasterDataCategory, number>;
   }, [items]);
 
+  const parentCategory = MASTER_DATA_CATEGORY_PARENT[activeCategory];
+  // True for the four address levels, so the top level can explain itself.
+  const isAddressLevel = ADDRESS_CATEGORIES.includes(activeCategory);
+
+  // The parent choices come from the full list already in memory, so switching
+  // level or filtering by parent needs no extra request.
+  const parentOptions = useMemo(
+    () => (parentCategory ? items.filter((i) => i.category === parentCategory) : []),
+    [items, parentCategory],
+  );
+
+  // Keeping the filter valid when the category changes avoids showing an empty
+  // table for a district that belongs to a division the user cannot see.
+  useEffect(() => {
+    if (!parentCategory) {
+      setParentFilter("");
+      return;
+    }
+    setParentFilter((current) =>
+      current && parentOptions.some((p) => p.code === current) ? current : "",
+    );
+  }, [parentCategory, parentOptions]);
+
   const categoryItems = useMemo(() => {
-    const base = items.filter((i) => i.category === activeCategory);
+    let base = items.filter((i) => i.category === activeCategory);
+    if (parentCategory && parentFilter) {
+      base = base.filter((i) => i.parentCode === parentFilter);
+    }
     const term = searchInput.trim().toLowerCase();
     if (!term) return base;
     return base.filter(
       (i) => i.label.toLowerCase().includes(term) || (i.code ?? "").toLowerCase().includes(term),
     );
-  }, [items, activeCategory, searchInput]);
+  }, [items, activeCategory, searchInput, parentCategory, parentFilter]);
+
+  const parentLabel = useMemo(() => {
+    if (!parentCategory || !parentFilter) return null;
+    return (
+      parentOptions.find((p) => p.code === parentFilter)?.label ??
+      parentOptions.find((p) => p.id === Number(parentFilter))?.label ??
+      null
+    );
+  }, [parentCategory, parentFilter, parentOptions]);
 
   const submit = async (input: CreateMasterDataInput) => {
     if (editing) {
@@ -160,10 +202,44 @@ export function MasterDataView() {
                 {MASTER_DATA_CATEGORY_LABELS[activeCategory]}
               </h4>
               <p className="text-xs text-[var(--muted)]">
-                {loading ? "Loading…" : `${counts[activeCategory]} item(s)`}
+                {loading
+                  ? "Loading…"
+                  : parentCategory && parentFilter
+                    ? `${categoryItems.length} under ${parentLabel ?? "selected parent"}`
+                    : `${counts[activeCategory]} item(s)`}
               </p>
+              {/* Divisions are the top of the address tree, so they have no parent
+                  to pick. Say so, otherwise the missing dropdown looks broken. */}
+              {isAddressLevel && !parentCategory && (
+                <p className="text-[10px] text-[var(--muted)] font-medium mt-0.5">
+                  Top level — no parent, so districts can be filed under it.
+                </p>
+              )}
+              {parentCategory && !parentFilter && (
+                <p className="text-[10px] text-[var(--muted)] font-medium mt-0.5">
+                  Use the dropdown to list these under one{" "}
+                  {MASTER_DATA_CATEGORY_LABELS[parentCategory].toLowerCase().replace(/s$/, "")}.
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2">
+              {parentCategory && (
+                <select
+                  value={parentFilter}
+                  onChange={(e) => setParentFilter(e.target.value)}
+                  aria-label={`Filter by ${MASTER_DATA_CATEGORY_LABELS[parentCategory]}`}
+                  className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15"
+                >
+                  <option value="">
+                    All {MASTER_DATA_CATEGORY_LABELS[parentCategory].toLowerCase()}
+                  </option>
+                  {parentOptions.map((p) => (
+                    <option key={p.id} value={p.code ?? ""}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+              )}
               <div className="relative">
                 <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)] w-3.5 h-3.5" />
                 <input
@@ -199,7 +275,7 @@ export function MasterDataView() {
             <table className="min-w-[560px] w-full">
               <thead>
                 <tr className="bg-[var(--bg)]">
-                  {["Label", "Code", "Sort", "Status", "Actions"].map((col) => (
+                  {["Label", "Code", ...(parentCategory ? ["Under"] : []), "Sort", "Status", "Actions"].map((col) => (
                     <th key={col} className="text-left text-[11px] font-bold text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">
                       {col}
                     </th>
@@ -208,9 +284,9 @@ export function MasterDataView() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={5} className="px-4 py-10 text-center"><div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--primary)]" /></td></tr>
+                  <tr><td colSpan={parentCategory ? 6 : 5} className="px-4 py-10 text-center"><div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--primary)]" /></td></tr>
                 ) : categoryItems.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-10 text-center text-xs text-[var(--muted)]">
+                  <tr><td colSpan={parentCategory ? 6 : 5} className="px-4 py-10 text-center text-xs text-[var(--muted)]">
                     {searchInput ? "No matching items." : `No items in ${MASTER_DATA_CATEGORY_LABELS[activeCategory]} yet.`}
                   </td></tr>
                 ) : (
@@ -218,6 +294,13 @@ export function MasterDataView() {
                     <tr key={item.id} className="hover:bg-[var(--primary-soft)]/10 transition-colors">
                       <td className="px-4 py-3 border-b border-[var(--border)] text-[12px] font-bold text-[var(--text)]">{item.label}</td>
                       <td className="px-4 py-3 border-b border-[var(--border)] text-[12px] text-[var(--muted)]">{item.code ?? "—"}</td>
+                      {parentCategory && (
+                        <td className="px-4 py-3 border-b border-[var(--border)] text-[12px] text-[var(--muted)]">
+                          {item.parentCode
+                            ? (parentOptions.find((p) => p.code === item.parentCode)?.label ?? item.parentCode)
+                            : "—"}
+                        </td>
+                      )}
                       <td className="px-4 py-3 border-b border-[var(--border)] text-[12px] text-[var(--muted)]">{item.sortOrder}</td>
                       <td className="px-4 py-3 border-b border-[var(--border)]">
                         <span className={`inline-block text-[10px] font-bold capitalize px-2 py-0.5 rounded-md border ${STATUS_STYLES[item.status]}`}>{item.status}</span>
@@ -254,6 +337,7 @@ export function MasterDataView() {
           key={editing?.id ?? "new"}
           item={editing}
           defaultCategory={activeCategory}
+          allItems={items}
           onSubmit={submit}
           onClose={() => { setFormOpen(false); setEditing(null); }}
         />
@@ -298,11 +382,13 @@ export function MasterDataView() {
 function MasterDataFormModal({
   item,
   defaultCategory,
+  allItems,
   onSubmit,
   onClose,
 }: {
   item: MasterDataItem | null;
   defaultCategory: MasterDataCategory;
+  allItems: MasterDataItem[];
   onSubmit: (input: CreateMasterDataInput) => Promise<void>;
   onClose: () => void;
 }) {
@@ -310,10 +396,24 @@ function MasterDataFormModal({
   const [category, setCategory] = useState<MasterDataCategory>(item?.category ?? defaultCategory);
   const [label, setLabel] = useState(item?.label ?? "");
   const [code, setCode] = useState(item?.code ?? "");
+  const [parentCode, setParentCode] = useState(item?.parentCode ?? "");
   const [sortOrder, setSortOrder] = useState(item?.sortOrder ?? 0);
   const [status, setStatus] = useState<ActiveStatus>(item?.status ?? "active");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const parentCategory = MASTER_DATA_CATEGORY_PARENT[category];
+  const parentOptions = useMemo(
+    () => (parentCategory ? allItems.filter((i) => i.category === parentCategory) : []),
+    [allItems, parentCategory],
+  );
+
+  // Changing category invalidates a parent chosen for the previous one.
+  useEffect(() => {
+    setParentCode((current) =>
+      current && parentOptions.some((p) => p.code === current) ? current : "",
+    );
+  }, [parentOptions]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -322,12 +422,19 @@ function MasterDataFormModal({
       setError("Label is required.");
       return;
     }
+    // A row with no parent is invisible in the cascading dropdowns, so refuse it
+    // here rather than letting the backend reject the request.
+    if (parentCategory && !parentCode) {
+      setError(`Select the ${MASTER_DATA_CATEGORY_LABELS[parentCategory].toLowerCase()} this belongs to.`);
+      return;
+    }
     setSaving(true);
     try {
       await onSubmit({
         category,
         label: label.trim(),
         code: code.trim() || null,
+        parentCode: parentCategory ? parentCode : null,
         sortOrder: Number(sortOrder) || 0,
         status,
       });
@@ -362,6 +469,25 @@ function MasterDataFormModal({
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Label *</label>
             <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Dhaka" className={INPUT_CLS} />
           </div>
+          {parentCategory && (
+            <div>
+              <label className="block text-xs font-semibold text-[var(--muted)] mb-1">
+                {MASTER_DATA_CATEGORY_LABELS[parentCategory].replace(/s$/, "")} *
+              </label>
+              <select
+                value={parentCode}
+                onChange={(e) => setParentCode(e.target.value)}
+                className={INPUT_CLS}
+              >
+                <option value="">Select…</option>
+                {parentOptions.map((p) => (
+                  <option key={p.id} value={p.code ?? ""}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Code</label>
             <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. DAC" className={INPUT_CLS} />

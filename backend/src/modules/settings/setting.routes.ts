@@ -377,6 +377,34 @@ router.get(
   settingController.listMasterData,
 );
 
+// Dropdown source for other features. Declared before "/master-data/:id" so the
+// literal "options" segment is never read as an id.
+router.get(
+  "/master-data/options/:category",
+  requirePermission("masterData", "read"),
+  settingController.listMasterDataOptions,
+);
+
+// Bangladesh address cascade. Patients need to read these, so it is guarded by
+// patient read rather than master data admin.
+router.get(
+  "/address/divisions",
+  requirePermission("patient", "read"),
+  settingController.listAddressDivisions,
+);
+
+router.get(
+  "/address/districts",
+  requirePermission("patient", "read"),
+  settingController.listAddressDistricts,
+);
+
+router.get(
+  "/address/localities",
+  requirePermission("patient", "read"),
+  settingController.listAddressLocalities,
+);
+
 router.post(
   "/master-data",
   validate({ body: createMasterDataSchema }),

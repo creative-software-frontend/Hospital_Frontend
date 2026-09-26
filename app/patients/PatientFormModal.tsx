@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FiX, FiPlus, FiTrash2, FiSave } from "react-icons/fi";
 import {
   patientApi,
@@ -23,6 +23,8 @@ import {
   MARITAL_STATUS_OPTIONS,
   OCCUPATION_OPTIONS,
 } from "@/app/patients/constants";
+import { useMasterDataOptions } from "@/app/lib/useMasterData";
+import { useAddressCascade } from "@/app/lib/useAddressCascade";
 import type { Occupation } from "@/app/lib/api";
 
 interface ContactDraft {
@@ -41,8 +43,12 @@ interface FormState {
   maritalStatus: string;
   phone: string;
   email: string;
+  whatsapp: string;
   address: string;
+  division: string;
   district: string;
+  upazila: string;
+  thana: string;
   nationalId: string;
   occupation: string;
   photo: string;
@@ -56,8 +62,12 @@ const EMPTY_FORM: FormState = {
   maritalStatus: "",
   phone: "",
   email: "",
+  whatsapp: "",
   address: "",
+  division: "",
   district: "",
+  upazila: "",
+  thana: "",
   nationalId: "",
   occupation: "",
   photo: "",
@@ -73,8 +83,12 @@ function prefillFromPatient(p: PatientDetail | PatientListRecord | null): FormSt
     maritalStatus: p.maritalStatus ?? "",
     phone: p.phone ?? "",
     email: p.email ?? "",
+    whatsapp: p.whatsapp ?? "",
     address: p.address ?? "",
+    division: p.division ?? "",
     district: p.district ?? "",
+    upazila: p.upazila ?? "",
+    thana: p.thana ?? "",
     nationalId: (p as PatientDetail).nationalId ?? "",
     occupation: (p as PatientDetail).occupation ?? "",
     photo: (p as PatientDetail).photo ?? "",
@@ -103,10 +117,110 @@ export function PatientFormModal({
   const [formError, setFormError] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Master Data is authoritative for these lists; the hardcoded constants are
+  // only a fallback for when the category has not been configured yet.
+  const { options: masterBloodGroups } = useMasterDataOptions("blood_groups", BLOOD_GROUP_OPTIONS);
+
+  const {
+    divisions,
+    districts,
+    localities,
+    divisionsLoading,
+    districtsLoading,
+    localitiesLoading,
+    addressError,
+    retryAddress,
+    loadDistricts,
+    loadLocalities,
+    resetDistricts,
+    resetLocalities,
+  } = useAddressCascade();
+
+  const thanas = useMemo(() => localities.filter((l) => l.type === "thana"), [localities]);
+  const upazilas = useMemo(() => localities.filter((l) => l.type === "upazila"), [localities]);
+
+  // A stored value must stay visible even if it was later removed from master
+  // data, otherwise editing this patient would silently blank their blood group.
+  const bloodGroups = useMemo(() => {
+    const current = form.bloodGroup;
+    if (!current || masterBloodGroups.some((b) => b.value === current)) return masterBloodGroups;
+    return [...masterBloodGroups, { code: current, label: current.replace("_", " "), value: current, sortOrder: 999, fallback: true }];
+  }, [masterBloodGroups, form.bloodGroup]);
+
   const set = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFieldErrors((prev) => ({ ...prev, [key]: "" }));
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
   };
+
+  const clearFieldError = (key: string) =>
+    setFieldErrors((prev) => (prev[key] ? { ...prev, [key]: "" } : prev));
+
+  // Changing a level invalidates everything below it, so the stored children are
+  // dropped and their option lists are reloaded or cleared.
+  const onDivisionChange = (label: string) => {
+    clearFieldError("division");
+    resetDistricts();
+    resetLocalities();
+    setForm((prev) => ({ ...prev, division: label, district: "", upazila: "", thana: "" }));
+    const code = divisions.find((d) => d.label === label)?.code;
+    if (code) loadDistricts(code);
+  };
+
+  const onDistrictChange = (label: string) => {
+    clearFieldError("district");
+    resetLocalities();
+    setForm((prev) => ({ ...prev, district: label, upazila: "", thana: "" }));
+    const code = districts.find((d) => d.label === label)?.code;
+    if (code) loadLocalities(code);
+  };
+
+  // One select covers both kinds, so the chosen value is routed to the column
+  // that matches the locality's type.
+  const onLocalityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    clearFieldError("thana");
+    const label = e.target.value;
+    if (!label) {
+      setForm((prev) => ({ ...prev, upazila: "", thana: "" }));
+      return;
+    }
+    const match = localities.find((l) => l.label === label);
+    setForm((prev) => ({
+      ...prev,
+      thana: match?.type === "thana" ? label : "",
+      upazila: match?.type === "upazila" ? label : "",
+    }));
+  };
+
+  // An existing record stores labels, so the child lists have to be fetched
+  // before the saved district/locality can be shown as selected.
+  const prefillDone = useRef(false);
+  useEffect(() => {
+    if (prefillDone.current || divisionsLoading) return;
+    const savedDivision = form.division;
+    if (!savedDivision) {
+      prefillDone.current = true;
+      return;
+    }
+    const divisionCode = divisions.find((d) => d.label === savedDivision)?.code;
+    if (!divisionCode) {
+      prefillDone.current = true;
+      return;
+    }
+    prefillDone.current = true;
+
+    loadDistricts(divisionCode);
+    const savedDistrict = form.district;
+    if (!savedDistrict) return;
+    const districtCode = districts.find((d) => d.label === savedDistrict)?.code;
+    // districts is still empty on this pass, so resolve the code once it lands.
+    if (districtCode) loadLocalities(districtCode);
+  }, [divisions, divisionsLoading, loadDistricts, loadLocalities, form.division, form.district]);
+
+  useEffect(() => {
+    if (!form.district || districts.length === 0 || localities.length > 0) return;
+    const code = districts.find((d) => d.label === form.district)?.code;
+    if (code) loadLocalities(code);
+  }, [form.district, districts, localities.length, loadLocalities]);
 
   const updateContact = (idx: number, key: keyof ContactDraft, value: string | boolean) => {
     setContacts((prev) => prev.map((c, i) => (i === idx ? { ...c, [key]: value } : c)));
@@ -134,8 +248,12 @@ export function PatientFormModal({
       maritalStatus: hasMarital ? (form.maritalStatus as MaritalStatus) : undefined,
       phone: opt(form.phone),
       email: opt(form.email),
+      whatsapp: opt(form.whatsapp),
       address: opt(form.address),
+      division: opt(form.division),
       district: opt(form.district),
+      upazila: opt(form.upazila),
+      thana: opt(form.thana),
       nationalId: opt(form.nationalId),
       occupation: hasOccupation ? (form.occupation as Occupation) : undefined,
       photo: opt(form.photo),
@@ -252,8 +370,8 @@ export function PatientFormModal({
                   <label className={labelCls}>Blood Group</label>
                   <select className={selectCls} value={form.bloodGroup} onChange={set("bloodGroup")} disabled={submitting}>
                     <option value="">Select blood group</option>
-                    {BLOOD_GROUP_OPTIONS.map((b) => (
-                      <option key={b} value={b}>{b.replace("_", " ")}</option>
+                    {bloodGroups.map((b) => (
+                      <option key={b.value} value={b.value}>{b.label}</option>
                     ))}
                   </select>
                   {fieldError("bloodGroup")}
@@ -300,16 +418,113 @@ export function PatientFormModal({
                   <input type="email" className={inputCls} value={form.email} onChange={set("email")} placeholder="Email (optional)" disabled={submitting} />
                   {fieldError("email")}
                 </div>
+                <div>
+                  <label className={labelCls}>WhatsApp</label>
+                  <input className={inputCls} value={form.whatsapp} onChange={set("whatsapp")} placeholder="+8801XXXXXXXXX" disabled={submitting} />
+                  {fieldError("whatsapp")}
+                </div>
                 <div className="sm:col-span-2">
-                  <label className={labelCls}>Address</label>
-                  <input className={inputCls} value={form.address} onChange={set("address")} placeholder="Street address" disabled={submitting} />
+                  <label className={labelCls}>Address (street / house)</label>
+                  <input className={inputCls} value={form.address} onChange={set("address")} placeholder="House 5, Road 2, Block C" disabled={submitting} />
                   {fieldError("address")}
                 </div>
+
+                {/* Bangladesh administrative cascade. Each level is populated
+                    from Master Data and only enabled once its parent is chosen,
+                    so the selection is always a real chain. */}
+                {addressError && (
+                  <div className="sm:col-span-2 flex items-center justify-between gap-3 rounded-xl border border-red-300 bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-700">
+                    <span>Address list unavailable: {addressError}</span>
+                    <button
+                      type="button"
+                      onClick={retryAddress}
+                      className="shrink-0 rounded-lg border border-red-300 bg-white px-2.5 py-1 font-bold hover:bg-red-100"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
+                <div>
+                  <label className={labelCls}>Division</label>
+                  <select
+                    className={selectCls}
+                    value={form.division}
+                    onChange={(e) => onDivisionChange(e.target.value)}
+                    disabled={submitting || divisionsLoading}
+                  >
+                    <option value="">
+                      {divisionsLoading
+                        ? "Loading divisions..."
+                        : divisions.length === 0
+                          ? "No divisions available"
+                          : "Select division"}
+                    </option>
+                    {divisions.map((d) => (
+                      <option key={d.code} value={d.label}>{d.label}</option>
+                    ))}
+                  </select>
+                  {fieldError("division")}
+                </div>
+
                 <div>
                   <label className={labelCls}>District</label>
-                  <input className={inputCls} value={form.district} onChange={set("district")} placeholder="District" disabled={submitting} />
+                  <select
+                    className={selectCls}
+                    value={form.district}
+                    onChange={(e) => onDistrictChange(e.target.value)}
+                    disabled={submitting || !form.division || districtsLoading}
+                  >
+                    <option value="">
+                      {!form.division
+                        ? "Select division first"
+                        : districtsLoading
+                          ? "Loading districts..."
+                          : districts.length === 0
+                            ? "No districts available"
+                            : "Select district"}
+                    </option>
+                    {districts.map((d) => (
+                      <option key={d.code} value={d.label}>{d.label}</option>
+                    ))}
+                  </select>
                   {fieldError("district")}
                 </div>
+
+                <div>
+                  <label className={labelCls}>Thana / Upazila</label>
+                  <select
+                    className={selectCls}
+                    value={form.thana || form.upazila}
+                    onChange={onLocalityChange}
+                    disabled={submitting || !form.district || localitiesLoading}
+                  >
+                    <option value="">
+                      {!form.district
+                        ? "Select district first"
+                        : localitiesLoading
+                          ? "Loading..."
+                          : localities.length === 0
+                            ? "None for this district"
+                            : "Select thana / upazila"}
+                    </option>
+                    {thanas.length > 0 && (
+                      <optgroup label="Thana (metropolitan)">
+                        {thanas.map((t) => (
+                          <option key={t.code} value={t.label}>{t.label}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {upazilas.length > 0 && (
+                      <optgroup label="Upazila">
+                        {upazilas.map((u) => (
+                          <option key={u.code} value={u.label}>{u.label}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                  {fieldError("thana")}
+                </div>
+
                 <div>
                   <label className={labelCls}>Photo URL</label>
                   <input className={inputCls} value={form.photo} onChange={set("photo")} placeholder="https://..." disabled={submitting} />

@@ -20,8 +20,9 @@ import {
   calcAge,
 } from "@/app/lib/api";
 import {
-  bloodGroupLabel, genderLabel, maritalStatusLabel, occupationLabel,
+  genderLabel, maritalStatusLabel, occupationLabel,
 } from "@/app/patients/constants";
+import { useMasterDataLabels } from "@/app/lib/useMasterData";
 import type { PatientCapabilities } from "@/app/lib/roles";
 import type { ToastKind } from "@/app/patients/Toast";
 
@@ -61,6 +62,7 @@ export function PatientProfileModal({
   const [detail, setDetail] = useState<PatientDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
+  const bloodGroup = useMasterDataLabels("blood_groups");
 
   const [contactFormOpen, setContactFormOpen] = useState(false);
   const [editingContactId, setEditingContactId] = useState<number | null>(null);
@@ -243,7 +245,7 @@ export function PatientProfileModal({
                 />
                 <Summary value={calcAge(p.dateOfBirth)} label="Age" icon={<FiActivity className="w-3.5 h-3.5" />} />
                 <Summary
-                  value={p.bloodGroup ? bloodGroupLabel(p.bloodGroup) : "—"}
+                  value={p.bloodGroup ? bloodGroup(p.bloodGroup) : "—"}
                   label="Blood Group"
                   icon={<FiDroplet className="w-3.5 h-3.5" />}
                 />
@@ -266,8 +268,11 @@ export function PatientProfileModal({
                   rows={[
                     ["Phone", p.phone ?? "—"],
                     ["Email", p.email ?? "—"],
+                    ["WhatsApp", p.whatsapp ?? "—"],
                     ["Address", p.address ?? "—"],
+                    ["Division", p.division ?? "—"],
                     ["District", p.district ?? "—"],
+                    ["Thana / Upazila", p.thana || p.upazila || "—"],
                     ["Branch", `${p.branch?.name ?? ""} ${p.branch ? `(${p.branch.code})` : "(current)"}`],
                   ]}
                 />

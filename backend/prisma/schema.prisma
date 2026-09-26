@@ -591,8 +591,15 @@ model Patient {
   bloodGroup    BloodGroup?
   phone         String?
   email         String?
+  whatsapp      String?
   address       String?
+  /// Bangladesh administrative cascade, each level chosen from Master Data:
+  /// division -> district -> (upazila | thana). `address` stays the free-text
+  /// street/house detail.
+  division      String?
   district      String?
+  upazila       String?
+  thana         String?
   nationalId    String?
   occupation    String?
   maritalStatus MaritalStatus?
@@ -1465,6 +1472,7 @@ model PatientSetting {
   duplicateDetection Boolean  @default(true)
   phoneRequired      Boolean  @default(true)
   emailRequired      Boolean  @default(false)
+  whatsappRequired   Boolean  @default(false)
   status             String   @default("active")
   updatedAt          DateTime @updatedAt
 
@@ -1755,20 +1763,26 @@ model LocalizationSetting {
 }
 
 model MasterData {
-  id        Int      @id @default(autoincrement())
-  branchId  Int
-  category  String
-  label     String
-  code      String?
-  sortOrder Int      @default(0)
-  status    String   @default("active")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         Int      @id @default(autoincrement())
+  branchId   Int
+  category   String
+  label      String
+  code       String?
+  /// Parent row's `code`, used by hierarchical categories (district -> division,
+  /// upazila/thana -> district). A code is used rather than an id so seeding from
+  /// an external dataset stays a single pass and needs no second lookup.
+  parentCode String?
+  sortOrder  Int      @default(0)
+  status     String   @default("active")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   branch Branch? @relation(fields: [branchId], references: [id])
 
-  @@unique([branchId, category, label])
+  @@unique([branchId, category, parentCode, label])
+  @@unique([branchId, category, code])
   @@index([branchId])
+  @@index([category, parentCode])
 }
 
 model SystemMaintenance {

@@ -81,8 +81,12 @@ export interface PatientListRecord {
   bloodGroup: BloodGroup | null;
   phone: string | null;
   email: string | null;
+  whatsapp: string | null;
   address: string | null;
   district: string | null;
+  division: string | null;
+  upazila: string | null;
+  thana: string | null;
   maritalStatus: MaritalStatus | null;
   status: PatientStatus;
   branchId: number;
@@ -131,8 +135,12 @@ export interface CreatePatientInput {
   maritalStatus?: MaritalStatus | null;
   phone?: string | null;
   email?: string | null;
+  whatsapp?: string | null;
   address?: string | null;
   district?: string | null;
+  division?: string | null;
+  upazila?: string | null;
+  thana?: string | null;
   nationalId?: string | null;
   occupation?: Occupation | null;
   photo?: string | null;
@@ -150,6 +158,7 @@ export interface PatientListQuery {
   name?: string;
   phone?: string;
   email?: string;
+  whatsapp?: string;
   gender?: Gender;
   status?: PatientStatus;
   branchId?: number;
@@ -809,6 +818,7 @@ export interface PatientSetting {
   duplicateDetection: boolean;
   phoneRequired: boolean;
   emailRequired: boolean;
+  whatsappRequired: boolean;
   status: "active" | "inactive";
   updatedAt: string;
 }
@@ -1289,6 +1299,10 @@ export const MASTER_DATA_CATEGORIES = [
   "blood_groups",
   "payment_methods",
   "document_types",
+  "divisions",
+  "districts",
+  "upazilas",
+  "thanas",
 ] as const;
 
 export type MasterDataCategory = (typeof MASTER_DATA_CATEGORIES)[number];
@@ -1300,6 +1314,10 @@ export const MASTER_DATA_CATEGORY_LABELS: Record<MasterDataCategory, string> = {
   blood_groups: "Blood Groups",
   payment_methods: "Payment Methods",
   document_types: "Document Types",
+  divisions: "Divisions",
+  districts: "Districts",
+  upazilas: "Upazilas",
+  thanas: "Thanas",
 };
 
 export const MASTER_DATA_CATEGORY_EXAMPLES: Record<MasterDataCategory, string> = {
@@ -1309,6 +1327,36 @@ export const MASTER_DATA_CATEGORY_EXAMPLES: Record<MasterDataCategory, string> =
   blood_groups: "A+, B-, O+, AB+",
   payment_methods: "Cash, Card, bKash, Rocket",
   document_types: "NID, Passport, Birth Cert",
+  divisions: "Dhaka, Chattogram, Rajshahi",
+  districts: "Dhaka, Gazipur, Narayanganj",
+  upazilas: "Savar, Dhamrai, Rupganj",
+  thanas: "Gulshan, Banani, Kotwali",
+};
+
+/**
+ * The address categories are a hierarchy, so each one below the top level is
+ * selected under a parent. Mirrors ADDRESS_CATEGORY_PARENT in the backend
+ * setting.validation.ts; a value of null means the category is top level.
+ */
+/** The four address levels that make up the Bangladesh cascade. */
+export const ADDRESS_CATEGORIES: readonly MasterDataCategory[] = [
+  "divisions",
+  "districts",
+  "upazilas",
+  "thanas",
+];
+
+export const MASTER_DATA_CATEGORY_PARENT: Record<MasterDataCategory, MasterDataCategory | null> = {
+  cities: null,
+  areas: null,
+  visit_types: null,
+  blood_groups: null,
+  payment_methods: null,
+  document_types: null,
+  divisions: null,
+  districts: "divisions",
+  upazilas: "districts",
+  thanas: "districts",
 };
 
 export interface MasterDataItem {
@@ -1317,6 +1365,7 @@ export interface MasterDataItem {
   category: MasterDataCategory;
   label: string;
   code: string | null;
+  parentCode: string | null;
   sortOrder: number;
   status: "active" | "inactive";
 }
@@ -1325,11 +1374,53 @@ export type CreateMasterDataInput = {
   category: MasterDataCategory;
   label: string;
   code?: string | null;
+  parentCode?: string | null;
   sortOrder?: number;
   status?: "active" | "inactive";
 };
 
 export type UpdateMasterDataInput = Partial<CreateMasterDataInput>;
+
+/**
+ * A resolved dropdown entry. `fallback` is true when the backend had to serve
+ * the built-in enum instead of master data (e.g. the category is empty).
+ */
+export interface MasterDataOption {
+  code: string;
+  label: string;
+  sortOrder: number;
+  fallback: boolean;
+}
+
+/** One level of the Bangladesh address cascade. */
+export interface AddressChoice {
+  code: string;
+  label: string;
+}
+
+/** Upazilas and thanas are both district children, so they carry their kind. */
+export interface AddressLocality extends AddressChoice {
+  type: "thana" | "upazila";
+}
+
+/** Renders a stored address the way it is displayed across the app. */
+export function formatAddress(p: {
+  address?: string | null;
+  upazila?: string | null;
+  thana?: string | null;
+  district?: string | null;
+  division?: string | null;
+}): string {
+  const parts = [
+    p.address,
+    p.thana || p.upazila,
+    p.district,
+    // Division is redundant next to a district, so it only fills the gap when
+    // the record has no district.
+    p.district ? null : p.division,
+  ].filter((v): v is string => Boolean(v && v.trim()));
+  return parts.join(", ") || "—";
+}
 
 export interface LocalizationSetting {
   id: number;
@@ -1622,9 +1713,24 @@ export const settingsApi = {
         method: "PATCH",
         body: JSON.stringify(input),
       }),
-    remove: (id: number) =>
-      request<{ message: string }>(`/settings/master-data/${id}`, { method: "DELETE" }),
-  },
+      remove: (id: number) =>
+        request<{ message: string }>(`/settings/master-data/${id}`, { method: "DELETE" }),
+      options: (category: MasterDataCategory) =>
+        request<{ category: string; options: MasterDataOption[] }>(
+          `/settings/master-data/options/${category}`,
+        ),
+    },
+    address: {
+      divisions: () => request<{ items: AddressChoice[] }>("/settings/address/divisions"),
+      districts: (division?: string) =>
+        request<{ items: AddressChoice[] }>(
+          `/settings/address/districts${qs(division ? { division } : {})}`,
+        ),
+      localities: (district?: string) =>
+        request<{ items: AddressLocality[] }>(
+          `/settings/address/localities${qs(district ? { district } : {})}`,
+        ),
+    },
   localization: {
     get: () => request<{ localization: LocalizationSetting }>("/settings/localization"),
     update: (input: UpdateLocalizationInput) =>

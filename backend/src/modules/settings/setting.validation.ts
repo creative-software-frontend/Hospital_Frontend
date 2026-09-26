@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ADDRESS_CATEGORY_PARENT, isAddressCategory } from "../../lib/bangladeshAddress";
 
 export const SETTING_STATUS_VALUES = ["active", "inactive"] as const;
 
@@ -86,6 +87,7 @@ export const updatePatientSettingSchema = z.object({
   duplicateDetection: z.boolean().optional(),
   phoneRequired: z.boolean().optional(),
   emailRequired: z.boolean().optional(),
+  whatsappRequired: z.boolean().optional(),
   status: z.enum(SETTING_STATUS_VALUES).optional(),
 });
 
@@ -357,19 +359,45 @@ export const MASTER_DATA_CATEGORIES = [
   "blood_groups",
   "payment_methods",
   "document_types",
+  "divisions",
+  "districts",
+  "upazilas",
+  "thanas",
 ] as const;
 
 export const masterDataCategorySchema = z.enum(MASTER_DATA_CATEGORIES);
 
-export const createMasterDataSchema = z.object({
+/**
+ * The address categories form a hierarchy seeded from
+ * @bangladeshi/bangladesh-address. A row is only reachable through the cascading
+ * dropdowns when it names its parent, so the lower levels require one. Divisions
+ * are top level and take none. The mapping lives in lib/bangladeshAddress.ts so
+ * that this schema and the delete guard cannot drift apart.
+ */
+const needsParent = (category: string): boolean =>
+  isAddressCategory(category) && ADDRESS_CATEGORY_PARENT[category] !== null;
+
+const masterDataBaseSchema = z.object({
   category: masterDataCategorySchema,
   label: z.string().trim().min(1, "label is required").max(128),
-  code: z.string().trim().max(32).optional().nullable(),
+  // Generated address codes reach ~41 characters (e.g. a long upazila name under
+  // a long district name), so this cannot stay at 32.
+  code: z.string().trim().max(64).optional().nullable(),
+  parentCode: z.string().trim().max(64).optional().nullable(),
   sortOrder: z.number().int().min(0).optional(),
   status: z.enum(SETTING_STATUS_VALUES).optional(),
 });
 
-export const updateMasterDataSchema = createMasterDataSchema.partial();
+export const createMasterDataSchema = masterDataBaseSchema.refine(
+  (value) => !needsParent(value.category) || Boolean(value.parentCode),
+  {
+    message: "parentCode is required: a district needs a division, and an upazila or thana needs a district",
+    path: ["parentCode"],
+  },
+);
+
+// Built from the base object because .partial() does not exist on the refined type.
+export const updateMasterDataSchema = masterDataBaseSchema.partial();
 
 export type CreateMasterDataInput = z.infer<typeof createMasterDataSchema>;
 export type UpdateMasterDataInput = z.infer<typeof updateMasterDataSchema>;

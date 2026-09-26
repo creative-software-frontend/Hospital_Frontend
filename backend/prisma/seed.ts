@@ -1026,13 +1026,12 @@ async function seed() {
     { category: "cities", label: "Barishal", code: "BRL" },
     { category: "cities", label: "Rangpur", code: "RPR" },
     { category: "cities", label: "Mymensingh", code: "MYM" },
-    // Areas
-    { category: "areas", label: "Dhanmondi" },
-    { category: "areas", label: "Gulshan" },
-    { category: "areas", label: "Banani" },
-    { category: "areas", label: "Uttara" },
-    { category: "areas", label: "Motijheel" },
-    { category: "areas", label: "Mirpur" },
+    // Areas: superseded by the proper Bangladesh hierarchy, which is synced
+    // from @bangladeshi/bangladesh-address by `npm run seed:address` into the
+    // divisions/districts/upazilas/thanas categories. The old hand-written
+    // rows were not real administrative units (Banani is an area inside Uttara
+    // thana, not a thana itself), so they are no longer seeded.
+    //
     // Visit types
     { category: "visit_types", label: "New", code: "NEW" },
     { category: "visit_types", label: "Follow-up", code: "FOLLOW_UP" },

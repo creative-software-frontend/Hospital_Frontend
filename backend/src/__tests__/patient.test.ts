@@ -18,6 +18,7 @@ vi.mock("../lib/prisma", () => {
   const prismaClient = {
     patient: makeModel(),
     patientContact: makeModel(),
+    patientSetting: makeModel(),
     branch: makeModel(),
     codeSequence: makeModel(),
     $transaction: vi.fn(async (arg: unknown) => {
@@ -62,9 +63,19 @@ const mockPrisma = (await import("../lib/prisma")).prisma as unknown as {
     findMany: ReturnType<typeof vi.fn>;
   };
   branch: { findUnique: ReturnType<typeof vi.fn> };
+  patientSetting: { findFirst: ReturnType<typeof vi.fn> };
   codeSequence: { upsert: ReturnType<typeof vi.fn> };
   $transaction: ReturnType<typeof vi.fn>;
 };
+
+// Default branch PatientSetting for the required-contact guard. Nothing is
+// required by default, so existing specs are unaffected; the enforcement specs
+// below override this to assert the real behaviour.
+mockPrisma.patientSetting.findFirst.mockResolvedValue({
+  phoneRequired: false,
+  emailRequired: false,
+  whatsappRequired: false,
+});
 
 import * as patientService from "../modules/patients/patient.service";
 
@@ -131,6 +142,61 @@ describe("patient service — create", () => {
     );
     expect(result.id).toBe(10);
     expect(result.patientCode).toBe("PAT-000001");
+  });
+
+  it("stores the whatsapp number on the patient record", async () => {
+    (mockPrisma.codeSequence.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({ nextNumber: 2 });
+    (mockPrisma.patient.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 11,
+      branchId: 1,
+      patientCode: "PAT-000002",
+    });
+
+    await patientService.createPatient(actor, {
+      name: "Jane Doe",
+      whatsapp: "+8801711111111",
+    });
+
+    expect(mockPrisma.patient.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ whatsapp: "+8801711111111" }),
+      }),
+    );
+  });
+
+  it("rejects a patient without a whatsapp number when the branch requires it", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce({
+      phoneRequired: false,
+      emailRequired: false,
+      whatsappRequired: true,
+    });
+
+    await expect(
+      patientService.createPatient(actor, { name: "No WhatsApp" }),
+    ).rejects.toThrow(/WhatsApp number is required/i);
+
+    expect(mockPrisma.patient.create).not.toHaveBeenCalled();
+  });
+
+  it("accepts a patient with a whatsapp number when the branch requires it", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce({
+      phoneRequired: false,
+      emailRequired: false,
+      whatsappRequired: true,
+    });
+    (mockPrisma.codeSequence.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({ nextNumber: 3 });
+    (mockPrisma.patient.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 12,
+      branchId: 1,
+      patientCode: "PAT-000003",
+    });
+
+    const result = await patientService.createPatient(actor, {
+      name: "Has WhatsApp",
+      whatsapp: "+8801811111111",
+    });
+
+    expect(result.id).toBe(12);
   });
 
   it("maps a unique-index violation on the generated code to ConflictError", async () => {
@@ -246,6 +312,53 @@ describe("patient service — update", () => {
     expect(mockPrisma.patient.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ phone: "01800000000" }) }),
     );
+  });
+
+  it("refuses to clear a stored whatsapp number while the branch requires it", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce({
+      phoneRequired: false,
+      emailRequired: false,
+      whatsappRequired: true,
+    });
+    (mockPrisma.patient.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 10,
+      branchId: 1,
+      patientCode: "PT-0001",
+    });
+    (mockPrisma.patient.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ...SAMPLE_PATIENT,
+      whatsapp: "+8801711111111",
+    });
+
+    await expect(
+      patientService.updatePatient(actor, 10, { whatsapp: "" as unknown as undefined }),
+    ).rejects.toThrow(/WhatsApp number is required/i);
+
+    expect(mockPrisma.patient.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects an update that would leave a required whatsapp empty when omitted", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce({
+      phoneRequired: false,
+      emailRequired: false,
+      whatsappRequired: true,
+    });
+    (mockPrisma.patient.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 10,
+      branchId: 1,
+      patientCode: "PT-0001",
+    });
+    // Stored record has no whatsapp, so unrelated edits must still be blocked.
+    (mockPrisma.patient.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ...SAMPLE_PATIENT,
+      whatsapp: null,
+    });
+
+    await expect(
+      patientService.updatePatient(actor, 10, { name: "Renamed" }),
+    ).rejects.toThrow(/WhatsApp number is required/i);
+
+    expect(mockPrisma.patient.update).not.toHaveBeenCalled();
   });
 });
 

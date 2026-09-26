@@ -277,6 +277,32 @@ export const listMasterData = asyncHandler(async (req: Request, res: Response) =
   success(res, { items });
 });
 
+export const listMasterDataOptions = asyncHandler(async (req: Request, res: Response) => {
+  const options = await settingService.listMasterDataOptions(req.user!, req.params.category);
+  success(res, { category: req.params.category, options });
+});
+
+export const listAddressDivisions = asyncHandler(async (req: Request, res: Response) => {
+  const items = await settingService.listDivisions(req.user!);
+  success(res, { items });
+});
+
+export const listAddressDistricts = asyncHandler(async (req: Request, res: Response) => {
+  const items = await settingService.listDistricts(
+    req.user!,
+    typeof req.query.division === "string" ? req.query.division : undefined,
+  );
+  success(res, { items });
+});
+
+export const listAddressLocalities = asyncHandler(async (req: Request, res: Response) => {
+  const items = await settingService.listLocalities(
+    req.user!,
+    typeof req.query.district === "string" ? req.query.district : undefined,
+  );
+  success(res, { items });
+});
+
 export const createMasterData = asyncHandler(async (req: Request, res: Response) => {
   const item = await settingService.createMasterData(req.user!, req.body);
   success(res, { item });

@@ -20,7 +20,9 @@ import {
 } from "@/app/lib/api";
 import type { UserRole } from "@/app/config/roleConfig";
 import { patientCapabilities } from "@/app/lib/roles";
-import { genderLabel, bloodGroupLabel } from "@/app/patients/constants";
+import { genderLabel } from "@/app/patients/constants";
+import { formatAddress } from "@/app/lib/api";
+import { useMasterDataLabels } from "@/app/lib/useMasterData";
 import { PatientFormModal } from "@/app/patients/PatientFormModal";
 import { PatientProfileModal } from "@/app/patients/PatientProfileModal";
 import { ConfirmDialog } from "@/app/patients/ConfirmDialog";
@@ -42,6 +44,7 @@ export function PatientModule({ role }: { role: UserRole | null }) {
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
+  const bloodGroup = useMasterDataLabels("blood_groups");
 
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -252,6 +255,7 @@ export function PatientModule({ role }: { role: UserRole | null }) {
                 <th className="text-left text-[11px] font-bold text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">Age</th>
                 <th className="text-left text-[11px] font-bold text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">Blood</th>
                 <th className="text-left text-[11px] font-bold text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">Contact</th>
+                <th className="text-left text-[11px] font-bold text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">Address</th>
                 {role === "super-admin" && (
                   <th className="text-left text-[11px] font-bold text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">Branch</th>
                 )}
@@ -263,7 +267,7 @@ export function PatientModule({ role }: { role: UserRole | null }) {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={role === "super-admin" ? 10 : 9} className="px-4 py-12 text-center">
+                  <td colSpan={role === "super-admin" ? 11 : 10} className="px-4 py-12 text-center">
                     <div className="inline-flex items-center gap-3 text-xs font-bold text-[var(--muted)]">
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[var(--primary)]"></div>
                       Loading patients...
@@ -272,7 +276,7 @@ export function PatientModule({ role }: { role: UserRole | null }) {
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={role === "super-admin" ? 10 : 9} className="px-4 py-12 text-center">
+                  <td colSpan={role === "super-admin" ? 11 : 10} className="px-4 py-12 text-center">
                     <div className="inline-flex flex-col items-center gap-2 text-xs font-bold text-[var(--muted)]">
                       <FiUser className="w-6 h-6 text-[var(--muted)]/50" />
                       No patients match the current filters.
@@ -299,11 +303,16 @@ export function PatientModule({ role }: { role: UserRole | null }) {
                     </td>
                     <td className="text-[12px] text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">{genderLabel(p.gender)}</td>
                     <td className="text-[12px] text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">{calcAge(p.dateOfBirth)}</td>
-                    <td className="text-[12px] text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">{bloodGroupLabel(p.bloodGroup)}</td>
+                    <td className="text-[12px] text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">{bloodGroup(p.bloodGroup)}</td>
                     <td className="text-[12px] text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">
                       <span className="flex items-center gap-1.5">{p.phone ?? "—"}</span>
                       <span className="flex items-center gap-1.5 text-[10px] text-[var(--muted)]">
                         <FiPhone className="w-2.5 h-2.5" /> {p.email ?? "no email"}
+                      </span>
+                    </td>
+                    <td className="text-[12px] text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">
+                      <span className="block max-w-[220px] truncate" title={formatAddress(p)}>
+                        {formatAddress(p)}
                       </span>
                     </td>
                     {role === "super-admin" && (

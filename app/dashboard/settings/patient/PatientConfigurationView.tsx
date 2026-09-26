@@ -109,6 +109,7 @@ export function PatientConfigurationView() {
         duplicateDetection: data.duplicateDetection,
         phoneRequired: data.phoneRequired,
         emailRequired: data.emailRequired,
+        whatsappRequired: data.whatsappRequired,
       });
       setDirty(false);
       notify("success", "Patient configuration saved.");
@@ -228,6 +229,12 @@ export function PatientConfigurationView() {
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-[var(--muted)]">Email Required</span>
                 <Toggle checked={data.emailRequired} onChange={(v) => patch({ emailRequired: v })} />
+              </div>
+            </div>
+            <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[var(--muted)]">WhatsApp Number Required</span>
+                <Toggle checked={data.whatsappRequired} onChange={(v) => patch({ whatsappRequired: v })} />
               </div>
             </div>
           </div>
