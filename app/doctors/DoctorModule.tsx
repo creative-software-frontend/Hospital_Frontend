@@ -85,22 +85,19 @@ export function DoctorModule() {
   const totalPages = pagination?.totalPages ?? 1;
   const safePage = Math.min(page, Math.max(1, totalPages));
 
-  // Returns the generated code on create so the form can display it, or null on
-  // edit. The modal owns closing itself so it can stay open long enough to show
-  // the generated code.
-  const submit = async (input: CreateDoctorInput): Promise<string | null> => {
+  const submit = async (input: CreateDoctorInput): Promise<void> => {
     if (editing) {
       await doctorApi.update(editing.id, input);
       notify("success", `Doctor "${input.name}" updated.`);
-      return null;
+    } else {
+      const created = await doctorApi.create(input);
+      notify("success", `Doctor "${input.name}" created. Code: ${created.doctor.doctorCode}.`);
+      setPage(1);
+      setSearchTerm("");
+      setSearchInput("");
     }
-    const created = await doctorApi.create(input);
-    notify("success", `Doctor "${input.name}" created. Code: ${created.doctor.doctorCode}.`);
-    setPage(1);
-    setSearchTerm("");
-    setSearchInput("");
+    setFormOpen(false);
     setReloadKey((k) => k + 1);
-    return created.doctor.doctorCode;
   };
 
   return (
@@ -233,7 +230,7 @@ function DoctorFormModal({
   onClose,
 }: {
   doctor: DoctorRecord | null;
-  onSubmit: (input: CreateDoctorInput) => Promise<string | null>;
+  onSubmit: (input: CreateDoctorInput) => Promise<void>;
   onClose: () => void;
 }) {
   const editing = !!doctor;
@@ -252,9 +249,6 @@ function DoctorFormModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  // Set once the record exists, so the generated code can be shown instead of
-  // disappearing into a toast the moment the modal closes.
-  const [createdCode, setCreatedCode] = useState<string | null>(null);
 
   const INPUT_CLS =
     "w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15 text-[var(--text)]";
@@ -316,7 +310,7 @@ function DoctorFormModal({
 
     setSaving(true);
     try {
-      const code = await onSubmit({
+      await onSubmit({
         name: name.trim(),
         departmentId: departmentId ? Number(departmentId) : null,
         specialization: specialization.trim() || null,
@@ -329,13 +323,6 @@ function DoctorFormModal({
         emergencyFee: emergencyFee.trim() || null,
         status,
       });
-      if (code) {
-        // Stay open and show the generated code.
-        setCreatedCode(code);
-      } else {
-        // Nothing new was generated on edit, so close straight away.
-        onClose();
-      }
     } catch (err) {
       // Per-field messages from the server are shown next to the input that
       // caused them instead of a single opaque banner.
@@ -354,30 +341,6 @@ function DoctorFormModal({
       setSaving(false);
     }
   };
-
-  if (createdCode) {
-    return (
-      <div className="fixed inset-0 z-[90] flex items-center justify-center p-4" onClick={onClose}>
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-        <div className="relative bg-[var(--card)] border border-[var(--border)] rounded-3xl shadow-2xl w-full max-w-md p-8 text-center">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-7 h-7 text-emerald-600"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-          </div>
-          <h3 className="font-black text-lg text-[var(--primary-dark)] mt-4">Doctor created</h3>
-          <p className="text-xs text-[var(--muted)] mt-1">Use this ID on registration, prescriptions and reports.</p>
-          <div className="mt-4 py-3 rounded-2xl bg-[var(--bg)] border border-dashed border-[var(--primary)]">
-            <div className="text-[10px] uppercase font-bold tracking-widest text-[var(--muted)]">Doctor ID</div>
-            <div className="font-black text-2xl text-[var(--primary-dark)] mt-1 tracking-wide">{createdCode}</div>
-          </div>
-          <button type="button" onClick={onClose}
-            className="mt-5 w-full px-4 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.98]"
-            style={{ background: "var(--primary)" }}>
-            Done
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center p-4" onClick={() => !saving && onClose()}>

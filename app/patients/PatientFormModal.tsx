@@ -115,9 +115,6 @@ export function PatientFormModal({
   const [form, setForm] = useState<FormState>(() => prefillFromPatient(patient));
   const [contacts, setContacts] = useState<ContactDraft[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  // Set once the record exists, so the generated patient code can be shown
-  // instead of disappearing into a toast the moment the modal closes.
-  const [createdCode, setCreatedCode] = useState<string | null>(null);
   const [formError, setFormError] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -310,9 +307,6 @@ export function PatientFormModal({
     try {
       if (mode === "create") {
         const created = await patientApi.create(mappedContacts.length > 0 ? { ...input, contacts: mappedContacts } : input);
-        // Stay open and surface the generated code; the parent does not close
-        // the modal on create so this panel can be shown.
-        setCreatedCode(created.patient.patientCode);
         onSaved(created.patient.patientCode);
       } else if (patient) {
         await patientApi.update(patient.id, input);
@@ -336,30 +330,6 @@ export function PatientFormModal({
 
   const fieldError = (key: string) =>
     fieldErrors[key] ? <p className="text-[10px] font-bold text-rose-500 mt-1">{fieldErrors[key]}</p> : null;
-
-  if (createdCode) {
-    return (
-      <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6" onClick={onClose}>
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-        <div className="relative bg-[var(--card)] border border-[var(--border)] rounded-3xl shadow-2xl w-full max-w-md p-8 text-center">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-7 h-7 text-emerald-600"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-          </div>
-          <h3 className="font-black text-lg text-[var(--primary-dark)] mt-4">Patient registered</h3>
-          <p className="text-xs text-[var(--muted)] mt-1">Use this ID for visits, prescriptions, billing and reports.</p>
-          <div className="mt-4 py-3 rounded-2xl bg-[var(--bg)] border border-dashed border-[var(--primary)]">
-            <div className="text-[10px] uppercase font-bold tracking-widest text-[var(--muted)]">Patient ID</div>
-            <div className="font-black text-2xl text-[var(--primary-dark)] mt-1 tracking-wide">{createdCode}</div>
-          </div>
-          <button type="button" onClick={onClose}
-            className="mt-5 w-full px-4 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.98]"
-            style={{ background: "var(--primary)" }}>
-            Done
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6">

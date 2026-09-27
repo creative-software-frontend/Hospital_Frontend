@@ -413,14 +413,12 @@ export function PatientModule({ role }: { role: UserRole | null }) {
           onClose={() => setFormOpen(false)}
           onSaved={(newCode) => {
             if (editingPatient) {
-              setFormOpen(false);
               notify("success", `Patient ${editingPatient.patientCode} updated.`);
             } else {
-              // Stay open: the modal shows the generated patient code and
-              // closes itself via its Done button.
               notify("success", `Patient registered. Code: ${newCode ?? "generated"}.`);
               setPage(1);
             }
+            setFormOpen(false);
             refreshList();
           }}
         />
