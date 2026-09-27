@@ -124,14 +124,19 @@ async function assertRequiredContactChannels(
   });
   if (!setting) return;
 
+  // Each rejection names its field via `details` so the registration form can
+  // mark the offending input rather than showing a bare banner.
   if (setting.whatsappRequired && !values.whatsapp?.trim()) {
-    throw new BusinessRuleError("WhatsApp number is required by this branch's patient configuration");
+    const message = "WhatsApp number is required by this branch's patient configuration";
+    throw new BusinessRuleError(message, { whatsapp: message });
   }
   if (setting.phoneRequired && !values.phone?.trim()) {
-    throw new BusinessRuleError("Phone number is required by this branch's patient configuration");
+    const message = "Phone number is required by this branch's patient configuration";
+    throw new BusinessRuleError(message, { phone: message });
   }
   if (setting.emailRequired && !values.email?.trim()) {
-    throw new BusinessRuleError("Email is required by this branch's patient configuration");
+    const message = "Email is required by this branch's patient configuration";
+    throw new BusinessRuleError(message, { email: message });
   }
 }
 

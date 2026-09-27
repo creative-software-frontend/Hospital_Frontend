@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "setup": "npm --prefix backend run db:setup",
+    "db:migrate": "npm --prefix backend run db:migrate",
+    "db:migrate:dev": "npm --prefix backend run db:migrate:dev",
+    "db:seed": "npm --prefix backend run db:seed",
+    "db:studio": "npm --prefix backend run db:studio"
   },
   "dependencies": {
     "lottie-react": "^2.4.1",

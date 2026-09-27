@@ -292,9 +292,13 @@ export class ConflictError extends ApiError {
 }
 
 export class BusinessRuleError extends ApiError {
-  constructor(message: string) {
-    super(422, "BUSINESS_RULE", message);
+  /** Flat `{ field: message }` map when the rule rejects one specific input. */
+  readonly fieldErrors: Record<string, string>;
+
+  constructor(message: string, details?: unknown) {
+    super(422, "BUSINESS_RULE", message, details);
     this.name = "BusinessRuleError";
+    this.fieldErrors = this.details ?? {};
   }
 }
 
@@ -322,8 +326,8 @@ function toApiError(status: number, code: string, message: string, details?: unk
     case "CONFLICT":
     case "UNIQUE_CONSTRAINT":
       return new ConflictError(message, code);
-    case "BUSINESS_RULE":
-      return new BusinessRuleError(message);
+      case "BUSINESS_RULE":
+        return new BusinessRuleError(message, details);
     case "VALIDATION_ERROR":
       return new ValidationError(message, details);
     default:

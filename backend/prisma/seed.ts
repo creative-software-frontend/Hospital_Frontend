@@ -1,8 +1,25 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
+import { syncAddressMasterData } from "./syncAddressMasterData";
 
 const prisma = new PrismaClient();
+
+/* ---------------------------------------------------------------------------
+ * Production guard
+ *
+ * This script writes a login with a well-known password and replaces reference
+ * data. That is the point in development and unacceptable against a real
+ * database, so refuse unless the deployer explicitly opts in.
+ * ------------------------------------------------------------------------- */
+if (process.env.NODE_ENV === "production" && process.env.SEED_ALLOW_PRODUCTION !== "true") {
+  console.error(
+    "Refusing to seed: NODE_ENV=production.\n" +
+      "The seed creates a bootstrap admin with a known password and rewrites reference data.\n" +
+      "If this is genuinely intended, re-run with SEED_ALLOW_PRODUCTION=true.",
+  );
+  process.exit(1);
+}
 
 /* ---------------------------------------------------------------------------
  * Configuration (overridable via env)
@@ -1117,7 +1134,48 @@ async function seed() {
   }
   console.log("System maintenance ready.");
 
+  // Shift types. The nurse registration form reads these for its Shift dropdown,
+  // so without them the field is permanently empty. `name` is the unique key on
+  // this table, so it is what the seed matches on.
+  const SHIFT_TYPES: Array<{ name: string; startTime: string; endTime: string }> = [
+    { name: "Morning", startTime: "06:00", endTime: "14:00" },
+    { name: "Evening", startTime: "14:00", endTime: "22:00" },
+    { name: "Night", startTime: "22:00", endTime: "06:00" },
+  ];
+  for (const shift of SHIFT_TYPES) {
+    await prisma.shiftType.upsert({
+      where: { name: shift.name },
+      update: { startTime: shift.startTime, endTime: shift.endTime },
+      create: {
+        name: shift.name,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        status: "active",
+      },
+    });
+  }
+  console.log(`Shift types ready (${SHIFT_TYPES.length}).`);
+
+  // Bangladesh address hierarchy. Runs last because it attaches one copy of the
+  // dataset to every branch, so the branches have to exist first. Keeping this
+  // inside the normal seed is what makes a single `prisma db seed` produce a
+  // working app instead of one with an empty Division dropdown.
+  const address = await syncAddressMasterData(prisma);
+  console.log(
+    `Address master data ready: ${Object.entries(address.byCategory)
+      .map(([category, count]) => `${category}=${count}`)
+      .join(", ")} across ${address.branches} branch(es) ` +
+      `(created ${address.created}, refreshed ${address.refreshed}, deactivated ${address.deactivated}).`,
+  );
+
   console.log("Seed complete.");
+  console.log("");
+  console.log("  Sign in with:");
+  console.log(`    username: ${process.env.SEED_ADMIN_USERNAME || "admin"}`);
+  console.log(`    password: ${process.env.SEED_ADMIN_PASSWORD || "ChangeMe123!"}`);
+  if (!process.env.SEED_ADMIN_PASSWORD) {
+    console.log("    (development default - set SEED_ADMIN_PASSWORD before any real deployment)");
+  }
 }
 
 seed()

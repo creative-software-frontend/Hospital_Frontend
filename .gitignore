@@ -33,6 +33,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...but the templates must stay tracked, otherwise a fresh clone has nothing to
+# copy from and `npm run setup` cannot even explain what is missing.
+!.env.example
+!.env.*.example
 
 # vercel
 .vercel

@@ -49,7 +49,12 @@ export class ConflictError extends ApiError {
 }
 
 export class BusinessRuleError extends ApiError {
-  constructor(message: string) {
-    super(422, message, "BUSINESS_RULE");
+  /**
+   * `details` uses the same flat `{ field: message }` shape as ValidationError
+   * when a rule rejects one specific input, so clients can highlight the field
+   * that caused it instead of showing an unattributable banner.
+   */
+  constructor(message: string, details?: unknown) {
+    super(422, message, "BUSINESS_RULE", details);
   }
 }

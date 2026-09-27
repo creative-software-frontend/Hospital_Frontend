@@ -18,6 +18,8 @@ import {
   type PaginationMeta,
   type ShiftTypeRecord,
   errorMessage,
+  NotFoundError,
+  ValidationError,
 } from "@/app/lib/api";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
 
@@ -82,20 +84,22 @@ export function NurseModule() {
   const totalPages = pagination?.totalPages ?? 1;
   const safePage = Math.min(page, Math.max(1, totalPages));
 
-  const submit = async (input: CreateNurseInput) => {
+  // Returns the generated code on create so the form can display it, or null on
+  // edit. The modal owns closing itself so it can stay open long enough to show
+  // the generated code.
+  const submit = async (input: CreateNurseInput): Promise<string | null> => {
     if (editing) {
       await nurseApi.update(editing.id, input);
       notify("success", `Nurse "${input.name}" updated.`);
-    } else {
-      const created = await nurseApi.create(input);
-      notify("success", `Nurse "${input.name}" created. Code: ${created.nurse.nurseCode}.`);
+      return null;
     }
-    setFormOpen(false);
-    setEditing(null);
+    const created = await nurseApi.create(input);
+    notify("success", `Nurse "${input.name}" created. Code: ${created.nurse.nurseCode}.`);
     setPage(1);
     setSearchTerm("");
     setSearchInput("");
     setReloadKey((k) => k + 1);
+    return created.nurse.nurseCode;
   };
 
   return (
@@ -229,7 +233,7 @@ function NurseFormModal({
   onClose,
 }: {
   nurse: NurseRecord | null;
-  onSubmit: (input: CreateNurseInput) => Promise<void>;
+  onSubmit: (input: CreateNurseInput) => Promise<string | null>;
   onClose: () => void;
 }) {
   const editing = !!nurse;
@@ -245,9 +249,23 @@ function NurseFormModal({
   const [status, setStatus] = useState<ActiveStatus>(nurse?.status ?? "active");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // Set once the record exists, so the generated code can be shown instead of
+  // disappearing into a toast the moment the modal closes.
+  const [createdCode, setCreatedCode] = useState<string | null>(null);
 
   const INPUT_CLS =
     "w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15 text-[var(--text)]";
+
+  const setField = (key: string, value: string) => {
+    setFieldErrors((prev) => (prev[key] ? { ...prev, [key]: "" } : prev));
+    return value;
+  };
+
+  const fieldError = (key: string) =>
+    fieldErrors[key] ? (
+      <p className="text-[10px] font-bold text-rose-500 mt-1">{fieldErrors[key]}</p>
+    ) : null;
 
   useEffect(() => {
     let active = true;
@@ -262,16 +280,36 @@ function NurseFormModal({
     return () => { active = false; };
   }, []);
 
+  // Mirrors the backend Zod rules so an obviously bad value is caught before a
+  // round trip; the server still has the final say.
+  const validate = (): boolean => {
+    const next: Record<string, string> = {};
+    if (!name.trim()) {
+      next.name = "Name is required.";
+    } else if (name.trim().length > 255) {
+      next.name = "Name must be at most 255 characters.";
+    }
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      next.email = "Enter a valid email address.";
+    }
+    if (phone.trim() && !/^[0-9+\-\s()]+$/.test(phone.trim())) {
+      next.phone = "Phone can only contain digits, spaces and + - ( ).";
+    }
+    if (registrationNo.trim().length > 64) {
+      next.registrationNo = "Registration number must be at most 64 characters.";
+    }
+    setFieldErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!name.trim()) {
-      setError("Nurse name is required.");
-      return;
-    }
+    if (!validate()) return;
+
     setSaving(true);
     try {
-      await onSubmit({
+      const code = await onSubmit({
         name: name.trim(),
         departmentId: departmentId ? Number(departmentId) : null,
         shiftTypeId: shiftTypeId ? Number(shiftTypeId) : null,
@@ -281,12 +319,59 @@ function NurseFormModal({
         email: email.trim() || null,
         status,
       });
+      if (code) {
+        // Stay open and show the generated code.
+        setCreatedCode(code);
+      } else {
+        // Nothing new was generated on edit, so close straight away.
+        onClose();
+      }
     } catch (err) {
-      setError(errorMessage(err));
+      // Per-field messages from the server are shown next to the input that
+      // caused them instead of a single opaque banner.
+      if (err instanceof ValidationError) {
+        setFieldErrors(err.fieldErrors ?? {});
+        setError("Please correct the highlighted fields.");
+      } else if (err instanceof NotFoundError) {
+        // Reference checks (branch / department / shift) land on the related select.
+        const key = /department/i.test(err.message)
+          ? "departmentId"
+          : /shift/i.test(err.message)
+            ? "shiftTypeId"
+            : "";
+        if (key) setFieldErrors({ [key]: err.message });
+        setError("Please correct the highlighted fields.");
+      } else {
+        setError(errorMessage(err));
+      }
     } finally {
       setSaving(false);
     }
   };
+
+  if (createdCode) {
+    return (
+      <div className="fixed inset-0 z-[90] flex items-center justify-center p-4" onClick={onClose}>
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+        <div className="relative bg-[var(--card)] border border-[var(--border)] rounded-3xl shadow-2xl w-full max-w-md p-8 text-center">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-7 h-7 text-emerald-600"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+          </div>
+          <h3 className="font-black text-lg text-[var(--primary-dark)] mt-4">Nurse created</h3>
+          <p className="text-xs text-[var(--muted)] mt-1">Use this ID for ward rosters and nursing notes.</p>
+          <div className="mt-4 py-3 rounded-2xl bg-[var(--bg)] border border-dashed border-[var(--primary)]">
+            <div className="text-[10px] uppercase font-bold tracking-widest text-[var(--muted)]">Nurse ID</div>
+            <div className="font-black text-2xl text-[var(--primary-dark)] mt-1 tracking-wide">{createdCode}</div>
+          </div>
+          <button type="button" onClick={onClose}
+            className="mt-5 w-full px-4 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.98]"
+            style={{ background: "var(--primary)" }}>
+            Done
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center p-4" onClick={() => !saving && onClose()}>
@@ -302,15 +387,18 @@ function NurseFormModal({
         <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Name *</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} className={INPUT_CLS} />
+            <input value={name} onChange={(e) => setName(setField("name", e.target.value))} className={INPUT_CLS} />
+            {fieldError("name")}
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Registration No.</label>
-            <input value={registrationNo} onChange={(e) => setRegistrationNo(e.target.value)} className={INPUT_CLS} />
+            <input value={registrationNo} onChange={(e) => setRegistrationNo(setField("registrationNo", e.target.value))} className={INPUT_CLS} />
+            {fieldError("registrationNo")}
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Qualification</label>
-            <input value={qualification} onChange={(e) => setQualification(e.target.value)} className={INPUT_CLS} />
+            <input value={qualification} onChange={(e) => setQualification(setField("qualification", e.target.value))} className={INPUT_CLS} />
+            {fieldError("qualification")}
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Department</label>
@@ -318,6 +406,7 @@ function NurseFormModal({
               <option value="">— None —</option>
               {departments.map((d) => <option key={d.id} value={String(d.id)}>{d.name}</option>)}
             </select>
+            {fieldError("departmentId")}
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Shift</label>
@@ -325,14 +414,17 @@ function NurseFormModal({
               <option value="">— None —</option>
               {shiftTypes.map((s) => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
             </select>
+            {fieldError("shiftTypeId")}
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Phone</label>
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} className={INPUT_CLS} />
+            <input value={phone} onChange={(e) => setPhone(setField("phone", e.target.value))} className={INPUT_CLS} />
+            {fieldError("phone")}
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={INPUT_CLS} />
+            <input type="email" value={email} onChange={(e) => setEmail(setField("email", e.target.value))} className={INPUT_CLS} />
+            {fieldError("email")}
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Status</label>
@@ -340,6 +432,7 @@ function NurseFormModal({
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </select>
+            {fieldError("status")}
           </div>
         </div>
 

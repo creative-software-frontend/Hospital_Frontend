@@ -15,6 +15,7 @@ vi.mock("../lib/prisma", () => {
   const prismaClient = {
     doctor: makeModel(),
     branch: makeModel(),
+    department: makeModel(),
     codeSequence: makeModel(),
     $transaction: vi.fn(async (arg: unknown) => {
       if (typeof arg === "function") {
@@ -46,8 +47,9 @@ const mockPrisma = (await import("../lib/prisma")).prisma as unknown as {
     count: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
   };
-  branch: { findUnique: ReturnType<typeof vi.fn> };
-  codeSequence: { upsert: ReturnType<typeof vi.fn> };
+    branch: { findUnique: ReturnType<typeof vi.fn> };
+    department: { findUnique: ReturnType<typeof vi.fn> };
+    codeSequence: { upsert: ReturnType<typeof vi.fn> };
   $transaction: ReturnType<typeof vi.fn>;
 };
 
@@ -121,8 +123,11 @@ const VALID_INPUT = {
 };
 
 beforeEach(() => {
-  vi.clearAllMocks();
-  mockPrisma.branch.findUnique.mockResolvedValue({ id: 1 });
+    vi.clearAllMocks();
+    mockPrisma.branch.findUnique.mockResolvedValue({ id: 1 });
+    // Reference check: any submitted department id resolves unless a test
+    // overrides this to simulate a department that no longer exists.
+    mockPrisma.department.findUnique.mockResolvedValue({ id: 3 });
   mockPrisma.codeSequence.upsert.mockResolvedValue({ nextNumber: 1 });
   mockPrisma.doctor.create.mockResolvedValue(SAMPLE_DOCTOR);
   mockPrisma.doctor.count.mockResolvedValue(0);
@@ -158,10 +163,26 @@ describe("createDoctor", () => {
       ...({ branchId: 999 } as Record<string, unknown>),
     });
 
-    const call = mockPrisma.doctor.create.mock.calls[0][0];
-    expect(call.data.branchId).toBe(1);
-    expect(call.data).not.toHaveProperty("doctorCode", 999);
-  });
+      const call = mockPrisma.doctor.create.mock.calls[0][0];
+      expect(call.data.branchId).toBe(1);
+      expect(call.data).not.toHaveProperty("doctorCode", 999);
+    });
+
+    it("rejects a department that does not exist", async () => {
+      mockPrisma.department.findUnique.mockResolvedValue(null);
+
+      await expect(
+        doctorService.createDoctor(branchUser, { name: "Dr. Ghost", departmentId: 4242 }),
+      ).rejects.toThrow(/Department not found/i);
+      expect(mockPrisma.doctor.create).not.toHaveBeenCalled();
+    });
+
+    it("skips the department lookup when no department is submitted", async () => {
+      await doctorService.createDoctor(branchUser, { name: "Dr. Minimal", departmentId: null });
+
+      expect(mockPrisma.department.findUnique).not.toHaveBeenCalled();
+    });
+
 
   it("applies defaults for the optional fields", async () => {
     await doctorService.createDoctor(branchUser, { name: "Dr. Minimal" });
@@ -236,6 +257,15 @@ describe("updateDoctor", () => {
     await expect(doctorService.updateDoctor(branchUser, 999, { name: "Ghost" })).rejects.toThrow(
       /Doctor not found/i,
     );
+    expect(mockPrisma.doctor.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects moving a doctor into a department that does not exist", async () => {
+    mockPrisma.department.findUnique.mockResolvedValue(null);
+
+    await expect(
+      doctorService.updateDoctor(branchUser, 55, { departmentId: 4242 }),
+    ).rejects.toThrow(/Department not found/i);
     expect(mockPrisma.doctor.update).not.toHaveBeenCalled();
   });
 

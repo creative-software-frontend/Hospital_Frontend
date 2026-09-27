@@ -25,6 +25,20 @@ async function ensureBranch(id: number): Promise<void> {
   }
 }
 
+// Check the department before writing. Without this a stale selection (for
+// example a department deleted while the form was open) surfaces as a raw
+// FOREIGN_KEY_VIOLATION, which tells the user nothing.
+async function ensureDepartment(departmentId?: number | null): Promise<void> {
+  if (departmentId === null || departmentId === undefined) return;
+  const department = await prisma.department.findUnique({
+    where: { id: departmentId },
+    select: { id: true },
+  });
+  if (!department) {
+    throw new NotFoundError("Department not found");
+  }
+}
+
 async function getAccessibleDoctor(actor: AuthUser, id: number) {
   const row = await prisma.doctor.findFirst({
     where: { id, deletedAt: null },
@@ -101,6 +115,7 @@ export async function getDoctor(actor: AuthUser, id: number) {
 
 export async function createDoctor(actor: AuthUser, input: CreateDoctorInput) {
   await ensureBranch(actor.branchId);
+  await ensureDepartment(input.departmentId);
 
   // Claim the next branch-scoped doctor code and create the record in one
   // transaction: if creation fails the sequence increment rolls back too.
@@ -142,6 +157,9 @@ export async function createDoctor(actor: AuthUser, input: CreateDoctorInput) {
 
 export async function updateDoctor(actor: AuthUser, id: number, input: UpdateDoctorInput) {
   const accessible = await getAccessibleDoctor(actor, id);
+  if (input.departmentId !== undefined) {
+    await ensureDepartment(input.departmentId);
+  }
   const current = await prisma.doctor.findFirst({ where: { id } });
   const updated = await prisma.doctor.update({
     where: { id },
