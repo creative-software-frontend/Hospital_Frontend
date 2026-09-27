@@ -178,6 +178,7 @@ model Branch {
   users                  User[]
   departments            Department[]
   doctors                Doctor[]
+  nurses                 Nurse[]
   patients               Patient[]
   auditLogs              AuditLog[]
   services               Service[]
@@ -244,6 +245,7 @@ model User {
   userRoles UserRole[]
   auditLogs AuditLog[]
   doctor    Doctor?
+  nurse     Nurse?
   employee  Employee?
 
   @@index([branchId])
@@ -381,6 +383,7 @@ model Department {
 
   branch       Branch?       @relation(fields: [branchId], references: [id])
   doctors      Doctor[]
+  nurses       Nurse[]
   services     Service[]
   employees    Employee[]
   designations Designation[]
@@ -469,6 +472,40 @@ model Doctor {
   labResults     LabResult[]
 
   @@unique([branchId, doctorCode])
+  @@index([branchId])
+  @@index([registrationNo])
+  @@index([deletedAt])
+  @@index([departmentId])
+}
+
+/// A nurse is a first-class record like a doctor: it carries its own branch
+/// scoped code and nursing specific fields, and can optionally be linked to a
+/// login user and a shift type.
+model Nurse {
+  id             Int       @id @default(autoincrement())
+  userId         Int?      @unique
+  branchId       Int
+  departmentId   Int?
+  shiftTypeId    Int?
+  nurseCode      String
+  name           String
+  qualification  String?
+  registrationNo String?
+  phone          String?
+  email          String?
+  status         String    @default("active")
+  deletedAt      DateTime?
+  createdById    Int?
+  updatedById    Int?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user       User?       @relation(fields: [userId], references: [id])
+  branch     Branch?     @relation(fields: [branchId], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id])
+  shiftType  ShiftType?  @relation(fields: [shiftTypeId], references: [id])
+
+  @@unique([branchId, nurseCode])
   @@index([branchId])
   @@index([registrationNo])
   @@index([deletedAt])
@@ -1318,6 +1355,7 @@ model ShiftType {
   endTime      String?
   graceMinutes Int     @default(0)
   status       String  @default("active")
+  nurses       Nurse[]
 }
 
 model Employee {

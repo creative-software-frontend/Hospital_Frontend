@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 export const CODE_ENTITIES = {
   PATIENT: "Patient",
   DOCTOR: "Doctor",
+  NURSE: "Nurse",
   SERVICE: "Service",
 } as const;
 
@@ -11,6 +12,7 @@ export type CodeEntity = (typeof CODE_ENTITIES)[keyof typeof CODE_ENTITIES];
 const ENTITY_PREFIX: Record<CodeEntity, string> = {
   [CODE_ENTITIES.PATIENT]: "PAT",
   [CODE_ENTITIES.DOCTOR]: "DOC",
+  [CODE_ENTITIES.NURSE]: "NUR",
   [CODE_ENTITIES.SERVICE]: "SRV",
 };
 

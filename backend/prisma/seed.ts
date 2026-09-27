@@ -134,6 +134,9 @@ const PERMISSIONS: PermissionDef[] = [
   { module: "doctor", action: "read", description: "View doctors" },
   { module: "doctor", action: "create", description: "Create doctors" },
   { module: "doctor", action: "update", description: "Update doctors" },
+  { module: "nurse", action: "read", description: "View nurses" },
+  { module: "nurse", action: "create", description: "Create nurses" },
+  { module: "nurse", action: "update", description: "Update nurses" },
   { module: "service", action: "read", description: "View billable services" },
   { module: "service", action: "create", description: "Create services" },
   { module: "service", action: "update", description: "Update services" },
@@ -222,6 +225,7 @@ const MATRIX: Record<RoleKey, string[]> = {
     "branch:read", "branch:update", "systemSetting:read", "systemSetting:update", "securitySetting:read",
     "department:read", "department:create", "department:update",
     "doctor:read", "doctor:create", "doctor:update",
+    "nurse:read", "nurse:create", "nurse:update",
     "service:read", "service:create", "service:update",
     "patientSetting:read", "patientSetting:update",
     "opdSetting:read", "opdSetting:update",
@@ -278,6 +282,7 @@ const MATRIX: Record<RoleKey, string[]> = {
     "localizationSetting:read",
     "auth:read", "patient:read", "admission:read", "admission:update",
     "bed:read", "bed:update", "medicalRecord:read", "medicalRecord:create",
+    "nurse:read",
   ],
 };
 

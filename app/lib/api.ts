@@ -1856,6 +1856,61 @@ export interface CreateDoctorInput {
 
 export type UpdateDoctorInput = Partial<CreateDoctorInput>;
 
+export interface NurseRecord {
+  id: number;
+  userId: number | null;
+  branchId: number;
+  departmentId: number | null;
+  shiftTypeId: number | null;
+  nurseCode: string;
+  name: string;
+  qualification: string | null;
+  registrationNo: string | null;
+  phone: string | null;
+  email: string | null;
+  status: ActiveStatus;
+  createdAt: string;
+  updatedAt: string;
+  department?: { id: number; name: string; code: string } | null;
+  shiftType?: { id: number; name: string } | null;
+}
+
+export interface NurseListResult {
+  data: NurseRecord[];
+  pagination: PaginationMeta;
+}
+
+export interface NurseListQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: ActiveStatus;
+  departmentId?: number;
+  shiftTypeId?: number;
+}
+
+export interface CreateNurseInput {
+  name: string;
+  departmentId?: number | null;
+  shiftTypeId?: number | null;
+  qualification?: string | null;
+  registrationNo?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  status?: ActiveStatus;
+}
+
+export type UpdateNurseInput = Partial<CreateNurseInput>;
+
+export interface ShiftTypeRecord {
+  id: number;
+  name: string;
+  startTime: string | null;
+  endTime: string | null;
+  graceMinutes: number;
+  status: string;
+}
+
 export interface ServiceCategoryRecord {
   id: number;
   name: string;
@@ -1938,6 +1993,25 @@ export const doctorApi = {
     }),
   update: (id: number, input: UpdateDoctorInput) =>
     request<{ doctor: DoctorRecord }>(`/doctors/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+};
+
+export const nurseApi = {
+  list: (query: NurseListQuery = {}) =>
+    rawRequest<NurseListResult>(
+      `/nurses${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+  get: (id: number) => request<{ nurse: NurseRecord }>(`/nurses/${id}`),
+  shiftTypes: () => request<{ shiftTypes: ShiftTypeRecord[] }>("/nurses/shift-types"),
+  create: (input: CreateNurseInput) =>
+    request<{ nurse: NurseRecord }>("/nurses", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  update: (id: number, input: UpdateNurseInput) =>
+    request<{ nurse: NurseRecord }>(`/nurses/${id}`, {
       method: "PATCH",
       body: JSON.stringify(input),
     }),
