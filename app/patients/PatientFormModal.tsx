@@ -26,6 +26,18 @@ import {
 } from "@/app/patients/constants";
 import { useMasterDataOptions } from "@/app/lib/useMasterData";
 import { useAddressCascade } from "@/app/lib/useAddressCascade";
+import {
+  ADDRESS_MAX,
+  addError,
+  checkDateOfBirth,
+  checkEmail,
+  checkName,
+  checkPhone,
+  checkText,
+  MAX_CONTACTS,
+  NATIONAL_ID_MAX,
+  SHORT_TEXT_MAX,
+} from "@/app/lib/formValidation";
 import type { Occupation } from "@/app/lib/api";
 
 interface ContactDraft {
@@ -225,6 +237,7 @@ export function PatientFormModal({
 
   const updateContact = (idx: number, key: keyof ContactDraft, value: string | boolean) => {
     setContacts((prev) => prev.map((c, i) => (i === idx ? { ...c, [key]: value } : c)));
+    if (typeof value === "string") clearFieldError(`contacts.${idx}.${key}`);
   };
 
   const addContact = () =>
@@ -233,7 +246,30 @@ export function PatientFormModal({
       { name: "", relationship: "", phone: "", address: "", isPrimary: prev.length === 0 },
     ]);
 
-  const removeContact = (idx: number) => setContacts((prev) => prev.filter((_, i) => i !== idx));
+  // Rows shift when one is removed, so the remaining per-row errors have to be
+  // re-indexed or they end up attached to the wrong contact.
+  const removeContact = (idx: number) => {
+    setContacts((prev) => prev.filter((_, i) => i !== idx));
+    setFieldErrors((prev) => {
+      const next: Record<string, string> = {};
+      for (const [key, message] of Object.entries(prev)) {
+        if (key === "contacts") {
+          next.contacts = message;
+          continue;
+        }
+        const match = /^contacts\.(\d+)\.(.+)$/.exec(key);
+        if (!match) {
+          next[key] = message;
+          continue;
+        }
+        const row = Number(match[1]);
+        if (row < idx) next[key] = message;
+        else if (row === idx) continue;
+        else next[`contacts.${row - 1}.${match[2]}`] = message;
+      }
+      return next;
+    });
+  };
 
   const buildInput = (): CreatePatientInput => {
     const opt = (v: string): string | undefined => (v.trim() === "" ? undefined : v.trim());
@@ -269,23 +305,39 @@ export function PatientFormModal({
     // a round trip. The server still has the final say, and its per-field
     // messages are merged into the same fieldErrors map below.
     const local: Record<string, string> = {};
-    if (!form.name.trim()) {
-      local.name = "Name is required.";
-    } else if (form.name.trim().length > 255) {
-      local.name = "Name must be at most 255 characters.";
-    }
-    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-      local.email = "Enter a valid email address.";
-    }
-    for (const key of ["phone", "whatsapp"] as const) {
-      const raw = form[key].trim();
-      if (raw && !/^[0-9+\-\s()]+$/.test(raw)) {
-        local[key] = "Phone can only contain digits, spaces and + - ( ).";
+    addError(local, "name", checkName(form.name));
+    addError(local, "email", checkEmail(form.email));
+    addError(local, "phone", checkPhone(form.phone));
+    addError(local, "whatsapp", checkPhone(form.whatsapp));
+    addError(local, "dateOfBirth", checkDateOfBirth(form.dateOfBirth));
+    addError(local, "address", checkText(form.address, ADDRESS_MAX, "Address"));
+    addError(local, "nationalId", checkText(form.nationalId, NATIONAL_ID_MAX, "National ID"));
+
+    // A district or lower level without a division would be orphaned data, so
+    // the cascade has to be consistent top down.
+    for (const [child, parent, label] of [
+      ["district", "division", "Division"],
+      ["upazila", "district", "District"],
+      ["thana", "district", "District"],
+    ] as const) {
+      if (form[child].trim() && !form[parent].trim()) {
+        addError(local, parent, `${label} is required to select ${child}.`);
       }
     }
-    if (form.dateOfBirth && form.dateOfBirth > new Date().toISOString().slice(0, 10)) {
-      local.dateOfBirth = "Date of birth cannot be in the future.";
+
+    // Emergency contacts were previously sent unchecked, so a typo in a
+    // relative's phone number only surfaced as a server error.
+    if (contacts.length > MAX_CONTACTS) {
+      local.contacts = `A patient can have at most ${MAX_CONTACTS} contacts.`;
     }
+    contacts.forEach((c, i) => {
+      if (!c.name.trim()) return;
+      addError(local, `contacts.${i}.name`, checkName(c.name));
+      addError(local, `contacts.${i}.phone`, checkPhone(c.phone));
+      addError(local, `contacts.${i}.relationship`, checkText(c.relationship, SHORT_TEXT_MAX, "Relationship"));
+      addError(local, `contacts.${i}.address`, checkText(c.address, ADDRESS_MAX, "Address"));
+    });
+
     if (Object.keys(local).length > 0) {
       setFieldErrors(local);
       setFormError("Please correct the highlighted fields.");
@@ -606,6 +658,7 @@ export function PatientFormModal({
                           <div>
                             <label className={labelCls}>Relationship</label>
                             <input className={inputCls} value={c.relationship} onChange={(e) => updateContact(idx, "relationship", e.target.value)} placeholder="e.g. Spouse" disabled={submitting} />
+                            {fieldError(`contacts.${idx}.relationship`)}
                           </div>
                           <div>
                             <label className={labelCls}>Phone</label>
@@ -615,6 +668,7 @@ export function PatientFormModal({
                           <div className="sm:col-span-2">
                             <label className={labelCls}>Address</label>
                             <input className={inputCls} value={c.address} onChange={(e) => updateContact(idx, "address", e.target.value)} placeholder="Address" disabled={submitting} />
+                            {fieldError(`contacts.${idx}.address`)}
                           </div>
                         </div>
                         <label className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--muted)] cursor-pointer">

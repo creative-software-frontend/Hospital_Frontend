@@ -19,6 +19,17 @@ import {
   NotFoundError,
   ValidationError,
 } from "@/app/lib/api";
+import {
+  addError,
+  checkEmail,
+  checkMoney,
+  checkName,
+  checkOptionalId,
+  checkPhone,
+  checkText,
+  REGISTRATION_NO_MAX,
+  SHORT_TEXT_MAX,
+} from "@/app/lib/formValidation";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
 import { useCurrency } from "@/app/hooks/useCurrency";
 import { formatCurrency } from "@/app/lib/currency";
@@ -274,34 +285,24 @@ function DoctorFormModal({
   // Mirrors the backend Zod rules so an obviously bad value is caught before a
   // round trip; the server still has the final say.
   const validate = (): boolean => {
-    const next: Record<string, string> = {};
-    if (!name.trim()) {
-      next.name = "Name is required.";
-    } else if (name.trim().length > 255) {
-      next.name = "Name must be at most 255 characters.";
-    }
-    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      next.email = "Enter a valid email address.";
-    }
-    if (phone.trim() && !/^[0-9+\-\s()]+$/.test(phone.trim())) {
-      next.phone = "Phone can only contain digits, spaces and + - ( ).";
-    }
-    for (const [key, label] of [
-      ["consultationFee", "Consultation fee"],
-      ["followupFee", "Follow-up fee"],
-      ["emergencyFee", "Emergency fee"],
-    ] as const) {
-      const raw = { consultationFee, followupFee, emergencyFee }[key].trim();
-      if (raw && !/^\d+(\.\d{1,2})?$/.test(raw)) {
-        next[key] = `${label} must be a number with up to 2 decimals.`;
+      const next: Record<string, string> = {};
+      addError(next, "name", checkName(name));
+      addError(next, "email", checkEmail(email));
+      addError(next, "phone", checkPhone(phone));
+      addError(next, "departmentId", checkOptionalId(departmentId, "department"));
+      addError(next, "specialization", checkText(specialization, SHORT_TEXT_MAX, "Specialization"));
+      addError(next, "qualification", checkText(qualification, SHORT_TEXT_MAX, "Qualification"));
+      addError(next, "registrationNo", checkText(registrationNo, REGISTRATION_NO_MAX, "Registration number"));
+      for (const [key, label] of [
+        ["consultationFee", "Consultation fee"],
+        ["followupFee", "Follow-up fee"],
+        ["emergencyFee", "Emergency fee"],
+      ] as const) {
+        addError(next, key, checkMoney({ consultationFee, followupFee, emergencyFee }[key], label));
       }
-    }
-    if (registrationNo.trim().length > 64) {
-      next.registrationNo = "Registration number must be at most 64 characters.";
-    }
-    setFieldErrors(next);
-    return Object.keys(next).length === 0;
-  };
+      setFieldErrors(next);
+      return Object.keys(next).length === 0;
+    };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

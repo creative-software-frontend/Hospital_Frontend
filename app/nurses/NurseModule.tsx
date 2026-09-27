@@ -21,6 +21,16 @@ import {
   NotFoundError,
   ValidationError,
 } from "@/app/lib/api";
+import {
+  addError,
+  checkEmail,
+  checkName,
+  checkOptionalId,
+  checkPhone,
+  checkText,
+  REGISTRATION_NO_MAX,
+  SHORT_TEXT_MAX,
+} from "@/app/lib/formValidation";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
 
 const PAGE_SIZE = 10;
@@ -276,24 +286,17 @@ function NurseFormModal({
   // Mirrors the backend Zod rules so an obviously bad value is caught before a
   // round trip; the server still has the final say.
   const validate = (): boolean => {
-    const next: Record<string, string> = {};
-    if (!name.trim()) {
-      next.name = "Name is required.";
-    } else if (name.trim().length > 255) {
-      next.name = "Name must be at most 255 characters.";
-    }
-    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      next.email = "Enter a valid email address.";
-    }
-    if (phone.trim() && !/^[0-9+\-\s()]+$/.test(phone.trim())) {
-      next.phone = "Phone can only contain digits, spaces and + - ( ).";
-    }
-    if (registrationNo.trim().length > 64) {
-      next.registrationNo = "Registration number must be at most 64 characters.";
-    }
-    setFieldErrors(next);
-    return Object.keys(next).length === 0;
-  };
+      const next: Record<string, string> = {};
+      addError(next, "name", checkName(name));
+      addError(next, "email", checkEmail(email));
+      addError(next, "phone", checkPhone(phone));
+      addError(next, "departmentId", checkOptionalId(departmentId, "department"));
+      addError(next, "shiftTypeId", checkOptionalId(shiftTypeId, "shift"));
+      addError(next, "qualification", checkText(qualification, SHORT_TEXT_MAX, "Qualification"));
+      addError(next, "registrationNo", checkText(registrationNo, REGISTRATION_NO_MAX, "Registration number"));
+      setFieldErrors(next);
+      return Object.keys(next).length === 0;
+    };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
