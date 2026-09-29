@@ -1,14 +1,14 @@
 import { Router } from "express";
 import { validate } from "../../middleware/validation.middleware";
 import { requireAuth, optionalAuth } from "../../middleware/auth.middleware";
-import { loginRateLimiter, changePasswordRateLimiter } from "../../utils/rateLimit";
+import { changePasswordRateLimiter } from "../../utils/rateLimit";
 import * as authController from "./auth.controller";
 import { changePasswordSchema, loginSchema } from "./auth.validation";
 
 const router = Router();
 
-// Public — brute-force protection applied before validation.
-router.post("/login", loginRateLimiter, validate({ body: loginSchema }), authController.login);
+// Public — no rate limiting or automatic lockout on this route.
+router.post("/login", validate({ body: loginSchema }), authController.login);
 
 // Logout works even without a valid session; optionalAuth lets us audit where known.
 router.post("/logout", optionalAuth, authController.logout);

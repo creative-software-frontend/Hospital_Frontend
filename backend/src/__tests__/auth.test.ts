@@ -57,7 +57,6 @@ const mockPrisma = vi.mocked(await import("../lib/prisma")).prisma;
 // Auth Service
 // ----------------------------------------------------------------
 import * as authService from "../modules/auth/auth.service";
-import { clearAllFailedLogins } from "../utils/loginAttempt";
 import { writeAuditLog } from "../utils/audit";
 
 describe("auth.service", () => {
@@ -65,7 +64,6 @@ describe("auth.service", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    clearAllFailedLogins();
   });
 
   describe("login", () => {
@@ -105,8 +103,8 @@ describe("auth.service", () => {
       );
     });
 
-    it("locks the account after maxLoginAttempts consecutive failures", async () => {
-      (mockPrisma.user.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+    it("never locks the account no matter how many attempts fail", async () => {
+      const user = {
         id: 1,
         email: "target@example.com",
         username: "target",
@@ -115,27 +113,23 @@ describe("auth.service", () => {
         status: "ACTIVE",
         branchId: 1,
         userRoles: [{ role: { id: 1, seederKey: "ADMIN", name: "Admin" } }],
-      });
+      };
+      (mockPrisma.user.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(user);
       (mockPrisma.securitySetting.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
         maxLoginAttempts: 2,
       });
       (mockPrisma.user.update as ReturnType<typeof vi.fn>).mockResolvedValue({});
 
-      await expect(
-        authService.login({ identifier: "target@example.com", password: "wrong" }, { ip: "1.2.3.4" }),
-      ).rejects.toThrow("Invalid email/username or password");
-      await expect(
-        authService.login({ identifier: "target@example.com", password: "wrong" }, { ip: "1.2.3.4" }),
-      ).rejects.toThrow("Invalid email/username or password");
+      for (let i = 0; i < 8; i++) {
+        await expect(
+          authService.login({ identifier: "target@example.com", password: "wrong" }, { ip: "1.2.3.4" }),
+        ).rejects.toThrow("Invalid email/username or password");
+      }
 
-      expect(mockPrisma.user.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 1 }, data: { status: "LOCKED" } }),
-      );
-      expect(writeAuditLog).toHaveBeenCalledWith(
-        expect.objectContaining({
-          action: "LOGIN_ACCOUNT_LOCKED",
-          newValues: expect.objectContaining({ status: "LOCKED", maxLoginAttempts: 2 }),
-        }),
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+      expect(mockPrisma.securitySetting.findFirst).not.toHaveBeenCalled();
+      expect(writeAuditLog).not.toHaveBeenCalledWith(
+        expect.objectContaining({ action: "LOGIN_ACCOUNT_LOCKED" }),
       );
     });
 
@@ -154,37 +148,6 @@ describe("auth.service", () => {
       await expect(
         authService.login({ identifier: "locked@example.com", password: "correctpass" }),
       ).rejects.toThrow("Account is locked");
-    });
-
-    it("clears failed attempts on successful login", async () => {
-      (mockPrisma.user.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
-        id: 1,
-        email: "test@example.com",
-        username: "test",
-        name: "Test",
-        password: HASH,
-        status: "ACTIVE",
-        branchId: 1,
-        userRoles: [{ role: { id: 1, seederKey: "ADMIN", name: "Admin" } }],
-      });
-      (mockPrisma.securitySetting.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
-        maxLoginAttempts: 2,
-      });
-      (mockPrisma.user.update as ReturnType<typeof vi.fn>).mockResolvedValue({});
-
-      await expect(
-        authService.login({ identifier: "test@example.com", password: "wrong" }, { ip: "5.5.5.5" }),
-      ).rejects.toThrow("Invalid email/username or password");
-      await authService.login({ identifier: "test@example.com", password: "correctpass" }, { ip: "5.5.5.5" });
-      await expect(
-        authService.login({ identifier: "test@example.com", password: "wrong" }, { ip: "5.5.5.5" }),
-      ).rejects.toThrow("Invalid email/username or password");
-
-      // Only the lastLoginAt touch happened — the account never got locked.
-      expect(mockPrisma.user.update).toHaveBeenCalledTimes(1);
-      expect(mockPrisma.user.update).not.toHaveBeenCalledWith(
-        expect.objectContaining({ data: { status: "LOCKED" } }),
-      );
     });
 
     it("throws AuthenticationError when user not found (same generic message)", async () => {

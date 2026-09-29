@@ -64,13 +64,6 @@ export function createRateLimiter(options: {
   };
 }
 
-// Per-IP limits for the most sensitive endpoints.
-export const loginRateLimiter = createRateLimiter({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  message: "Too many login attempts. Please wait a few minutes and try again.",
-});
-
 export const changePasswordRateLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: 5,

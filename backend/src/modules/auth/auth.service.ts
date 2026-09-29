@@ -9,7 +9,6 @@ import {
 } from "../../errors/ApiError";
 import { signAccessToken } from "../../utils/token";
 import { writeAuditLog } from "../../utils/audit";
-import { recordFailedLogin, clearFailedLogins } from "../../utils/loginAttempt";
 import { getPasswordPolicy } from "../../utils/passwordPolicy";
 import type { AuthUser } from "../../types/auth";
 import type { ChangePasswordInput, LoginInput } from "./auth.validation";
@@ -63,17 +62,11 @@ async function getUserWithRoles(identifier: string) {
   });
 }
 
-async function getMaxLoginAttempts(): Promise<number> {
-  const setting = await prisma.securitySetting.findFirst({ orderBy: { id: "asc" } });
-  return setting?.maxLoginAttempts ?? 5;
-}
-
 export async function login(
   input: LoginInput,
   meta?: { ip?: string },
 ): Promise<LoginResult> {
   const identifier = input.identifier.trim();
-  const ip = meta?.ip;
   const user = await getUserWithRoles(identifier);
 
   // Generic failure for both "unknown identifier" and "wrong password".
@@ -95,41 +88,16 @@ export async function login(
 
   const passwordMatches = await bcrypt.compare(input.password, user.password);
   if (!passwordMatches) {
-    const maxAttempts = await getMaxLoginAttempts();
-    const attempts = recordFailedLogin(identifier, ip);
-
+    // Failures are audited but never counted: there is no automatic account
+    // lockout and no throttling on this endpoint, so a user can keep trying.
     await writeAuditLog({
       module: "AUTH",
       action: "LOGIN_FAILED",
       user: null,
       branchId: user.branchId,
     });
-
-    // Durable, authoritative enforcement: the stored SecuritySetting value is
-    // honored by flipping the account to LOCKED, which the auth middleware
-    // rejects immediately (status is reloaded from the DB on every request).
-    if (attempts >= maxAttempts) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { status: "LOCKED" },
-      });
-      clearFailedLogins(identifier, ip);
-      await writeAuditLog({
-        module: "AUTH",
-        action: "LOGIN_ACCOUNT_LOCKED",
-        tableName: "User",
-        recordId: String(user.id),
-        user: null,
-        branchId: user.branchId,
-        newValues: { status: "LOCKED", maxLoginAttempts: maxAttempts },
-      });
-    }
-
     throw new AuthenticationError(INVALID_CREDENTIALS);
   }
-
-  // A successful login resets the failure counter.
-  clearFailedLogins(identifier, ip);
 
   // Record last login timestamp.
   await prisma.user.update({
