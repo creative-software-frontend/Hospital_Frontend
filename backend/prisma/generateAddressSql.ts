@@ -25,8 +25,8 @@
  * have shell access.
  *
  * The statements touch only the four address tables. Every other lookup list
- * (blood groups, visit types, payment methods, the manual areas/cities rows) is
- * app-owned and left untouched.
+ * (blood groups, visit types, document types, payment methods) is app-owned and
+ * left untouched.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";

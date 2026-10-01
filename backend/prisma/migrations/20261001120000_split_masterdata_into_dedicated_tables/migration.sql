@@ -235,18 +235,22 @@ ALTER TABLE `DocumentType` ADD CONSTRAINT `DocumentType_branchId_fkey` FOREIGN K
 -- Done last on purpose: the new tables above are created before the old
 -- masterdata and the leftover address tables are removed, so a failure
 -- part-way through leaves the previous data in place rather than neither.
--- DropTable
-DROP TABLE `districts`;
+--
+-- `IF EXISTS` matters: districts/divisions/upazilas/unions were leftovers only
+-- present in some long-lived databases. A fresh database never had them, and an
+-- unconditional DROP would abort the migration there (and in Prisma's shadow
+-- database, which blocks every future `migrate dev`).
+DROP TABLE IF EXISTS `districts`;
 
 -- DropTable
-DROP TABLE `divisions`;
+DROP TABLE IF EXISTS `divisions`;
 
 -- DropTable
-DROP TABLE `masterdata`;
+DROP TABLE IF EXISTS `masterdata`;
 
 -- DropTable
-DROP TABLE `unions`;
+DROP TABLE IF EXISTS `unions`;
 
 -- DropTable
-DROP TABLE `upazilas`;
+DROP TABLE IF EXISTS `upazilas`;
 

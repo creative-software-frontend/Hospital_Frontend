@@ -1297,8 +1297,6 @@ export type CreateReportSettingInput = {
 export type UpdateReportSettingInput = Partial<CreateReportSettingInput>;
 
 export const MASTER_DATA_CATEGORIES = [
-  "cities",
-  "areas",
   "visit_types",
   "blood_groups",
   "payment_methods",
@@ -1312,8 +1310,6 @@ export const MASTER_DATA_CATEGORIES = [
 export type MasterDataCategory = (typeof MASTER_DATA_CATEGORIES)[number];
 
 export const MASTER_DATA_CATEGORY_LABELS: Record<MasterDataCategory, string> = {
-  cities: "Cities",
-  areas: "Areas",
   visit_types: "Visit Types",
   blood_groups: "Blood Groups",
   payment_methods: "Payment Methods",
@@ -1325,8 +1321,6 @@ export const MASTER_DATA_CATEGORY_LABELS: Record<MasterDataCategory, string> = {
 };
 
 export const MASTER_DATA_CATEGORY_EXAMPLES: Record<MasterDataCategory, string> = {
-  cities: "Dhaka, Chattogram, Sylhet",
-  areas: "Dhanmondi, Gulshan, Banani",
   visit_types: "New, Follow-up, Emergency",
   blood_groups: "A+, B-, O+, AB+",
   payment_methods: "Cash, Card, bKash, Rocket",
@@ -1350,9 +1344,15 @@ export const ADDRESS_CATEGORIES: readonly MasterDataCategory[] = [
   "unions",
 ];
 
+/**
+ * The categories the Master Data screen manages. The address levels above are
+ * imported from SQL and deliberately left out: they are never listed or edited on
+ * the website, only read for the address dropdowns.
+ */
+export const MASTER_DATA_EDITABLE_CATEGORIES: readonly MasterDataCategory[] =
+  MASTER_DATA_CATEGORIES.filter((category) => !ADDRESS_CATEGORIES.includes(category));
+
 export const MASTER_DATA_CATEGORY_PARENT: Record<MasterDataCategory, MasterDataCategory | null> = {
-  cities: null,
-  areas: null,
   visit_types: null,
   blood_groups: null,
   payment_methods: null,

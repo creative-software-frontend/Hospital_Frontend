@@ -227,8 +227,6 @@ model Branch {
   districts              District[]
   upazilas               Upazila[]
   unions                 Union[]
-  cities                 City[]
-  areas                  Area[]
   visitTypes             VisitType[]
   bloodGroups            BloodGroup[]
   documentTypes          DocumentType[]
@@ -1931,40 +1929,6 @@ model Union {
 // Small, flat lists the app seeds and admins edit in Settings -> Master Data.
 // Each gets its own table rather than a shared generic one, so each can carry its
 // own constraints and columns without every other list inheriting them.
-
-model City {
-  id        Int      @id @default(autoincrement())
-  branchId  Int
-  name      String
-  code      String
-  sortOrder Int      @default(0)
-  status    String   @default("active")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  branch Branch @relation(fields: [branchId], references: [id])
-
-  @@unique([branchId, code])
-  @@unique([branchId, name])
-  @@index([branchId])
-}
-
-model Area {
-  id        Int      @id @default(autoincrement())
-  branchId  Int
-  name      String
-  code      String
-  sortOrder Int      @default(0)
-  status    String   @default("active")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  branch Branch @relation(fields: [branchId], references: [id])
-
-  @@unique([branchId, code])
-  @@unique([branchId, name])
-  @@index([branchId])
-}
 
 model VisitType {
   id        Int      @id @default(autoincrement())

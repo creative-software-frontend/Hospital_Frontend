@@ -63,8 +63,6 @@ describe("master data address categories", () => {
 
   it("still allows the non-hierarchical categories with no parent", () => {
     for (const category of [
-      "cities",
-      "areas",
       "visit_types",
       "blood_groups",
       "payment_methods",
@@ -82,13 +80,13 @@ describe("master data code is required", () => {
   // Each lookup list is its own table now and every one has a non-null `code`, so a
   // create with no code would fail at the database. The schema catches it first.
   it("rejects a create with no code", () => {
-    const parsed = createMasterDataSchema.safeParse({ category: "cities", label: "Dhaka" });
+    const parsed = createMasterDataSchema.safeParse({ category: "visit_types", label: "New" });
     expect(parsed.success).toBe(false);
     expect(parsed.error?.issues[0]?.path).toEqual(["code"]);
   });
 
   it("rejects a blank code", () => {
-    const parsed = createMasterDataSchema.safeParse({ category: "cities", label: "Dhaka", code: "  " });
+    const parsed = createMasterDataSchema.safeParse({ category: "visit_types", label: "New", code: "  " });
     expect(parsed.success).toBe(false);
   });
 

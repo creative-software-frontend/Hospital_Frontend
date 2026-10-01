@@ -11,10 +11,10 @@ import {
   type CreateMasterDataInput,
   type MasterDataCategory,
   type MasterDataItem,
-  MASTER_DATA_CATEGORIES,
   MASTER_DATA_CATEGORY_LABELS,
   MASTER_DATA_CATEGORY_EXAMPLES,
   MASTER_DATA_CATEGORY_PARENT,
+  MASTER_DATA_EDITABLE_CATEGORIES,
   ADDRESS_CATEGORIES,
   errorMessage,
 } from "@/app/lib/api";
@@ -35,7 +35,7 @@ const externalHref = (url: string) => (/^https?:\/\//i.test(url) ? url : `https:
 
 export function MasterDataView() {
   const [items, setItems] = useState<MasterDataItem[]>([]);
-  const [activeCategory, setActiveCategory] = useState<MasterDataCategory>("cities");
+  const [activeCategory, setActiveCategory] = useState<MasterDataCategory>("visit_types");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -74,8 +74,6 @@ export function MasterDataView() {
 
   const counts = useMemo(() => {
     const map: Record<MasterDataCategory, number> = {
-      cities: 0,
-      areas: 0,
       visit_types: 0,
       blood_groups: 0,
       payment_methods: 0,
@@ -175,8 +173,8 @@ export function MasterDataView() {
         </span>
         <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">Master Data</h3>
         <p className="text-xs text-[var(--muted)] mt-1.5 leading-relaxed max-w-3xl">
-          Live from the backend: reference data used across the system — cities, areas, visit
-          types, blood groups, payment methods and document types.
+          Live from the backend: reference data used across the system — visit types, blood
+          groups, payment methods and document types.
         </p>
       </div>
 
@@ -184,7 +182,7 @@ export function MasterDataView() {
         <div className="card p-4 rounded-2xl border border-[var(--border)] shadow-sm h-fit">
           <h4 className="text-sm font-extrabold text-[var(--text)] mb-3">Categories</h4>
           <div className="flex flex-row lg:flex-col gap-2 overflow-x-auto">
-            {MASTER_DATA_CATEGORIES.map((cat) => (
+            {MASTER_DATA_EDITABLE_CATEGORIES.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
@@ -512,7 +510,7 @@ function MasterDataFormModal({
           <div className="sm:col-span-2">
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Category *</label>
             <select value={category} disabled={editing} onChange={(e) => setCategory(e.target.value as MasterDataCategory)} className={`${INPUT_CLS} ${editing ? "opacity-50" : ""}`}>
-              {MASTER_DATA_CATEGORIES.map((cat) => (
+              {MASTER_DATA_EDITABLE_CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>{MASTER_DATA_CATEGORY_LABELS[cat]}</option>
               ))}
             </select>

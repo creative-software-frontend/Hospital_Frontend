@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../lib/prisma", () => {
-  // Every lookup list is its own delegate now, so all ten have to exist. `count`
+  // Every lookup list is its own delegate now, so all eight have to exist. `count`
   // and `patient` are here so the test can prove the delete path never calls them.
   const delegate = () => ({
     findMany: vi.fn(),
@@ -13,8 +13,6 @@ vi.mock("../lib/prisma", () => {
     count: vi.fn(),
   });
   const prisma = {
-    city: delegate(),
-    area: delegate(),
     visitType: delegate(),
     bloodGroup: delegate(),
     documentType: delegate(),
@@ -181,20 +179,20 @@ describe("master data delete guards", () => {
   });
 
   it("addresses the row in the category named in the path, not the first table with that id", async () => {
-    // Ids are per-table, so a city and a division can both be id 1. Naming the
-    // category must win: this deletes the city, not the division.
-    table("city").findFirst.mockResolvedValue({
+    // Ids are per-table, so a visit type and a division can both be id 1. Naming
+    // the category must win: this deletes the visit type, not the division.
+    table("visitType").findFirst.mockResolvedValue({
       id: 1,
       branchId: 1,
-      name: "Dhaka",
-      code: "DAC",
+      name: "New",
+      code: "NEW",
       sortOrder: 0,
       status: "active",
     } as never);
 
-    await settingService.deleteMasterData(actor, "cities", 1);
+    await settingService.deleteMasterData(actor, "visit_types", 1);
 
-    expect(table("city").delete).toHaveBeenCalledWith({ where: { id: 1 } });
+    expect(table("visitType").delete).toHaveBeenCalledWith({ where: { id: 1 } });
     expect(table("division").findFirst).not.toHaveBeenCalled();
     expect(table("division").delete).not.toHaveBeenCalled();
   });

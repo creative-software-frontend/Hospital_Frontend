@@ -11,8 +11,6 @@ vi.mock("../lib/prisma", () => {
     count: vi.fn(),
   });
   const prisma = {
-    city: delegate(),
-    area: delegate(),
     visitType: delegate(),
     bloodGroup: delegate(),
     documentType: delegate(),
@@ -68,11 +66,11 @@ describe("master data options", () => {
   });
 
   it("only returns active rows for the caller's branch", async () => {
-    table("area").findMany.mockResolvedValueOnce([row("AREA_DHANMONDI", "Dhanmondi")] as never);
+    table("visitType").findMany.mockResolvedValueOnce([row("NEW", "New")] as never);
 
-    await settingService.listMasterDataOptions(actor, "areas");
+    await settingService.listMasterDataOptions(actor, "visit_types");
 
-    expect(table("area").findMany).toHaveBeenCalledWith(
+    expect(table("visitType").findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { branchId: 1, status: "active" },
         select: { code: true, name: true, sortOrder: true },
@@ -125,21 +123,21 @@ describe("master data options", () => {
   });
 
   it("uses the row code as the value, now that code is required on every table", async () => {
-    table("area").findMany.mockResolvedValueOnce([
-      row("AREA_DHANMONDI", "Dhanmondi", 1),
-      row("AREA_GULSHAN", "Gulshan", 2),
+    table("visitType").findMany.mockResolvedValueOnce([
+      row("NEW", "New", 1),
+      row("FOLLOW_UP", "Follow-up", 2),
     ] as never);
 
-    const options = await settingService.listMasterDataOptions(actor, "areas");
+    const options = await settingService.listMasterDataOptions(actor, "visit_types");
 
-    expect(options.map((o) => o.code)).toEqual(["AREA_DHANMONDI", "AREA_GULSHAN"]);
-    expect(options.map((o) => o.label)).toEqual(["Dhanmondi", "Gulshan"]);
+    expect(options.map((o) => o.code)).toEqual(["NEW", "FOLLOW_UP"]);
+    expect(options.map((o) => o.label)).toEqual(["New", "Follow-up"]);
     expect(options.every((o) => o.fallback === false)).toBe(true);
   });
 
   it("returns nothing for a non-enum category that is empty, with no invented values", async () => {
-    table("area").findMany.mockResolvedValueOnce([] as never);
+    table("visitType").findMany.mockResolvedValueOnce([] as never);
 
-    await expect(settingService.listMasterDataOptions(actor, "areas")).resolves.toEqual([]);
+    await expect(settingService.listMasterDataOptions(actor, "visit_types")).resolves.toEqual([]);
   });
 });

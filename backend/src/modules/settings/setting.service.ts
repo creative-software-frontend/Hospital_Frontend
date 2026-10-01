@@ -5,6 +5,7 @@ import { writeAuditLog } from "../../utils/audit";
 import { BLOOD_GROUP_VALUES } from "../patients/patient.validation";
 import { ADDRESS_CATEGORY, isAddressCategory } from "../../lib/bangladeshAddress";
 import {
+  APP_OWNED_CATEGORIES,
   LOOKUP_SPECS,
   MASTER_DATA_CATEGORIES,
   isMasterDataCategory,
@@ -1261,16 +1262,18 @@ const toListItem = (category: MasterDataCategory, row: LookupRow): MasterDataLis
 });
 
 /**
- * Lists one category, or every category when none is given. The admin screen asks
- * for all of them and filters client-side, so this fans out across the ten tables.
+ * Lists one category, or the website-managed categories when none is given. The
+ * admin screen asks for all editable lists and filters client-side. Address levels
+ * are deliberately not part of the default: they are SQL-imported and never shown
+ * on that screen, and including them would ship 15,000 rows to the browser.
  */
 export async function listMasterData(
   actor: AuthUser,
   category?: string,
 ): Promise<MasterDataListItem[]> {
-  let categories: MasterDataCategory[];
+  let categories: readonly MasterDataCategory[];
   if (category === undefined) {
-    categories = [...MASTER_DATA_CATEGORIES];
+    categories = APP_OWNED_CATEGORIES;
   } else {
     if (!isMasterDataCategory(category)) {
       throw new ValidationError(`Unknown master data category "${category}"`);
@@ -1714,9 +1717,9 @@ export async function updateMasterData(
   id: number,
   input: UpdateMasterDataInput,
 ) {
-  // Rows live in ten tables, and each table numbers its own primary keys from 1, so
-  // an id alone is ambiguous: deleting id 1 could hit a city, a division, or a
-  // payment method. The category is part of the path so the row is addressed
+  // Rows live in eight tables, and each table numbers its own primary keys from 1,
+  // so an id alone is ambiguous: deleting id 1 could hit a visit type, a division,
+  // or a payment method. The category is part of the path so the row is addressed
   // unambiguously. `input.category` is a *move*, not the row's current table.
   if (!isMasterDataCategory(category)) {
     throw new ValidationError(`Unknown master data category "${category}"`);

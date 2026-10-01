@@ -525,13 +525,12 @@ export const settingsData: Record<string, SettingsPageData> = {
 
   "master-data": {
     title: "Master Data",
-    description: "Manage reference data used across the system such as cities, areas, and visit types.",
+    description: "Manage reference data used across the system such as visit types, blood groups and document types.",
     blocks: [
       {
         type: "table",
         columns: ["Master Category", "Entries", "Example"],
         rows: [
-          { "Master Category": "Cities", Entries: "64", Example: "Dhaka, Chattogram, Sylhet" },
           { "Master Category": "Visit Types", Entries: "4", Example: "New, Follow-up, Emergency" },
           { "Master Category": "Blood Groups", Entries: "8", Example: "A+, B-, O+, AB+" },
           { "Master Category": "Payment Methods", Entries: "5", Example: "Cash, Card, bKash, Rocket" },

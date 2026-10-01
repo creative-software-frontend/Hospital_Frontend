@@ -16,8 +16,6 @@
 import { ADDRESS_CATEGORY } from "./bangladeshAddress";
 
 export const MASTER_DATA_CATEGORIES = [
-  "cities",
-  "areas",
   "visit_types",
   "blood_groups",
   "document_types",
@@ -32,8 +30,6 @@ export type MasterDataCategory = (typeof MASTER_DATA_CATEGORIES)[number];
 
 /** Model name on the Prisma client, e.g. `Division` -> `prisma.division`. */
 export type LookupModelName =
-  | "city"
-  | "area"
   | "visitType"
   | "bloodGroup"
   | "documentType"
@@ -80,8 +76,6 @@ const flat = (model: LookupModelName): LookupSpec => ({
 });
 
 export const LOOKUP_SPECS: Record<MasterDataCategory, LookupSpec> = {
-  cities: flat("city"),
-  areas: flat("area"),
   visit_types: flat("visitType"),
   blood_groups: flat("bloodGroup"),
   document_types: flat("documentType"),
@@ -126,6 +120,16 @@ export const LOOKUP_SPECS: Record<MasterDataCategory, LookupSpec> = {
     hasCoordinates: false,
   },
 };
+
+/**
+ * The categories the website manages. The four address levels are excluded: they
+ * are imported from SQL and are never listed or edited on the Master Data screen,
+ * so the admin list endpoint defaults to these and never ships 15,000 address rows
+ * to the browser.
+ */
+export const APP_OWNED_CATEGORIES: readonly MasterDataCategory[] = MASTER_DATA_CATEGORIES.filter(
+  (category) => !LOOKUP_SPECS[category].address,
+);
 
 export const isMasterDataCategory = (value: string): value is MasterDataCategory =>
   (MASTER_DATA_CATEGORIES as readonly string[]).includes(value);

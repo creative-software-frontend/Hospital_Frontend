@@ -11,8 +11,6 @@ vi.mock("../lib/prisma", () => {
     count: vi.fn(),
   });
   const prisma = {
-    city: delegate(),
-    area: delegate(),
     visitType: delegate(),
     bloodGroup: delegate(),
     documentType: delegate(),

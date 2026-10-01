@@ -68,10 +68,10 @@ looks like a bug:
   [Address data](#address-data) below.
 - **Departments**, service categories and services.
 - **Shift types** — Morning, Evening, Night, used by the nurse Shift dropdown.
-- **Master data** — one table per list: cities, areas, visit types, blood
-  groups, payment methods and document types. Each list is branch-scoped except
-  payment methods, which are global. The national address lists (divisions,
-  districts, upazilas, unions) are separate and loaded from SQL, not seeded.
+- **Master data** — one table per list: visit types, blood groups, payment
+  methods and document types. Each list is branch-scoped except payment methods,
+  which are global. The national address lists (divisions, districts, upazilas,
+  unions) are separate and loaded from SQL, not seeded.
 - **Settings** — the hospital, OPD/IPD/lab/pharmacy/billing/accounting/HR/
   inventory groups, localization and system maintenance rows.
 
@@ -112,8 +112,8 @@ That writes `backend/sql/address-master-data.sql`. Upload it against the
 database in `DATABASE_URL`, **after** `npm run setup` has run so the branches
 exist. The file is safe to upload more than once: it deletes the address rows
 and re-inserts them in one transaction, and it leaves every other Master Data
-category (blood groups, visit types, areas, cities, ...) untouched. It ends with
-a `SELECT` showing the per-branch counts, so you can confirm the load.
+category (blood groups, visit types, document types, payment methods) untouched. It
+ends with a `SELECT` showing the per-branch counts, so you can confirm the load.
 
 Branch ids are read from the database the generator connects to and written into
 the file as literals, so it only fits the branches that existed when it was

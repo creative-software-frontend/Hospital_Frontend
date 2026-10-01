@@ -1049,27 +1049,10 @@ async function seed() {
    * `npm run seed:address`) rather than having it re-inserted on every setup run.
    *
    * `code` is required on every table now, so each row carries a stable one. The
-   * areas that previously had no code get one derived from their name; those are
-   * manual labels rather than real administrative units, which is why the proper
-   * hierarchy is imported separately.
+   * address hierarchy is a separate, imported dataset rather than a seeded one,
+   * which is why only the flat app-owned lists appear below.
    */
   const DEFAULT_LOOKUPS: Array<{ category: MasterDataCategory; label: string; code: string }> = [
-    // Cities
-    { category: "cities", label: "Dhaka", code: "DAC" },
-    { category: "cities", label: "Chattogram", code: "CGP" },
-    { category: "cities", label: "Sylhet", code: "SYL" },
-    { category: "cities", label: "Rajshahi", code: "RAJ" },
-    { category: "cities", label: "Khulna", code: "KHL" },
-    { category: "cities", label: "Barishal", code: "BRL" },
-    { category: "cities", label: "Rangpur", code: "RPR" },
-    { category: "cities", label: "Mymensingh", code: "MYM" },
-    // Areas (manual)
-    { category: "areas", label: "Dhanmondi", code: "AREA_DHANMONDI" },
-    { category: "areas", label: "Gulshan", code: "AREA_GULSHAN" },
-    { category: "areas", label: "Banani", code: "AREA_BANANI" },
-    { category: "areas", label: "Uttara", code: "AREA_UTTARA" },
-    { category: "areas", label: "Motijheel", code: "AREA_MOTIJHEEL" },
-    { category: "areas", label: "Mirpur", code: "AREA_MIRPUR" },
     // Visit types
     { category: "visit_types", label: "New", code: "NEW" },
     { category: "visit_types", label: "Follow-up", code: "FOLLOW_UP" },
