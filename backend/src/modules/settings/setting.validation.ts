@@ -1,5 +1,11 @@
 import { z } from "zod";
 import { ADDRESS_CATEGORY_PARENT, isAddressCategory } from "../../lib/bangladeshAddress";
+// Imported from the registry so the API's accepted categories and the tables that
+// actually back them cannot drift apart. Re-exported because other modules import
+// the list from here.
+import { MASTER_DATA_CATEGORIES } from "../../lib/masterDataRegistry";
+
+export { MASTER_DATA_CATEGORIES };
 
 export const SETTING_STATUS_VALUES = ["active", "inactive"] as const;
 
@@ -352,24 +358,11 @@ export type UpdateReportSettingInput = z.infer<typeof updateReportSettingSchema>
 
 /* Master Data (Settings → Master Data) -------------------------------------- */
 
-export const MASTER_DATA_CATEGORIES = [
-  "cities",
-  "areas",
-  "visit_types",
-  "blood_groups",
-  "payment_methods",
-  "document_types",
-  "divisions",
-  "districts",
-  "upazilas",
-  "thanas",
-] as const;
-
 export const masterDataCategorySchema = z.enum(MASTER_DATA_CATEGORIES);
 
 /**
- * The address categories form a hierarchy seeded from
- * @bangladeshi/bangladesh-address. A row is only reachable through the cascading
+ * The address categories form a hierarchy loaded from the national dataset in
+ * `prisma/address-source`. A row is only reachable through the cascading
  * dropdowns when it names its parent, so the lower levels require one. Divisions
  * are top level and take none. The mapping lives in lib/bangladeshAddress.ts so
  * that this schema and the delete guard cannot drift apart.
@@ -380,10 +373,13 @@ const needsParent = (category: string): boolean =>
 const masterDataBaseSchema = z.object({
   category: masterDataCategorySchema,
   label: z.string().trim().min(1, "label is required").max(128),
-  // Generated address codes reach ~41 characters (e.g. a long upazila name under
-  // a long district name), so this cannot stay at 32.
-  code: z.string().trim().max(64).optional().nullable(),
-  parentCode: z.string().trim().max(64).optional().nullable(),
+  // `code` is required on every lookup table now, so it is required here too.
+  // Address codes chain the whole parent path, so the longest one generated from
+  // the current dataset is 77 characters (a union under a long upazila). The cap
+  // matches the column width so this schema can never reject a code the database
+  // would have accepted.
+  code: z.string().trim().min(1, "code is required").max(191),
+  parentCode: z.string().trim().max(191).optional().nullable(),
   sortOrder: z.number().int().min(0).optional(),
   status: z.enum(SETTING_STATUS_VALUES).optional(),
 });
@@ -391,7 +387,8 @@ const masterDataBaseSchema = z.object({
 export const createMasterDataSchema = masterDataBaseSchema.refine(
   (value) => !needsParent(value.category) || Boolean(value.parentCode),
   {
-    message: "parentCode is required: a district needs a division, and an upazila or thana needs a district",
+    message:
+      "parentCode is required: a district needs a division, an upazila needs a district, and a union needs an upazila",
     path: ["parentCode"],
   },
 );

@@ -1,7 +1,8 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
-import { PrismaClient } from "@prisma/client";
-import { syncAddressMasterData } from "./syncAddressMasterData";
+import { PaymentMethodType, PrismaClient } from "@prisma/client";
+import { LOOKUP_SPECS, type MasterDataCategory } from "../src/lib/masterDataRegistry";
+import { branchScope, lookupDelegate } from "../src/lib/lookupDelegate";
 
 const prisma = new PrismaClient();
 
@@ -1038,7 +1039,21 @@ async function seed() {
   }
   console.log("Reports ready.");
 
-  const DEFAULT_MASTER_DATA: Array<{ category: string; label: string; code?: string }> = [
+  /**
+   * App-owned lookup lists. Each has its own table now (see
+   * `src/lib/masterDataRegistry.ts`), so this walks the registry instead of
+   * filtering one shared table by a category string.
+   *
+   * The national address hierarchy is NOT seeded here: it is reference data, so a
+   * fresh install loads it by uploading `sql/address-master-data.sql` (or running
+   * `npm run seed:address`) rather than having it re-inserted on every setup run.
+   *
+   * `code` is required on every table now, so each row carries a stable one. The
+   * areas that previously had no code get one derived from their name; those are
+   * manual labels rather than real administrative units, which is why the proper
+   * hierarchy is imported separately.
+   */
+  const DEFAULT_LOOKUPS: Array<{ category: MasterDataCategory; label: string; code: string }> = [
     // Cities
     { category: "cities", label: "Dhaka", code: "DAC" },
     { category: "cities", label: "Chattogram", code: "CGP" },
@@ -1048,18 +1063,20 @@ async function seed() {
     { category: "cities", label: "Barishal", code: "BRL" },
     { category: "cities", label: "Rangpur", code: "RPR" },
     { category: "cities", label: "Mymensingh", code: "MYM" },
-    // Areas: superseded by the proper Bangladesh hierarchy, which is synced
-    // from @bangladeshi/bangladesh-address by `npm run seed:address` into the
-    // divisions/districts/upazilas/thanas categories. The old hand-written
-    // rows were not real administrative units (Banani is an area inside Uttara
-    // thana, not a thana itself), so they are no longer seeded.
-    //
+    // Areas (manual)
+    { category: "areas", label: "Dhanmondi", code: "AREA_DHANMONDI" },
+    { category: "areas", label: "Gulshan", code: "AREA_GULSHAN" },
+    { category: "areas", label: "Banani", code: "AREA_BANANI" },
+    { category: "areas", label: "Uttara", code: "AREA_UTTARA" },
+    { category: "areas", label: "Motijheel", code: "AREA_MOTIJHEEL" },
+    { category: "areas", label: "Mirpur", code: "AREA_MIRPUR" },
     // Visit types
     { category: "visit_types", label: "New", code: "NEW" },
     { category: "visit_types", label: "Follow-up", code: "FOLLOW_UP" },
     { category: "visit_types", label: "Emergency", code: "EMERGENCY" },
     { category: "visit_types", label: "Check-up", code: "CHECKUP" },
-    // Blood groups
+    // Blood groups. `Patient.bloodGroup` is a database enum, so these codes must
+    // stay in step with BLOOD_GROUP_VALUES or a patient cannot be saved.
     { category: "blood_groups", label: "A+", code: "A_POS" },
     { category: "blood_groups", label: "A-", code: "A_NEG" },
     { category: "blood_groups", label: "B+", code: "B_POS" },
@@ -1068,12 +1085,6 @@ async function seed() {
     { category: "blood_groups", label: "AB-", code: "AB_NEG" },
     { category: "blood_groups", label: "O+", code: "O_POS" },
     { category: "blood_groups", label: "O-", code: "O_NEG" },
-    // Payment methods
-    { category: "payment_methods", label: "Cash", code: "CASH" },
-    { category: "payment_methods", label: "Card", code: "CARD" },
-    { category: "payment_methods", label: "bKash", code: "BKASH" },
-    { category: "payment_methods", label: "Rocket", code: "ROCKET" },
-    { category: "payment_methods", label: "Nagad", code: "NAGAD" },
     // Document types
     { category: "document_types", label: "National ID", code: "NID" },
     { category: "document_types", label: "Passport", code: "PP" },
@@ -1083,23 +1094,57 @@ async function seed() {
     { category: "document_types", label: "Smart Card ID", code: "SC" },
   ];
 
-  for (const item of DEFAULT_MASTER_DATA) {
-    const existing = await prisma.masterData.findFirst({
-      where: { branchId: branch.id, category: item.category, label: item.label },
+  for (const item of DEFAULT_LOOKUPS) {
+    const spec = LOOKUP_SPECS[item.category];
+    // Payment methods are the one global lookup, so they are seeded once and not
+    // per branch.
+    const table = lookupDelegate(spec.model);
+    const existing = await table.findFirst({
+      where: {
+        ...branchScope(spec, branch.id),
+        code: item.code,
+      },
     });
     if (!existing) {
-      await prisma.masterData.create({
+      await table.create({
         data: {
-          branchId: branch.id,
-          category: item.category,
-          label: item.label,
+          ...branchScope(spec, branch.id),
+          name: item.label,
           code: item.code,
           status: "active",
         },
       });
     }
   }
-  console.log("Master data ready.");
+  console.log("Lookup lists ready.");
+
+  /**
+   * Payment methods are seeded into the real `PaymentMethod` table rather than a
+   * lookup table: `Payment.paymentMethodId` points at it, so these are rows other
+   * records depend on. `type` is a database enum, so it has to be set explicitly.
+   * Matched on `code`, which is unique across the table.
+   */
+  const DEFAULT_PAYMENT_METHODS: Array<{
+    label: string;
+    code: string;
+    type: PaymentMethodType;
+  }> = [
+    { label: "Cash", code: "CASH", type: PaymentMethodType.CASH },
+    { label: "Card", code: "CARD", type: PaymentMethodType.CARD },
+    { label: "bKash", code: "BKASH", type: PaymentMethodType.MOBILE },
+    { label: "Rocket", code: "ROCKET", type: PaymentMethodType.MOBILE },
+    { label: "Nagad", code: "NAGAD", type: PaymentMethodType.MOBILE },
+  ];
+
+  for (const method of DEFAULT_PAYMENT_METHODS) {
+    const existing = await prisma.paymentMethod.findUnique({ where: { code: method.code } });
+    if (!existing) {
+      await prisma.paymentMethod.create({
+        data: { name: method.label, code: method.code, type: method.type, status: "active" },
+      });
+    }
+  }
+  console.log("Payment methods ready.");
 
   const localizationDefault = await prisma.localizationSetting.findFirst({
     where: { branchId: branch.id, language: "English" },
@@ -1156,17 +1201,10 @@ async function seed() {
   }
   console.log(`Shift types ready (${SHIFT_TYPES.length}).`);
 
-  // Bangladesh address hierarchy. Runs last because it attaches one copy of the
-  // dataset to every branch, so the branches have to exist first. Keeping this
-  // inside the normal seed is what makes a single `prisma db seed` produce a
-  // working app instead of one with an empty Division dropdown.
-  const address = await syncAddressMasterData(prisma);
-  console.log(
-    `Address master data ready: ${Object.entries(address.byCategory)
-      .map(([category, count]) => `${category}=${count}`)
-      .join(", ")} across ${address.branches} branch(es) ` +
-      `(created ${address.created}, refreshed ${address.refreshed}, deactivated ${address.deactivated}).`,
-  );
+  // The address hierarchy is deliberately NOT seeded here. Those rows are loaded
+  // from a SQL file and owned by whoever maintains that file, so running the
+  // setup must never overwrite labels or deactivate rows by hand. To apply the
+  // bundled dataset once, run `npm run seed:address` explicitly.
 
   console.log("Seed complete.");
   console.log("");

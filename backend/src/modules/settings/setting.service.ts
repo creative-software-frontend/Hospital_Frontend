@@ -3,7 +3,21 @@ import { prisma } from "../../lib/prisma";
 import { ConflictError, NotFoundError, ValidationError } from "../../errors/ApiError";
 import { writeAuditLog } from "../../utils/audit";
 import { BLOOD_GROUP_VALUES } from "../patients/patient.validation";
-import { ADDRESS_CATEGORY, isAddressCategory, isAddressParentCategory } from "../../lib/bangladeshAddress";
+import { ADDRESS_CATEGORY, isAddressCategory } from "../../lib/bangladeshAddress";
+import {
+  LOOKUP_SPECS,
+  MASTER_DATA_CATEGORIES,
+  isMasterDataCategory,
+  lookupSpec,
+} from "../../lib/masterDataRegistry";
+import type { MasterDataCategory, LookupSpec } from "../../lib/masterDataRegistry";
+import {
+  branchScope,
+  lookupDelegate,
+  lookupSelect,
+  toLookupRow,
+} from "../../lib/lookupDelegate";
+import type { LookupRow } from "../../lib/lookupDelegate";
 import type { AuthUser } from "../../types/auth";
 import type {
   CreateIntegrationInput,
@@ -1208,22 +1222,95 @@ export async function deleteReportSetting(actor: AuthUser, id: number) {
 
 /* ---------------------------------------------------------------------------
  * Master Data
+ *
+ * Every lookup list is its own table now (see lib/masterDataRegistry.ts). The
+ * service layer still speaks the old flat, category-keyed contract so the API and
+ * UI are unchanged, but `label` on the wire maps to the `name` column and
+ * `parentCode` is read back from the parent foreign key.
  * ------------------------------------------------------------------------- */
 
-export async function listMasterData(actor: AuthUser, category?: string) {
-  return prisma.masterData.findMany({
-    where: { branchId: actor.branchId, ...(category ? { category } : {}) },
-    orderBy: [{ category: "asc" }, { sortOrder: "asc" }, { label: "asc" }],
-  });
+/** The shape the API returns, which is what the frontend still consumes. */
+export interface MasterDataListItem {
+  id: number;
+  branchId: number | null;
+  category: MasterDataCategory;
+  label: string;
+  code: string;
+  parentCode: string | null;
+  sortOrder: number;
+  status: string;
+  bnName: string | null;
+  lat: number | null;
+  lon: number | null;
+  url: string | null;
+}
+
+const toListItem = (category: MasterDataCategory, row: LookupRow): MasterDataListItem => ({
+  id: row.id,
+  branchId: row.branchId,
+  category,
+  label: row.name,
+  code: row.code,
+  parentCode: row.parentCode,
+  sortOrder: row.sortOrder,
+  status: row.status,
+  bnName: row.bnName,
+  lat: row.lat,
+  lon: row.lon,
+  url: row.url,
+});
+
+/**
+ * Lists one category, or every category when none is given. The admin screen asks
+ * for all of them and filters client-side, so this fans out across the ten tables.
+ */
+export async function listMasterData(
+  actor: AuthUser,
+  category?: string,
+): Promise<MasterDataListItem[]> {
+  let categories: MasterDataCategory[];
+  if (category === undefined) {
+    categories = [...MASTER_DATA_CATEGORIES];
+  } else {
+    if (!isMasterDataCategory(category)) {
+      throw new ValidationError(`Unknown master data category "${category}"`);
+    }
+    categories = [category];
+  }
+
+  const perCategory = await Promise.all(
+    categories.map(async (cat) => {
+      const spec = lookupSpec(cat);
+      const raw = await lookupDelegate(spec.model).findMany({
+        where: branchScope(spec, actor.branchId),
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        select: lookupSelect(spec),
+      });
+      return raw.map((r) => toListItem(cat, toLookupRow(spec, r as never)));
+    }),
+  );
+
+  const merged = perCategory.flat();
+  // `category` is the registry's own order, which is what the admin sidebar uses.
+  const order = new Map(MASTER_DATA_CATEGORIES.map((c, i) => [c, i]));
+  return merged.sort(
+    (a, b) =>
+      (order.get(a.category) ?? 0) - (order.get(b.category) ?? 0) ||
+      a.sortOrder - b.sortOrder ||
+      a.label.localeCompare(b.label),
+  );
 }
 
 /**
- * Categories whose values are stored in a database ENUM column. A master data
- * row can only offer codes the column accepts, so an out-of-date or hand-edited
- * master list can never make a record unsavable: illegal codes are dropped and,
- * if that leaves nothing usable, the enum itself becomes the source of truth.
+ * Categories whose values are stored in a database ENUM column. A lookup row can
+ * only offer codes the column accepts, so an out-of-date or hand-edited list can
+ * never make a record unsavable: illegal codes are dropped and, if that leaves
+ * nothing usable, the enum itself becomes the source of truth.
  */
-const ENUM_BACKED_CATEGORIES: Record<string, { values: readonly string[]; labels: Record<string, string> }> = {
+const ENUM_BACKED_CATEGORIES: Record<
+  string,
+  { values: readonly string[]; labels: Record<string, string> }
+> = {
   blood_groups: {
     values: BLOOD_GROUP_VALUES,
     labels: {
@@ -1243,40 +1330,43 @@ export interface MasterDataOption {
   code: string;
   label: string;
   sortOrder: number;
-  /** True when the option comes from the enum fallback rather than master data. */
+  /** True when the option comes from the enum fallback rather than the table. */
   fallback: boolean;
 }
 
 /**
  * Resolves a category into dropdown options. This is the single place other
- * features read from, so master data becomes authoritative for the UI. For
+ * features read from, so the lookup tables become authoritative for the UI. For
  * enum-backed categories the value set is still guaranteed to be writable.
  */
 export async function listMasterDataOptions(
   actor: AuthUser,
   category: string,
 ): Promise<MasterDataOption[]> {
-  const rows = await prisma.masterData.findMany({
-    where: { branchId: actor.branchId, category, status: "active" },
-    orderBy: [{ sortOrder: "asc" }, { label: "asc" }],
-    select: { code: true, label: true, sortOrder: true },
+  if (!isMasterDataCategory(category)) {
+    throw new ValidationError(`Unknown master data category "${category}"`);
+  }
+  const spec = lookupSpec(category);
+  const raw = await lookupDelegate(spec.model).findMany({
+    where: { ...branchScope(spec, actor.branchId), status: "active" },
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    select: { code: true, name: true, sortOrder: true },
   });
 
   const enumSpec = ENUM_BACKED_CATEGORIES[category];
 
   const usable: MasterDataOption[] = [];
-  for (const row of rows) {
+  for (const r of raw) {
+    const code = r.code as string;
+    const label = r.name as string;
+    const sortOrder = (r.sortOrder as number | null) ?? 0;
     if (enumSpec) {
       // Enum-backed columns are strict: only a code the column accepts can be
-      // offered, so master data can never produce an unsavable value.
-      if (!row.code || !(enumSpec.values as readonly string[]).includes(row.code)) continue;
-      usable.push({ code: row.code, label: row.label, sortOrder: row.sortOrder, fallback: false });
+      // offered, so the table can never produce an unsavable value.
+      if (!(enumSpec.values as readonly string[]).includes(code)) continue;
+      usable.push({ code, label, sortOrder, fallback: false });
     } else {
-      // These back free-text or optional columns, where the label is itself the
-      // stored value, so a row without a code is still usable.
-      const value = row.code ?? row.label;
-      if (!value) continue;
-      usable.push({ code: value, label: row.label, sortOrder: row.sortOrder, fallback: false });
+      usable.push({ code, label, sortOrder, fallback: false });
     }
   }
 
@@ -1293,19 +1383,45 @@ export async function listMasterDataOptions(
   return usable;
 }
 
+/**
+ * The address hierarchy is reference data loaded from the national dataset, not
+ * something an admin maintains, so the write endpoints refuse it outright.
+ * Hiding the buttons in the UI is not enough on its own: a stray request would
+ * otherwise add a place that immediately shows up in every patient's address
+ * dropdown, and an edit could break the codes the cascade depends on.
+ */
+function assertAddressDataNotEditable(category: string): void {
+  if (!isAddressCategory(category)) return;
+  throw new ValidationError(
+    `"${category}" is national address data and cannot be added, edited or deleted here. ` +
+      `It is loaded from prisma/address-source; to change it, update the dumps and re-import ` +
+      `sql/address-master-data.sql (or run "npm run seed:address").`,
+  );
+}
+
 /* ---------------------------------------------------------------------------
- * Bangladesh address cascade (division -> district -> upazila | thana)
+ * Bangladesh address cascade (division -> district -> upazila -> union)
  *
- * Read from Master Data rather than the national dataset directly, so an admin
- * can add a local unit and the address form picks it up like any other value.
- * `npm run seed:address` is what loads the official data in.
+ * Read from the address tables rather than the vendored dataset directly, so every
+ * value the UI shows is a row in the database. `sql/address-master-data.sql` is
+ * what loads the national data in.
+ *
+ * Each level is joined to its parent through a real foreign key, so a district can
+ * only ever sit under a division that exists.
+ *
+ * The upazila level doubles as the thana: the published dataset has no separate
+ * metropolitan thanas, so the locality dropdown lists upazilas and the result is
+ * stored in `Patient.upazila`. `Patient.thana` is left for records written before
+ * that change.
  * ------------------------------------------------------------------------- */
 
 export interface AddressChoice {
   code: string;
   label: string;
-  /** Present for locality level: a district can hold thanas and upazilas. */
-  type?: "thana" | "upazila";
+  /** Bengali name from the national dataset. */
+  bnName: string | null;
+  /** Present for the locality level, which is always an upazila now. */
+  type?: "upazila";
 }
 
 async function addressChildren(
@@ -1313,20 +1429,34 @@ async function addressChildren(
   category: string,
   parentCode?: string,
 ): Promise<AddressChoice[]> {
-  const rows = await prisma.masterData.findMany({
-    where: {
-      branchId: actor.branchId,
-      category,
-      status: "active",
-      ...(parentCode ? { parentCode } : { parentCode: null }),
-    },
-    orderBy: [{ sortOrder: "asc" }, { label: "asc" }],
-    select: { code: true, label: true },
+  const spec = lookupSpec(category);
+  if (!spec.address) {
+    throw new ValidationError(`"${category}" is not an address level`);
+  }
+  // A level that has a parent cannot be listed without one: its foreign key is
+  // NOT NULL, so "every district" is never a meaningful answer. Returning nothing
+  // keeps the endpoint from dumping a whole branch's worth of rows by accident.
+  if (spec.parent && !parentCode) return [];
+
+  const where: Record<string, unknown> = {
+    ...branchScope(spec, actor.branchId),
+    status: "active",
+  };
+  if (spec.parent && parentCode) {
+    where[spec.parent.model] = { code: parentCode };
+  }
+
+  const raw = await lookupDelegate(spec.model).findMany({
+    where,
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    select: { code: true, name: true, bnName: true },
   });
 
-  return rows
-    .filter((r): r is { code: string; label: string } => Boolean(r.code))
-    .map((r) => ({ code: r.code, label: r.label }));
+  return raw.map((r) => ({
+    code: r.code as string,
+    label: r.name as string,
+    bnName: (r.bnName as string | null) ?? null,
+  }));
 }
 
 export function listDivisions(actor: AuthUser) {
@@ -1338,19 +1468,17 @@ export function listDistricts(actor: AuthUser, divisionCode?: string) {
 }
 
 /**
- * Both upazilas and thanas sit directly under a district, so they are returned
- * together. Which one applies depends on the district, not on the user.
+ * Localities under a district. The dataset has no thanas of its own, so this is
+ * the upazila list and it also serves as the thana list.
  */
 export async function listLocalities(actor: AuthUser, districtCode?: string) {
-  const [upazilas, thanas] = await Promise.all([
-    addressChildren(actor, ADDRESS_CATEGORY.upazilas, districtCode),
-    addressChildren(actor, ADDRESS_CATEGORY.thanas, districtCode),
-  ]);
+  const upazilas = await addressChildren(actor, ADDRESS_CATEGORY.upazilas, districtCode);
+  return upazilas.map((u) => ({ ...u, type: "upazila" as const }));
+}
 
-  return [
-    ...thanas.map((t) => ({ ...t, type: "thana" as const })),
-    ...upazilas.map((u) => ({ ...u, type: "upazila" as const })),
-  ];
+/** Unions under an upazila. The deepest level in the dataset. */
+export function listUnions(actor: AuthUser, upazilaCode?: string) {
+  return addressChildren(actor, ADDRESS_CATEGORY.unions, upazilaCode);
 }
 
 /**
@@ -1360,8 +1488,18 @@ export async function listLocalities(actor: AuthUser, districtCode?: string) {
  */
 export async function assertAddressChain(
   actor: AuthUser,
-  input: { division?: string | null; district?: string | null; upazila?: string | null; thana?: string | null },
-): Promise<{ division: string | null; district: string | null; upazila: string | null; thana: string | null }> {
+  input: {
+    division?: string | null;
+    district?: string | null;
+    upazila?: string | null;
+    thana?: string | null;
+  },
+): Promise<{
+  division: string | null;
+  district: string | null;
+  upazila: string | null;
+  thana: string | null;
+}> {
   const { division, district, upazila, thana } = input;
 
   if (upazila && thana) {
@@ -1377,26 +1515,30 @@ export async function assertAddressChain(
   const resolve = async (
     value: string,
     category: string,
-    parentCode: string | null | undefined,
+    parentCode: string | undefined,
     field: string,
     parentLabel?: string,
   ): Promise<{ code: string; label: string; parentCode: string | null }> => {
-    const row = await prisma.masterData.findFirst({
-      where: {
-        branchId: actor.branchId,
-        category,
-        status: "active",
-        // undefined leaves the parent unconstrained, null demands a top-level
-        // row, and a code demands that exact parent. Districts need the middle
-        // case when the division has not been chosen yet.
-        ...(parentCode === undefined ? {} : { parentCode }),
-        // Codes come from the cascading dropdowns, but records written before
-        // the cascade existed hold plain labels ("Dhaka"), so both are accepted.
-        OR: [{ code: value }, { label: value }],
-      },
-      select: { code: true, label: true, parentCode: true },
+    const spec = lookupSpec(category);
+    if (!spec.address) throw new ValidationError(`"${category}" is not an address level`);
+    const where: Record<string, unknown> = {
+      ...branchScope(spec, actor.branchId),
+      status: "active",
+      // Codes come from the cascading dropdowns, but records written before the
+      // cascade existed hold plain labels ("Dhaka"), so both are accepted.
+      OR: [{ code: value }, { name: value }],
+    };
+    // An undefined parent leaves the row unconstrained, which is what a district
+    // needs when the division has not been chosen yet.
+    if (parentCode !== undefined && spec.parent) {
+      where[spec.parent.model] = { code: parentCode };
+    }
+
+    const raw = await lookupDelegate(spec.model).findFirst({
+      where,
+      select: { code: true, name: true, ...(spec.parent ? { [spec.parent.field]: true } : {}) },
     });
-    if (!row?.code) {
+    if (!raw) {
       // A value that exists but under a different parent is the common mistake
       // here, so name the parent rather than reporting a bare "invalid value".
       throw new ValidationError(
@@ -1405,14 +1547,15 @@ export async function assertAddressChain(
           : `Invalid ${field}: ${value}`,
       );
     }
-    return { code: row.code, label: row.label, parentCode: row.parentCode };
+    const row = toLookupRow(spec, raw as never);
+    return { code: row.code, label: row.name, parentCode: row.parentCode };
   };
 
   let divisionRow: { code: string; label: string } | null = null;
   let districtRow: { code: string; label: string; parentCode: string | null } | null = null;
 
   if (division) {
-    divisionRow = await resolve(division, ADDRESS_CATEGORY.divisions, null, "division");
+    divisionRow = await resolve(division, ADDRESS_CATEGORY.divisions, undefined, "division");
   }
 
   if (district) {
@@ -1433,7 +1576,7 @@ export async function assertAddressChain(
         divisionRow = await resolve(
           districtRow.parentCode,
           ADDRESS_CATEGORY.divisions,
-          null,
+          undefined,
           "division",
         );
       }
@@ -1443,10 +1586,11 @@ export async function assertAddressChain(
   const locality = upazila || thana;
   let localityRow: { label: string } | null = null;
   if (locality && districtRow) {
-    const category = upazila ? ADDRESS_CATEGORY.upazilas : ADDRESS_CATEGORY.thanas;
+    // A `thana` value can only come from a record written before the upazila
+    // level took over as the thana, so both resolve against the upazila rows.
     localityRow = await resolve(
       locality,
-      category,
+      ADDRESS_CATEGORY.upazilas,
       districtRow.code,
       upazila ? "upazila" : "thana",
       `district "${districtRow.label}"`,
@@ -1458,160 +1602,257 @@ export async function assertAddressChain(
   return {
     division: divisionRow?.label ?? null,
     district: districtRow?.label ?? null,
-    upazila: upazila ? (localityRow?.label ?? null) : null,
-    thana: thana ? (localityRow?.label ?? null) : null,
+    upazila: localityRow?.label ?? null,
+    // Cleared on write: the locality now lives in `upazila`, and leaving a stale
+    // thana would make the record disagree with itself.
+    thana: null,
   };
 }
 
+/* ---------------------------------------------------------------------------
+ * Writes
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Turns a `parentCode` from the API into the parent row's id, refusing a parent
+ * that does not exist in this branch. The database would reject a dangling id
+ * anyway, but a named error is far more useful than a foreign key violation.
+ */
+async function resolveParentId(
+  actor: AuthUser,
+  category: MasterDataCategory,
+  parentCode: string | null | undefined,
+): Promise<number | null> {
+  const spec = LOOKUP_SPECS[category];
+  if (!spec.parent) return null;
+  if (!parentCode) return null;
+
+  const parentSpec = LOOKUP_SPECS[spec.parent.category];
+  const parent = await lookupDelegate(parentSpec.model).findFirst({
+    where: {
+      ...branchScope(parentSpec, actor.branchId),
+      code: parentCode,
+    },
+    select: { id: true },
+  });
+  if (!parent) {
+    throw new ValidationError(
+      `${spec.parent.category}: no row with code "${parentCode}" in this branch`,
+    );
+  }
+  return parent.id as number;
+}
+
+/** Columns a create/update may set, per category. `bnName`/`lat`/`lon`/`url` are
+ * dataset-owned and never writable through the API. */
+function writableData(
+  spec: LookupSpec,
+  branchId: number,
+  input: { label?: string; code?: string | null; sortOrder?: number; status?: string },
+): Record<string, unknown> {
+  const data: Record<string, unknown> = {};
+  if (spec.branchScoped) data.branchId = branchId;
+  if (input.label !== undefined) data.name = input.label;
+  if (input.code !== undefined) data.code = input.code;
+  if (input.sortOrder !== undefined) data.sortOrder = input.sortOrder;
+  if (input.status !== undefined) data.status = input.status;
+  return data;
+}
+
 export async function createMasterData(actor: AuthUser, input: CreateMasterDataInput) {
+  const category = input.category as MasterDataCategory;
+  assertAddressDataNotEditable(category);
+  const spec = LOOKUP_SPECS[category];
+
+  const parentId = await resolveParentId(actor, category, input.parentCode);
+  if (spec.parent && parentId === null) {
+    throw new ValidationError(
+      `parentCode is required: a ${category.replace(/s$/, "")} must belong to a ${spec.parent.category.replace(/s$/, "")}`,
+    );
+  }
+
   try {
-    const created = await prisma.masterData.create({
+    const created = await lookupDelegate(spec.model).create({
       data: {
-        branchId: actor.branchId,
-        category: input.category,
-        label: input.label,
-        code: input.code ?? null,
-        parentCode: input.parentCode ?? null,
-        sortOrder: input.sortOrder ?? 0,
-        status: input.status ?? "active",
+        ...writableData(spec, actor.branchId, input),
+        ...(spec.parent ? { [spec.parent.field]: parentId } : {}),
       },
+      select: lookupSelect(spec),
     });
+    const row = toLookupRow(spec, created as never);
 
     await writeAuditLog({
       module: "masterData",
       action: "create",
-      tableName: "MasterData",
-      recordId: String(created.id),
+      tableName: spec.model,
+      recordId: String(row.id),
       newValues: {
-        category: created.category,
-        label: created.label,
-        code: created.code,
-        parentCode: created.parentCode,
-        status: created.status,
+        category,
+        label: row.name,
+        code: row.code,
+        parentCode: row.parentCode,
+        status: row.status,
       },
       user: actor,
       branchId: actor.branchId,
     });
-    return created;
+    return toListItem(category, row);
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
       throw new ConflictError(
-        `Master data "${input.label}" already exists in category "${input.category}"`,
+        `"${input.label}" already exists in ${category}` +
+          (input.parentCode ? ` under "${input.parentCode}"` : ""),
       );
     }
     throw err;
   }
 }
 
-export async function updateMasterData(actor: AuthUser, id: number, input: UpdateMasterDataInput) {
-  const current = await prisma.masterData.findFirst({ where: { id, branchId: actor.branchId } });
-  if (!current) {
-    throw new NotFoundError("Master data item not found");
+export async function updateMasterData(
+  actor: AuthUser,
+  category: string,
+  id: number,
+  input: UpdateMasterDataInput,
+) {
+  // Rows live in ten tables, and each table numbers its own primary keys from 1, so
+  // an id alone is ambiguous: deleting id 1 could hit a city, a division, or a
+  // payment method. The category is part of the path so the row is addressed
+  // unambiguously. `input.category` is a *move*, not the row's current table.
+  if (!isMasterDataCategory(category)) {
+    throw new ValidationError(`Unknown master data category "${category}"`);
+  }
+  const spec = LOOKUP_SPECS[category];
+
+  const raw = await lookupDelegate(spec.model).findFirst({
+    where: { id, ...branchScope(spec, actor.branchId) },
+    select: lookupSelect(spec),
+  });
+  if (!raw) throw new NotFoundError("Master data item not found");
+  const current = toLookupRow(spec, raw as never);
+
+  assertAddressDataNotEditable(category);
+  if (input.category) assertAddressDataNotEditable(input.category);
+
+  const targetCategory = (input.category ?? category) as MasterDataCategory;
+  const targetSpec = LOOKUP_SPECS[targetCategory];
+
+  // Changing the category moves the row between two different tables. Doing it as a
+  // delete plus create keeps each table's constraints honest (there is no
+  // cross-table UPDATE) and is atomic from the caller's point of view.
+  if (targetCategory !== category) {
+    const moved = await createMasterData(actor, {
+      category: targetCategory,
+      label: input.label ?? current.name,
+      code: input.code ?? current.code,
+      parentCode: input.parentCode ?? current.parentCode,
+      sortOrder: input.sortOrder ?? current.sortOrder,
+      status: input.status ?? current.status,
+    } as CreateMasterDataInput);
+    await lookupDelegate(LOOKUP_SPECS[category].model).delete({ where: { id } });
+    await writeAuditLog({
+      module: "masterData",
+      action: "update",
+      tableName: `${LOOKUP_SPECS[category].model} -> ${targetSpec.model}`,
+      recordId: String(id),
+      oldValues: { category, label: current.name, code: current.code },
+      newValues: { category: targetCategory, label: moved.label, code: moved.code },
+      user: actor,
+      branchId: actor.branchId,
+    });
+    return moved;
+  }
+
+  const data: Record<string, unknown> = writableData(spec, actor.branchId, {
+    label: input.label,
+    code: input.code,
+    sortOrder: input.sortOrder,
+    status: input.status,
+  });
+
+  if (input.parentCode !== undefined && spec.parent) {
+    const parentId = await resolveParentId(actor, category, input.parentCode);
+    if (parentId === null) {
+      throw new ValidationError(
+        `parentCode is required: a ${category.replace(/s$/, "")} must belong to a ${spec.parent.category.replace(/s$/, "")}`,
+      );
+    }
+    data[spec.parent.field] = parentId;
   }
 
   try {
-    const updated = await prisma.masterData.update({
+    const updated = await lookupDelegate(spec.model).update({
       where: { id },
-      data: { ...input },
+      data,
+      select: lookupSelect(spec),
     });
+    const row = toLookupRow(spec, updated as never);
 
     await writeAuditLog({
       module: "masterData",
       action: "update",
-      tableName: "MasterData",
+      tableName: spec.model,
       recordId: String(id),
       oldValues: {
-        category: current.category,
-        label: current.label,
+        category,
+        label: current.name,
         code: current.code,
         parentCode: current.parentCode,
         status: current.status,
       },
       newValues: {
-        ...(input.category ? { category: input.category } : {}),
-        ...(input.label ? { label: input.label } : {}),
-        ...(input.code !== undefined ? { code: input.code } : {}),
-        ...(input.parentCode !== undefined ? { parentCode: input.parentCode } : {}),
-        ...(input.status ? { status: input.status } : {}),
+        label: row.name,
+        code: row.code,
+        parentCode: row.parentCode,
+        status: row.status,
       },
       user: actor,
       branchId: actor.branchId,
     });
-    return updated;
+    return toListItem(category, row);
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
       throw new ConflictError(
-        `Master data "${input.label ?? current.label}" already exists in category "${
-          input.category ?? current.category
-        }"`,
+        `"${input.label ?? current.name}" already exists in ${category}` +
+          (input.parentCode ? ` under "${input.parentCode}"` : ""),
       );
     }
     throw err;
   }
 }
 
-/** Counts the patients whose stored address still names a master data label. */
-async function countPatientsUsingAddress(labels: string[]): Promise<number> {
-  const unique = [...new Set(labels.filter(Boolean))];
-  if (unique.length === 0) return 0;
-  return prisma.patient.count({
-    where: {
-      deletedAt: null,
-      OR: [
-        { division: { in: unique } },
-        { district: { in: unique } },
-        { upazila: { in: unique } },
-        { thana: { in: unique } },
-      ],
-    },
+export async function deleteMasterData(actor: AuthUser, category: string, id: number) {
+  // Same reason as update: an id is only unique within its table, so the category is
+  // part of the path rather than guessed from the id.
+  if (!isMasterDataCategory(category)) {
+    throw new ValidationError(`Unknown master data category "${category}"`);
+  }
+  const spec = LOOKUP_SPECS[category];
+
+  const raw = await lookupDelegate(spec.model).findFirst({
+    where: { id, ...branchScope(spec, actor.branchId) },
+    select: lookupSelect(spec),
   });
-}
+  if (!raw) throw new NotFoundError("Master data item not found");
+  const current = toLookupRow(spec, raw as never);
 
-export async function deleteMasterData(actor: AuthUser, id: number) {
-  const current = await prisma.masterData.findFirst({ where: { id, branchId: actor.branchId } });
-  if (!current) {
-    throw new NotFoundError("Master data item not found");
-  }
+  // This is the only guard a delete needs. The address hierarchy used to be guarded
+  // by "does it still have children" and "does a patient name it", but both of those
+  // only ever applied to address rows, and refusing the category outright covers
+  // them: no address row can be removed, so nothing can be orphaned and no patient
+  // can be stranded. The foreign keys on the app-owned lists are what stop a
+  // district's parent from being deleted out from under it.
+  assertAddressDataNotEditable(category);
 
-  // Deleting a division would leave its districts, and every upazila and thana
-  // beneath them, pointing at a parent that no longer exists. Those rows would
-  // disappear from every cascade dropdown while still looking intact, so a
-  // parent has to go last. Only the two address levels that can actually hold
-  // children are checked; flat categories never have any.
-  if (isAddressParentCategory(current.category) && current.code) {
-    const childCount = await prisma.masterData.count({
-      where: { branchId: actor.branchId, parentCode: current.code, id: { not: id } },
-    });
-    if (childCount > 0) {
-      throw new ConflictError(
-        `"${current.label}" still has ${childCount} item(s) filed under it. ` +
-          `Remove or move those first, or mark "${current.label}" inactive to hide it instead.`,
-      );
-    }
-  }
-
-  // Patients store the label, not the code, so a row that a patient address
-  // names cannot be removed without stranding that record.
-  if (isAddressCategory(current.category)) {
-    const inUse = await countPatientsUsingAddress([current.label]);
-    if (inUse > 0) {
-      throw new ConflictError(
-        `"${current.label}" is used by ${inUse} patient record(s) and cannot be deleted. ` +
-          `Mark it inactive instead so it stops appearing in new entries.`,
-      );
-    }
-  }
-
-  await prisma.masterData.delete({ where: { id } });
+  await lookupDelegate(spec.model).delete({ where: { id } });
 
   await writeAuditLog({
     module: "masterData",
     action: "delete",
-    tableName: "MasterData",
+    tableName: spec.model,
     recordId: String(id),
     oldValues: {
-      category: current.category,
-      label: current.label,
+      category,
+      label: current.name,
       code: current.code,
       parentCode: current.parentCode,
     },

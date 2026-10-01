@@ -1,11 +1,16 @@
 /**
  * Standalone re-sync of the Bangladesh address hierarchy.
  *
- * The normal seed already does this (see `prisma/seed.ts`), so you only need
- * this command when the underlying dataset changes, for example after bumping
- * @bangladeshi/bangladesh-address. Branches must already exist.
+ * The normal seed deliberately does not do this (see `prisma/seed.ts`), so this
+ * is the command to run when the vendored dumps in `prisma/address-source/`
+ * change. Branches must already exist.
  *
  *   npm run seed:address
+ *
+ * `npm run seed:address:sql` is the sibling command: it writes the same rows to
+ * `sql/address-master-data.sql` for upload in phpMyAdmin, which is how the
+ * hospital loads them. Neither command is needed after the SQL has been
+ * imported once.
  */
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";

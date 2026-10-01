@@ -24,10 +24,14 @@ export interface AddressCascade {
 /**
  * Drives the Bangladesh address cascade (division -> district -> upazila | thana).
  *
- * Every level is read from Master Data through the settings API, so an admin
- * adding a unit in Settings -> Master Data makes it selectable here. Children
- * are fetched only once a parent is chosen, which is also what keeps the
- * dropdowns honest: a district list is always the children of one division.
+ * Every level is read from the settings API, which serves the national address
+ * tables (Division, District, Upazila, Union). Those rows are imported from
+ * `backend/sql/address-master-data.sql` through phpMyAdmin and are deliberately
+ * NOT editable from Settings -> Master Data, so this data is stable reference
+ * data rather than something an admin maintains. Upazilas double as thanas for
+ * the patient form. Children are fetched only once a parent is chosen, which is
+ * also what keeps the dropdowns honest: a district list is always the children
+ * of one division.
  */
 export function useAddressCascade(): AddressCascade {
   const [divisions, setDivisions] = useState<AddressChoice[]>([]);

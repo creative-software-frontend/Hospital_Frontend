@@ -377,8 +377,8 @@ router.get(
   settingController.listMasterData,
 );
 
-// Dropdown source for other features. Declared before "/master-data/:id" so the
-// literal "options" segment is never read as an id.
+// Dropdown source for other features. Declared before the other "/master-data/*"
+// routes so the literal "options" segment is never read as a category.
 router.get(
   "/master-data/options/:category",
   requirePermission("masterData", "read"),
@@ -405,6 +405,14 @@ router.get(
   settingController.listAddressLocalities,
 );
 
+// Unions sit under an upazila. Not used by the patient form yet, but the
+// hierarchy is four levels deep in the dataset and reports may need it.
+router.get(
+  "/address/unions",
+  requirePermission("patient", "read"),
+  settingController.listAddressUnions,
+);
+
 router.post(
   "/master-data",
   validate({ body: createMasterDataSchema }),
@@ -412,15 +420,17 @@ router.post(
   settingController.createMasterData,
 );
 
+// The category is part of the path: each lookup list has its own table and its own
+// primary-key sequence, so an id on its own is ambiguous.
 router.patch(
-  "/master-data/:id",
+  "/master-data/:category/:id",
   validate({ body: updateMasterDataSchema }),
   requirePermission("masterData", "update"),
   settingController.updateMasterData,
 );
 
 router.delete(
-  "/master-data/:id",
+  "/master-data/:category/:id",
   requirePermission("masterData", "update"),
   settingController.deleteMasterData,
 );

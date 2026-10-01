@@ -1,8 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../lib/prisma", () => {
+  const delegate = () => ({
+    findMany: vi.fn(),
+    findFirst: vi.fn().mockResolvedValue(null),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn(),
+  });
   const prisma = {
-    masterData: { findMany: vi.fn(), findFirst: vi.fn() },
+    city: delegate(),
+    area: delegate(),
+    visitType: delegate(),
+    bloodGroup: delegate(),
+    documentType: delegate(),
+    paymentMethod: delegate(),
+    division: delegate(),
+    district: delegate(),
+    upazila: delegate(),
+    union: delegate(),
   };
   return { prisma };
 });
@@ -21,93 +39,200 @@ const actor: AuthUser = {
   roles: [{ id: 2, seederKey: "ADMIN", name: "Admin" }],
 };
 
-interface MasterRow {
-  category: string;
+type Mock = {
+  findMany: ReturnType<typeof vi.fn>;
+  findFirst: ReturnType<typeof vi.fn>;
+};
+
+/** Every lookup delegate, keyed by model. Each level is its own table now. */
+const table = (model: string) => (mockPrisma as unknown as Record<string, Mock>)[model];
+
+/** A row as it comes back from Prisma on one address table. */
+interface PlaceRow {
+  id: number;
+  branchId: number;
+  name: string;
   code: string;
-  label: string;
-  parentCode: string | null;
+  sortOrder: number;
+  status: string;
+  bnName?: string | null;
+  /** FK plus the parent relation the service selects alongside it. */
+  [fk: string]: unknown;
 }
 
-const mdRow = (category: string, code: string, label: string, parentCode: string | null): MasterRow => ({
-  category,
+const place = (
+  model: string,
+  code: string,
+  name: string,
+  extra: Record<string, unknown> = {},
+  bnName: string | null = null,
+): PlaceRow => ({
+  id: model.length * 1000 + code.length,
+  branchId: 1,
+  name,
   code,
-  label,
-  parentCode,
+  sortOrder: 0,
+  status: "active",
+  bnName,
+  ...extra,
 });
 
+const DIV_DHAKA = place("division", "DIV_DHAKA", "Dhaka");
+const DIV_CHATTOGRAM = place("division", "DIV_CHATTOGRAM", "Chattogram");
+const DST_DHAKA = place("district", "DST_DHAKA", "Dhaka", {
+  divisionId: 10,
+  division: { code: "DIV_DHAKA" },
+});
+const DST_CHATTOGRAM = place("district", "DST_CHATTOGRAM", "Chattogram", {
+  divisionId: 11,
+  division: { code: "DIV_CHATTOGRAM" },
+});
+const UPA_DHAKA_SAVAR = place("upazila", "UPA_DHAKA_SAVAR", "Savar", {
+  districtId: 20,
+  district: { code: "DST_DHAKA" },
+});
+const UPA_DHAKA_DHAMRAI = place("upazila", "UPA_DHAKA_DHAMRAI", "Dhamrai", {
+  districtId: 20,
+  district: { code: "DST_DHAKA" },
+});
+const UNI_UPA_DHAMRAI = place("union", "UNI_UPA_DHAMRAI_KAFRUL", "Kafrul", {
+  upazilaId: 30,
+  upazila: { code: "UPA_DHAKA_DHAMRAI" },
+});
+
+/** The relation filter the service passes per level, e.g. `{ division: { code } }`. */
+const PARENT_RELATION: Record<string, { field: string; model: string }> = {
+  district: { field: "divisionId", model: "division" },
+  upazila: { field: "districtId", model: "district" },
+  union: { field: "upazilaId", model: "upazila" },
+};
+
 /**
- * Answers masterData.findFirst the way Prisma does: filter by category, match
- * the value against either `code` or `label`, and constrain the parent only
- * when the service passed one.
+ * Answers each address table the way Prisma would: match the value against either
+ * `code` or `name`, honour the branch, and constrain the parent only when the
+ * service passed one.
  */
-function stubRows(rows: MasterRow[]) {
-  mockPrisma.masterData.findFirst.mockImplementation((async (args: any) => {
-    const where = args?.where ?? {};
-    const wanted: string[] = Array.isArray(where.OR)
-      ? where.OR.map((o: { code?: string; label?: string }) => o.code ?? o.label)
-      : [where.code];
-    return (
-      rows.find(
+function stubRows(rows: PlaceRow[]) {
+  const byModel = new Map<string, PlaceRow[]>();
+  for (const model of Object.keys(PARENT_RELATION).concat("division")) {
+    byModel.set(model, []);
+  }
+  for (const row of rows) {
+    for (const [model, list] of byModel) {
+      if (rowHasParent(model, row)) list.push(row);
+    }
+  }
+
+  for (const [model, list] of byModel) {
+    const parent = PARENT_RELATION[model];
+    table(model).findFirst.mockImplementation((async (args: { where?: Record<string, any> }) => {
+      const where = args?.where ?? {};
+      const wanted: string[] = Array.isArray(where.OR)
+        ? where.OR.map((o: { code?: string; name?: string }) => o.code ?? o.name)
+        : [where.code];
+      // The parent is now a real foreign key, so the constraint is an equality on
+      // the relation rather than a string comparison.
+      const parentCode = parent ? where[parent.model]?.code : undefined;
+
+      const match = list.find(
         (r) =>
-          r.category === where.category &&
-          (wanted.includes(r.code) || wanted.includes(r.label)) &&
-          (where.parentCode === undefined || r.parentCode === where.parentCode),
-      ) ?? null
-    );
-  }) as never);
+          (wanted.includes(r.code) || wanted.includes(r.name)) &&
+          (parentCode === undefined ||
+            parentCode === (r[parent!.model] as { code: string } | undefined)?.code),
+      );
+      return match ?? null;
+    }) as never);
+  }
 }
 
-const DIV_DHAKA = mdRow("divisions", "DIV_DHAKA", "Dhaka", null);
-const DIV_CHATTOGRAM = mdRow("divisions", "DIV_CHATTOGRAM", "Chattogram", null);
-const DST_DHAKA = mdRow("districts", "DST_DHAKA", "Dhaka", "DIV_DHAKA");
-const DST_CHATTOGRAM = mdRow("districts", "DST_CHATTOGRAM", "Chattogram", "DIV_CHATTOGRAM");
-const UPA_DHAKA_SAVAR = mdRow("upazilas", "UPA_DHAKA_SAVAR", "Savar", "DST_DHAKA");
-const THA_DHAKA_GULSHAN = mdRow("thanas", "THA_DHAKA_GULSHAN", "Gulshan", "DST_DHAKA");
-const THA_CHATTOGRAM_KOTWALI = mdRow("thanas", "THA_CHATTOGRAM_KOTWALI", "Kotwali", "DST_CHATTOGRAM");
+/** True when a row belongs to `model`, judged by which FK it carries. */
+function rowHasParent(model: string, row: PlaceRow): boolean {
+  if (model === "division") return !("divisionId" in row) && !("districtId" in row) && !("upazilaId" in row);
+  const parent = PARENT_RELATION[model];
+  return parent.field in row;
+}
 
 describe("address cascade listing", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("lists only top-level divisions", async () => {
-    mockPrisma.masterData.findMany.mockResolvedValueOnce([DIV_DHAKA] as never);
+    table("division").findMany.mockResolvedValue([DIV_DHAKA] as never);
 
     const items = await settingService.listDivisions(actor);
 
-    expect(mockPrisma.masterData.findMany).toHaveBeenCalledWith(
+    // A division has no parent, so there is no relation filter at all: the query is
+    // simply "the active divisions of this branch".
+    expect(table("division").findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { branchId: 1, category: "divisions", status: "active", parentCode: null },
+        where: { branchId: 1, status: "active" },
       }),
     );
-    expect(items).toEqual([{ code: "DIV_DHAKA", label: "Dhaka" }]);
+    expect(items).toEqual([{ code: "DIV_DHAKA", label: "Dhaka", bnName: null }]);
   });
 
   it("lists districts belonging to the given division", async () => {
-    mockPrisma.masterData.findMany.mockResolvedValueOnce([
+    table("district").findMany.mockResolvedValue([
       DST_DHAKA,
-      mdRow("districts", "DST_TANGAIL", "Tangail", "DIV_DHAKA"),
+      place("district", "DST_TANGAIL", "Tangail", { divisionId: 10, division: { code: "DIV_DHAKA" } }),
     ] as never);
 
     const items = await settingService.listDistricts(actor, "DIV_DHAKA");
 
-    expect(mockPrisma.masterData.findMany).toHaveBeenCalledWith(
+    expect(table("district").findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { branchId: 1, category: "districts", status: "active", parentCode: "DIV_DHAKA" },
+        where: { branchId: 1, status: "active", division: { code: "DIV_DHAKA" } },
       }),
     );
     expect(items.map((i) => i.label)).toEqual(["Dhaka", "Tangail"]);
   });
 
-  it("returns thanas and upazilas together, each tagged with its kind", async () => {
-    mockPrisma.masterData.findMany
-      .mockResolvedValueOnce([UPA_DHAKA_SAVAR] as never)
-      .mockResolvedValueOnce([THA_DHAKA_GULSHAN] as never);
+  it("returns the upazilas as the locality level", async () => {
+    // The dataset has no metropolitan thanas, so localities are upazilas only
+    // and a single query covers the level.
+    table("upazila").findMany.mockResolvedValue([UPA_DHAKA_SAVAR] as never);
 
     const items = await settingService.listLocalities(actor, "DST_DHAKA");
 
+    expect(table("upazila").findMany).toHaveBeenCalledTimes(1);
     expect(items).toEqual([
-      { code: "THA_DHAKA_GULSHAN", label: "Gulshan", type: "thana" },
-      { code: "UPA_DHAKA_SAVAR", label: "Savar", type: "upazila" },
+      { code: "UPA_DHAKA_SAVAR", label: "Savar", bnName: null, type: "upazila" },
     ]);
+  });
+
+  it("passes the Bengali name through for the dropdown", async () => {
+    table("division").findMany.mockResolvedValue([
+      place("division", "DIV_DHAKA", "Dhaka", {}, "ঢাকা"),
+    ] as never);
+
+    const items = await settingService.listDivisions(actor);
+
+    expect(items).toEqual([{ code: "DIV_DHAKA", label: "Dhaka", bnName: "ঢাকা" }]);
+  });
+
+  it("lists the unions under an upazila", async () => {
+    table("union").findMany.mockResolvedValue([UNI_UPA_DHAMRAI] as never);
+
+    const items = await settingService.listUnions(actor, "UPA_DHAKA_DHAMRAI");
+
+    expect(table("union").findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          branchId: 1,
+          status: "active",
+          upazila: { code: "UPA_DHAKA_DHAMRAI" },
+        }),
+      }),
+    );
+    expect(items).toEqual([
+      { code: "UNI_UPA_DHAMRAI_KAFRUL", label: "Kafrul", bnName: null },
+    ]);
+  });
+
+  it("refuses to list a child level with no parent, instead of dumping the branch", async () => {
+    // Every district has a non-null divisionId, so "all districts in this branch"
+    // is not a meaningful answer to a cascade request.
+    await expect(settingService.listDistricts(actor)).resolves.toEqual([]);
+    expect(table("district").findMany).not.toHaveBeenCalled();
   });
 });
 
@@ -160,7 +285,7 @@ describe("address chain validation", () => {
         division: "DIV_DHAKA",
         district: "DST_DHAKA",
         upazila: UPA_DHAKA_SAVAR.code,
-        thana: THA_DHAKA_GULSHAN.code,
+        thana: "Gulshan",
       }),
     ).rejects.toThrow(/either an upazila or a thana/);
   });
@@ -188,8 +313,23 @@ describe("address chain validation", () => {
     ).resolves.toEqual({ division: "Dhaka", district: "Dhaka", upazila: "Savar", thana: null });
   });
 
-  it("accepts a thana as the locality", async () => {
-    stubRows([DIV_DHAKA, DST_DHAKA, THA_DHAKA_GULSHAN]);
+  it("resolves a legacy thana against the upazila rows and clears thana", async () => {
+    // A record saved before the upazila level took over as the thana still
+    // carries `thana`. It is looked up in `upazilas` and stored there instead,
+    // so the record cannot disagree with itself.
+    stubRows([DIV_DHAKA, DST_DHAKA, UPA_DHAKA_SAVAR]);
+
+    await expect(
+      settingService.assertAddressChain(actor, {
+        division: "DIV_DHAKA",
+        district: "DST_DHAKA",
+        thana: "Savar",
+      }),
+    ).resolves.toEqual({ division: "Dhaka", district: "Dhaka", upazila: "Savar", thana: null });
+  });
+
+  it("rejects a legacy thana that matches no upazila", async () => {
+    stubRows([DIV_DHAKA, DST_DHAKA]);
 
     await expect(
       settingService.assertAddressChain(actor, {
@@ -197,7 +337,7 @@ describe("address chain validation", () => {
         district: "DST_DHAKA",
         thana: "Gulshan",
       }),
-    ).resolves.toEqual({ division: "Dhaka", district: "Dhaka", upazila: null, thana: "Gulshan" });
+    ).rejects.toThrow(/thana "Gulshan" does not belong to district "Dhaka"/);
   });
 
   it("accepts a district on its own with no locality", async () => {
@@ -223,6 +363,8 @@ describe("address chain validation", () => {
       upazila: null,
       thana: null,
     });
-    expect(mockPrisma.masterData.findFirst).not.toHaveBeenCalled();
+    for (const model of ["division", "district", "upazila", "union"]) {
+      expect(table(model).findFirst).not.toHaveBeenCalled();
+    }
   });
 });

@@ -60,7 +60,7 @@ enum Gender {
   OTHER
 }
 
-enum BloodGroup {
+enum BloodGroupCode {
   A_POS
   A_NEG
   B_POS
@@ -223,7 +223,15 @@ model Branch {
   documentTemplates      DocumentTemplate[]
   reportSettings         ReportSetting[]
   localizationSettings   LocalizationSetting[]
-  masterDataItems        MasterData[]
+  divisions              Division[]
+  districts              District[]
+  upazilas               Upazila[]
+  unions                 Union[]
+  cities                 City[]
+  areas                  Area[]
+  visitTypes             VisitType[]
+  bloodGroups            BloodGroup[]
+  documentTypes          DocumentType[]
 
   @@index([code])
 }
@@ -619,13 +627,13 @@ model Bed {
 // ============================================================
 
 model Patient {
-  id            Int            @id @default(autoincrement())
+  id            Int             @id @default(autoincrement())
   branchId      Int
   patientCode   String
   name          String
   gender        Gender?
   dateOfBirth   DateTime?
-  bloodGroup    BloodGroup?
+  bloodGroup    BloodGroupCode?
   phone         String?
   email         String?
   whatsapp      String?
@@ -641,12 +649,12 @@ model Patient {
   occupation    String?
   maritalStatus MaritalStatus?
   photo         String?
-  status        String         @default("active")
+  status        String          @default("active")
   deletedAt     DateTime?
   createdById   Int?
   updatedById   Int?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
   branch         Branch?          @relation(fields: [branchId], references: [id])
   contacts       PatientContact[]
@@ -1139,12 +1147,18 @@ model Appointment {
 // BILLING
 // ============================================================
 
+/// Payment methods are global reference data, so this table has no branchId.
+/// It also backs the "Payment Methods" list in Settings -> Master Data, which is
+/// why it carries sortOrder and the timestamps like the branch-scoped lookups.
 model PaymentMethod {
-  id     Int               @id @default(autoincrement())
-  name   String
-  code   String            @unique
-  type   PaymentMethodType @default(OTHER)
-  status String            @default("active")
+  id        Int               @id @default(autoincrement())
+  name      String
+  code      String            @unique
+  type      PaymentMethodType @default(OTHER)
+  sortOrder Int               @default(0)
+  status    String            @default("active")
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
 
   payments Payment[]
 }
@@ -1800,27 +1814,209 @@ model LocalizationSetting {
   @@index([branchId])
 }
 
-model MasterData {
+// ============================================================
+// ADDRESS HIERARCHY
+// ============================================================
+//
+// The Bangladesh cascade is a fixed four-level hierarchy, so it gets real tables
+// and real foreign keys rather than a generic lookup table with a `parentCode`
+// string that nothing enforces. Division -> District -> Upazila -> Union is
+// guaranteed by the database, not by application code.
+//
+// These rows are read-only in the app. They are loaded by uploading
+// `sql/address-master-data.sql` (or running `npm run seed:address`) and are
+// replicated into every branch, because the app scopes address data by branch
+// like everything else.
+
+model Division {
+  id        Int      @id @default(autoincrement())
+  branchId  Int
+  /// English name, e.g. "Dhaka".
+  name      String
+  /// Stable code used by the cascade query parameters, e.g. "DIV_DHAKA".
+  code      String
+  /// Bengali name of the place, e.g. "ঢাকা".
+  bnName    String?
+  /// Government (LGED) page for the place, stored as published in the dataset.
+  url       String?
+  sortOrder Int      @default(0)
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch    Branch     @relation(fields: [branchId], references: [id])
+  districts District[]
+
+  @@unique([branchId, code])
+  @@unique([branchId, name])
+  @@index([branchId])
+}
+
+model District {
   id         Int      @id @default(autoincrement())
   branchId   Int
-  category   String
-  label      String
-  code       String?
-  /// Parent row's `code`, used by hierarchical categories (district -> division,
-  /// upazila/thana -> district). A code is used rather than an id so seeding from
-  /// an external dataset stays a single pass and needs no second lookup.
-  parentCode String?
+  divisionId Int
+  name       String
+  code       String
+  bnName     String?
+  /// Centroid of the district. The national dataset carries coordinates for
+  /// districts only, which is why the other levels have no lat/lon column.
+  lat        Float?
+  lon        Float?
+  url        String?
   sortOrder  Int      @default(0)
   status     String   @default("active")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  branch Branch? @relation(fields: [branchId], references: [id])
+  branch   Branch    @relation(fields: [branchId], references: [id])
+  division Division  @relation(fields: [divisionId], references: [id])
+  upazilas Upazila[]
 
-  @@unique([branchId, category, parentCode, label])
-  @@unique([branchId, category, code])
+  @@unique([branchId, code])
+  @@unique([branchId, divisionId, name])
   @@index([branchId])
-  @@index([category, parentCode])
+  @@index([divisionId])
+}
+
+model Upazila {
+  id         Int      @id @default(autoincrement())
+  branchId   Int
+  districtId Int
+  name       String
+  code       String
+  bnName     String?
+  url        String?
+  sortOrder  Int      @default(0)
+  status     String   @default("active")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  branch   Branch   @relation(fields: [branchId], references: [id])
+  district District @relation(fields: [districtId], references: [id])
+  unions   Union[]
+
+  @@unique([branchId, code])
+  @@unique([branchId, districtId, name])
+  @@index([branchId])
+  @@index([districtId])
+}
+
+model Union {
+  id        Int      @id @default(autoincrement())
+  branchId  Int
+  upazilaId Int
+  name      String
+  code      String
+  bnName    String?
+  url       String?
+  sortOrder Int      @default(0)
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  upazila Upazila @relation(fields: [upazilaId], references: [id])
+
+  @@unique([branchId, code])
+  @@unique([branchId, upazilaId, name])
+  @@index([branchId])
+  @@index([upazilaId])
+}
+
+// ============================================================
+// APP-OWNED LOOKUPS
+// ============================================================
+//
+// Small, flat lists the app seeds and admins edit in Settings -> Master Data.
+// Each gets its own table rather than a shared generic one, so each can carry its
+// own constraints and columns without every other list inheriting them.
+
+model City {
+  id        Int      @id @default(autoincrement())
+  branchId  Int
+  name      String
+  code      String
+  sortOrder Int      @default(0)
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@unique([branchId, code])
+  @@unique([branchId, name])
+  @@index([branchId])
+}
+
+model Area {
+  id        Int      @id @default(autoincrement())
+  branchId  Int
+  name      String
+  code      String
+  sortOrder Int      @default(0)
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@unique([branchId, code])
+  @@unique([branchId, name])
+  @@index([branchId])
+}
+
+model VisitType {
+  id        Int      @id @default(autoincrement())
+  branchId  Int
+  name      String
+  code      String
+  sortOrder Int      @default(0)
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@unique([branchId, code])
+  @@unique([branchId, name])
+  @@index([branchId])
+}
+
+/// Patient.bloodGroup stores one of these codes as a BloodGroupCode enum value.
+model BloodGroup {
+  id        Int      @id @default(autoincrement())
+  branchId  Int
+  name      String
+  code      String
+  sortOrder Int      @default(0)
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@unique([branchId, code])
+  @@unique([branchId, name])
+  @@index([branchId])
+}
+
+/// Patient document references (NID, passport, ...) as chosen in the UI.
+model DocumentType {
+  id        Int      @id @default(autoincrement())
+  branchId  Int
+  name      String
+  code      String
+  sortOrder Int      @default(0)
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@unique([branchId, code])
+  @@unique([branchId, name])
+  @@index([branchId])
 }
 
 model SystemMaintenance {

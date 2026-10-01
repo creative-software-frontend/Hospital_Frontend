@@ -1306,7 +1306,7 @@ export const MASTER_DATA_CATEGORIES = [
   "divisions",
   "districts",
   "upazilas",
-  "thanas",
+  "unions",
 ] as const;
 
 export type MasterDataCategory = (typeof MASTER_DATA_CATEGORIES)[number];
@@ -1321,7 +1321,7 @@ export const MASTER_DATA_CATEGORY_LABELS: Record<MasterDataCategory, string> = {
   divisions: "Divisions",
   districts: "Districts",
   upazilas: "Upazilas",
-  thanas: "Thanas",
+  unions: "Unions",
 };
 
 export const MASTER_DATA_CATEGORY_EXAMPLES: Record<MasterDataCategory, string> = {
@@ -1334,7 +1334,7 @@ export const MASTER_DATA_CATEGORY_EXAMPLES: Record<MasterDataCategory, string> =
   divisions: "Dhaka, Chattogram, Rajshahi",
   districts: "Dhaka, Gazipur, Narayanganj",
   upazilas: "Savar, Dhamrai, Rupganj",
-  thanas: "Gulshan, Banani, Kotwali",
+  unions: "Dhamrai, Kafrul, Keraniganj",
 };
 
 /**
@@ -1347,7 +1347,7 @@ export const ADDRESS_CATEGORIES: readonly MasterDataCategory[] = [
   "divisions",
   "districts",
   "upazilas",
-  "thanas",
+  "unions",
 ];
 
 export const MASTER_DATA_CATEGORY_PARENT: Record<MasterDataCategory, MasterDataCategory | null> = {
@@ -1360,7 +1360,7 @@ export const MASTER_DATA_CATEGORY_PARENT: Record<MasterDataCategory, MasterDataC
   divisions: null,
   districts: "divisions",
   upazilas: "districts",
-  thanas: "districts",
+  unions: "upazilas",
 };
 
 export interface MasterDataItem {
@@ -1372,6 +1372,11 @@ export interface MasterDataItem {
   parentCode: string | null;
   sortOrder: number;
   status: "active" | "inactive";
+  /** Bengali name, populated for the address hierarchy and null elsewhere. */
+  bnName: string | null;
+  lat: number | null;
+  lon: number | null;
+  url: string | null;
 }
 
 export type CreateMasterDataInput = {
@@ -1400,11 +1405,16 @@ export interface MasterDataOption {
 export interface AddressChoice {
   code: string;
   label: string;
+  /** Bengali name from the national dataset; absent for app-owned categories. */
+  bnName: string | null;
 }
 
-/** Upazilas and thanas are both district children, so they carry their kind. */
+/**
+ * The upazila level doubles as the thana: the published dataset has no separate
+ * metropolitan thanas, so every locality is an upazila.
+ */
 export interface AddressLocality extends AddressChoice {
-  type: "thana" | "upazila";
+  type: "upazila";
 }
 
 /** Renders a stored address the way it is displayed across the app. */
@@ -1712,13 +1722,13 @@ export const settingsApi = {
         method: "POST",
         body: JSON.stringify(input),
       }),
-    update: (id: number, input: UpdateMasterDataInput) =>
-      request<{ item: MasterDataItem }>(`/settings/master-data/${id}`, {
+    update: (category: MasterDataCategory, id: number, input: UpdateMasterDataInput) =>
+      request<{ item: MasterDataItem }>(`/settings/master-data/${category}/${id}`, {
         method: "PATCH",
         body: JSON.stringify(input),
       }),
-      remove: (id: number) =>
-        request<{ message: string }>(`/settings/master-data/${id}`, { method: "DELETE" }),
+      remove: (category: MasterDataCategory, id: number) =>
+        request<{ message: string }>(`/settings/master-data/${category}/${id}`, { method: "DELETE" }),
       options: (category: MasterDataCategory) =>
         request<{ category: string; options: MasterDataOption[] }>(
           `/settings/master-data/options/${category}`,
@@ -1733,6 +1743,10 @@ export const settingsApi = {
       localities: (district?: string) =>
         request<{ items: AddressLocality[] }>(
           `/settings/address/localities${qs(district ? { district } : {})}`,
+        ),
+      unions: (upazila?: string) =>
+        request<{ items: AddressChoice[] }>(
+          `/settings/address/unions${qs(upazila ? { upazila } : {})}`,
         ),
     },
   localization: {

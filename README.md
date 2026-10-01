@@ -64,21 +64,87 @@ looks like a bug:
 - **Login** — roles, permissions, and a bootstrap `SUPER_ADMIN` account.
 - **Branch** — one branch (`SEED_BRANCH_NAME` / `SEED_BRANCH_CODE`). Add more in
   the UI; the address dataset is copied into each one.
-- **Address hierarchy** — 8 divisions, 64 districts, 26 thanas and 495 upazilas
-  from `@bangladeshi/bangladesh-address`, written to Master Data per branch. This
-  is what fills the Division / District / Thana-Upazila cascade on the patient
-  form.
+- **Address hierarchy** — not seeded. Loaded from a SQL file you upload; see
+  [Address data](#address-data) below.
 - **Departments**, service categories and services.
 - **Shift types** — Morning, Evening, Night, used by the nurse Shift dropdown.
-- **Master data** — visit types, blood groups, marital status, gender, payment
-  methods, document types.
+- **Master data** — one table per list: cities, areas, visit types, blood
+  groups, payment methods and document types. Each list is branch-scoped except
+  payment methods, which are global. The national address lists (divisions,
+  districts, upazilas, unions) are separate and loaded from SQL, not seeded.
 - **Settings** — the hospital, OPD/IPD/lab/pharmacy/billing/accounting/HR/
   inventory groups, localization and system maintenance rows.
 
 The seed is idempotent: run it as many times as you like. Reference rows are
-matched on their natural keys, and address rows that disappear from the national
-dataset are deactivated rather than deleted so existing patients keep a valid
-reference.
+matched on their natural keys.
+
+## Address data
+
+The Division / District / Upazila cascade on the patient form reads from Master
+Data, and that data is **not** seeded — it is loaded once from a SQL file you
+upload yourself. `npm run setup` deliberately leaves it alone, so re-running
+setup can never overwrite it.
+
+The dataset lives in `backend/prisma/address-source/` as the four published
+dumps (`divisions`, `districts`, `upazilas`, `unions`):
+
+| Level | Rows | Bengali name | Coordinates | URL |
+|---|---|---|---|---|
+| `divisions` | 8 | yes | – | yes |
+| `districts` | 64 | yes | yes | yes |
+| `upazilas` | 494 | yes | – | yes |
+| `unions` | 4540 | yes | – | yes |
+
+That is 5106 rows per branch. `unions` is the deepest level and is served by
+`GET /api/settings/address/unions`; the patient form stops at `upazilas`. The
+dataset has no metropolitan thanas of its own, so the upazila dropdown also
+serves as the thana.
+
+### Loading it
+
+Generate the upload file, then import it in phpMyAdmin (or any MySQL client):
+
+```bash
+npm run seed:address:sql --prefix backend
+```
+
+That writes `backend/sql/address-master-data.sql`. Upload it against the
+database in `DATABASE_URL`, **after** `npm run setup` has run so the branches
+exist. The file is safe to upload more than once: it deletes the address rows
+and re-inserts them in one transaction, and it leaves every other Master Data
+category (blood groups, visit types, areas, cities, ...) untouched. It ends with
+a `SELECT` showing the per-branch counts, so you can confirm the load.
+
+Branch ids are read from the database the generator connects to and written into
+the file as literals, so it only fits the branches that existed when it was
+generated. Run it against production after seeding, or the rows land on the
+wrong branch.
+
+Prefer a script to an upload? `npm run seed:address --prefix backend` writes
+the same rows through Prisma and reads the branches itself, so it has no such
+constraint. It matches rows on `(branchId, code)` (and `(branchId, parentId,
+name)` within the hierarchy) and deactivates rows the dataset no longer lists,
+so it is also the safe way to refresh after editing the dumps. **This is the
+recommended path for production if you have shell access.** It has not been
+tested against a database that still holds the old dataset's codes, so the
+upload path is the one verified end to end.
+
+### Editing the data
+
+Address rows are read-only in the UI, and the write endpoints refuse them too.
+Changing a place means editing the dumps and re-importing, because an admin edit
+can break the unique keys the cascade depends on: `(branchId, code)` on each
+table and `(branchId, parentId, name)` on districts, upazilas and unions.
+
+The dumps repeat four union names inside a single upazila — `Natai` under
+Brahmanbaria Sadar, `Awajpur` under Charfasson, `Talimpur` under Barlekha and
+`Bhojoanpur` under Tetulia. A union table cannot store two rows with the same
+parent and name, so the second of each pair is kept as `Natai (2)` and so on
+rather than dropped. `npm run seed:address:sql` prints the list.
+
+Patients store the place name as text, not the code, so re-importing does not
+rewrite existing records; their saved division/district/upazila/thana text stays
+as it was.
 
 ## Everyday commands
 
@@ -101,7 +167,8 @@ From `backend/`:
 | `npm test` | Backend test suite. |
 | `npm run typecheck` | Backend type check. |
 | `npm run db:migrate:dev` | Create a new migration while changing the schema. |
-| `npm run seed:address` | Re-sync the address dataset only, e.g. after bumping the source package. |
+| `npm run seed:address` | Re-sync the address dataset from `prisma/address-source` only. |
+| `npm run seed:address:sql` | Regenerate `sql/address-master-data.sql` for upload. |
 
 ### Changing the schema
 

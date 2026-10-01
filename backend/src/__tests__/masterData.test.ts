@@ -1,8 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../lib/prisma", () => {
+  const delegate = () => ({
+    findMany: vi.fn(),
+    findFirst: vi.fn().mockResolvedValue(null),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn(),
+  });
   const prisma = {
-    masterData: { findMany: vi.fn() },
+    city: delegate(),
+    area: delegate(),
+    visitType: delegate(),
+    bloodGroup: delegate(),
+    documentType: delegate(),
+    paymentMethod: delegate(),
+    division: delegate(),
+    district: delegate(),
+    upazila: delegate(),
+    union: delegate(),
   };
   return { prisma };
 });
@@ -21,7 +39,11 @@ const actor: AuthUser = {
   roles: [{ id: 2, seederKey: "ADMIN", name: "Admin" }],
 };
 
-const row = (code: string, label: string, sortOrder = 0) => ({ code, label, sortOrder });
+/** The row shape the service selects: `name` is the new column behind `label`. */
+const row = (code: string, name: string, sortOrder = 0) => ({ code, name, sortOrder });
+
+const table = (model: string) =>
+  (mockPrisma as unknown as Record<string, { findMany: ReturnType<typeof vi.fn> }>)[model];
 
 describe("master data options", () => {
   beforeEach(() => {
@@ -29,16 +51,16 @@ describe("master data options", () => {
   });
 
   it("serves configured master data and marks it as not a fallback", async () => {
-    mockPrisma.masterData.findMany.mockResolvedValueOnce([
+    table("bloodGroup").findMany.mockResolvedValueOnce([
       row("O_NEG", "O-", 1),
       row("A_POS", "A+", 2),
     ] as never);
 
     const options = await settingService.listMasterDataOptions(actor, "blood_groups");
 
-    expect(mockPrisma.masterData.findMany).toHaveBeenCalledWith(
+    expect(table("bloodGroup").findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { branchId: 1, category: "blood_groups", status: "active" },
+        where: { branchId: 1, status: "active" },
       }),
     );
     expect(options.map((o) => o.code)).toEqual(["O_NEG", "A_POS"]);
@@ -46,20 +68,32 @@ describe("master data options", () => {
   });
 
   it("only returns active rows for the caller's branch", async () => {
-    mockPrisma.masterData.findMany.mockResolvedValueOnce([row("CASH", "Cash")] as never);
+    table("area").findMany.mockResolvedValueOnce([row("AREA_DHANMONDI", "Dhanmondi")] as never);
+
+    await settingService.listMasterDataOptions(actor, "areas");
+
+    expect(table("area").findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { branchId: 1, status: "active" },
+        select: { code: true, name: true, sortOrder: true },
+      }),
+    );
+  });
+
+  it("does not scope payment methods to a branch, because they are global", async () => {
+    table("paymentMethod").findMany.mockResolvedValueOnce([row("CASH", "Cash")] as never);
 
     await settingService.listMasterDataOptions(actor, "payment_methods");
 
-    expect(mockPrisma.masterData.findMany).toHaveBeenCalledWith(
+    expect(table("paymentMethod").findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { branchId: 1, category: "payment_methods", status: "active" },
-        select: { code: true, label: true, sortOrder: true },
+        where: { status: "active" },
       }),
     );
   });
 
   it("falls back to the blood group enum when the category is empty", async () => {
-    mockPrisma.masterData.findMany.mockResolvedValueOnce([] as never);
+    table("bloodGroup").findMany.mockResolvedValueOnce([] as never);
 
     const options = await settingService.listMasterDataOptions(actor, "blood_groups");
 
@@ -71,7 +105,7 @@ describe("master data options", () => {
 
   it("drops codes the database enum cannot store, then falls back", async () => {
     // A hand-edited or mis-typed row must not produce an unwritable value.
-    mockPrisma.masterData.findMany.mockResolvedValueOnce([
+    table("bloodGroup").findMany.mockResolvedValueOnce([
       row("A_POS", "A+", 1),
       row("NOT_A_BLOOD_GROUP", "Bogus", 2),
     ] as never);
@@ -82,9 +116,7 @@ describe("master data options", () => {
   });
 
   it("falls back when every configured code is invalid", async () => {
-    mockPrisma.masterData.findMany.mockResolvedValueOnce([
-      row("NOPE", "Nope", 1),
-    ] as never);
+    table("bloodGroup").findMany.mockResolvedValueOnce([row("NOPE", "Nope", 1)] as never);
 
     const options = await settingService.listMasterDataOptions(actor, "blood_groups");
 
@@ -92,44 +124,21 @@ describe("master data options", () => {
     expect(options.every((o) => o.fallback === true)).toBe(true);
   });
 
-  it("uses the label as the value when a non-enum row has no code", async () => {
-    // Seeded areas/districts carry no code, and the stored value is the label.
-    mockPrisma.masterData.findMany.mockResolvedValueOnce([
-      { code: null, label: "Dhanmondi", sortOrder: 0 },
-      { code: null, label: "Gulshan", sortOrder: 0 },
+  it("uses the row code as the value, now that code is required on every table", async () => {
+    table("area").findMany.mockResolvedValueOnce([
+      row("AREA_DHANMONDI", "Dhanmondi", 1),
+      row("AREA_GULSHAN", "Gulshan", 2),
     ] as never);
 
     const options = await settingService.listMasterDataOptions(actor, "areas");
 
-    expect(options.map((o) => o.code)).toEqual(["Dhanmondi", "Gulshan"]);
+    expect(options.map((o) => o.code)).toEqual(["AREA_DHANMONDI", "AREA_GULSHAN"]);
     expect(options.map((o) => o.label)).toEqual(["Dhanmondi", "Gulshan"]);
     expect(options.every((o) => o.fallback === false)).toBe(true);
   });
 
-  it("prefers an explicit code when one is set", async () => {
-    mockPrisma.masterData.findMany.mockResolvedValueOnce([
-      { code: "DMND", label: "Dhanmondi", sortOrder: 0 },
-    ] as never);
-
-    const options = await settingService.listMasterDataOptions(actor, "areas");
-
-    expect(options.map((o) => o.code)).toEqual(["DMND"]);
-    expect(options.map((o) => o.label)).toEqual(["Dhanmondi"]);
-  });
-
-  it("still refuses a code-less row for an enum-backed category", async () => {
-    mockPrisma.masterData.findMany.mockResolvedValueOnce([
-      { code: null, label: "Unknown", sortOrder: 0 },
-    ] as never);
-
-    const options = await settingService.listMasterDataOptions(actor, "blood_groups");
-
-    expect(options).toHaveLength(8);
-    expect(options.every((o) => o.fallback === true)).toBe(true);
-  });
-
   it("returns nothing for a non-enum category that is empty, with no invented values", async () => {
-    mockPrisma.masterData.findMany.mockResolvedValueOnce([] as never);
+    table("area").findMany.mockResolvedValueOnce([] as never);
 
     await expect(settingService.listMasterDataOptions(actor, "areas")).resolves.toEqual([]);
   });

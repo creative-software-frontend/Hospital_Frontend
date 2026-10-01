@@ -149,8 +149,9 @@ export function PatientFormModal({
     resetLocalities,
   } = useAddressCascade();
 
-  const thanas = useMemo(() => localities.filter((l) => l.type === "thana"), [localities]);
-  const upazilas = useMemo(() => localities.filter((l) => l.type === "upazila"), [localities]);
+  // The dataset has no separate metropolitan thanas, so the locality level is
+  // the upazila list and it also serves as the thana.
+  const upazilas = useMemo(() => localities, [localities]);
 
   // A stored value must stay visible even if it was later removed from master
   // data, otherwise editing this patient would silently blank their blood group.
@@ -187,21 +188,12 @@ export function PatientFormModal({
     if (code) loadLocalities(code);
   };
 
-  // One select covers both kinds, so the chosen value is routed to the column
-  // that matches the locality's type.
+  // The chosen locality always lands in `upazila`; `thana` is cleared because the
+  // dataset has no thana of its own any more.
   const onLocalityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    clearFieldError("thana");
+    clearFieldError("upazila");
     const label = e.target.value;
-    if (!label) {
-      setForm((prev) => ({ ...prev, upazila: "", thana: "" }));
-      return;
-    }
-    const match = localities.find((l) => l.label === label);
-    setForm((prev) => ({
-      ...prev,
-      thana: match?.type === "thana" ? label : "",
-      upazila: match?.type === "upazila" ? label : "",
-    }));
+    setForm((prev) => ({ ...prev, upazila: label, thana: "" }));
   };
 
   // An existing record stores labels, so the child lists have to be fetched
@@ -314,7 +306,8 @@ export function PatientFormModal({
     addError(local, "nationalId", checkText(form.nationalId, NATIONAL_ID_MAX, "National ID"));
 
     // A district or lower level without a division would be orphaned data, so
-    // the cascade has to be consistent top down.
+    // the cascade has to be consistent top down. `thana` is checked too because a
+    // record saved before the upazila level took over can still hold one.
     for (const [child, parent, label] of [
       ["district", "division", "Division"],
       ["upazila", "district", "District"],
@@ -572,10 +565,10 @@ export function PatientFormModal({
                 </div>
 
                 <div>
-                  <label className={labelCls}>Thana / Upazila</label>
+                  <label className={labelCls}>Upazila</label>
                   <select
                     className={selectCls}
-                    value={form.thana || form.upazila}
+                    value={form.upazila}
                     onChange={onLocalityChange}
                     disabled={submitting || !form.district || localitiesLoading}
                   >
@@ -586,24 +579,16 @@ export function PatientFormModal({
                           ? "Loading..."
                           : localities.length === 0
                             ? "None for this district"
-                            : "Select thana / upazila"}
+                            : "Select upazila"}
                     </option>
-                    {thanas.length > 0 && (
-                      <optgroup label="Thana (metropolitan)">
-                        {thanas.map((t) => (
-                          <option key={t.code} value={t.label}>{t.label}</option>
-                        ))}
-                      </optgroup>
-                    )}
-                    {upazilas.length > 0 && (
-                      <optgroup label="Upazila">
-                        {upazilas.map((u) => (
-                          <option key={u.code} value={u.label}>{u.label}</option>
-                        ))}
-                      </optgroup>
-                    )}
+                    {upazilas.map((u) => (
+                      <option key={u.code} value={u.label}>
+                        {u.label}
+                        {u.bnName ? ` (${u.bnName})` : ""}
+                      </option>
+                    ))}
                   </select>
-                  {fieldError("thana")}
+                  {fieldError("upazila")}
                 </div>
 
                 <div>

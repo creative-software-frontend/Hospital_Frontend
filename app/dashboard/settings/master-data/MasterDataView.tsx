@@ -28,6 +28,11 @@ const STATUS_STYLES: Record<ActiveStatus, string> = {
 const INPUT_CLS =
   "w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15 text-[var(--text)]";
 
+// The national dataset stores the LGED page as published, e.g.
+// "lged.gov.bd/bangladesh/bangladesh-natkakhela/...". A bare href would be
+// treated as a relative path, so the scheme is added back for the link only.
+const externalHref = (url: string) => (/^https?:\/\//i.test(url) ? url : `https://${url}`);
+
 export function MasterDataView() {
   const [items, setItems] = useState<MasterDataItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<MasterDataCategory>("cities");
@@ -78,7 +83,7 @@ export function MasterDataView() {
       divisions: 0,
       districts: 0,
       upazilas: 0,
-      thanas: 0,
+      unions: 0,
     };
     for (const item of items) map[item.category] += 1;
     return map as Record<MasterDataCategory, number>;
@@ -87,6 +92,9 @@ export function MasterDataView() {
   const parentCategory = MASTER_DATA_CATEGORY_PARENT[activeCategory];
   // True for the four address levels, so the top level can explain itself.
   const isAddressLevel = ADDRESS_CATEGORIES.includes(activeCategory);
+  // The Bengali column only exists on address levels, so the empty and loading
+  // rows have to span one more cell there.
+  const columnCount = 5 + (parentCategory ? 1 : 0) + (isAddressLevel ? 2 : 0);
 
   // The parent choices come from the full list already in memory, so switching
   // level or filtering by parent needs no extra request.
@@ -115,7 +123,10 @@ export function MasterDataView() {
     const term = searchInput.trim().toLowerCase();
     if (!term) return base;
     return base.filter(
-      (i) => i.label.toLowerCase().includes(term) || (i.code ?? "").toLowerCase().includes(term),
+      (i) =>
+        i.label.toLowerCase().includes(term) ||
+        (i.code ?? "").toLowerCase().includes(term) ||
+        (i.bnName ?? "").toLowerCase().includes(term),
     );
   }, [items, activeCategory, searchInput, parentCategory, parentFilter]);
 
@@ -130,7 +141,7 @@ export function MasterDataView() {
 
   const submit = async (input: CreateMasterDataInput) => {
     if (editing) {
-      await settingsApi.masterData.update(editing.id, input);
+      await settingsApi.masterData.update(editing.category, editing.id, input);
       notify("success", `"${input.label}" updated.`);
     } else {
       await settingsApi.masterData.create(input);
@@ -145,7 +156,7 @@ export function MasterDataView() {
     if (!confirmingDelete || deleting) return;
     setDeleting(true);
     try {
-      await settingsApi.masterData.remove(confirmingDelete.id);
+      await settingsApi.masterData.remove(confirmingDelete.category, confirmingDelete.id);
       notify("success", `"${confirmingDelete.label}" deleted.`);
       setConfirmingDelete(null);
       setReloadKey((k) => k + 1);
@@ -256,16 +267,26 @@ export function MasterDataView() {
               >
                 <FiRefreshCcw className="w-4 h-4" />
               </button>
-              <button
-                onClick={() => { setEditing(null); setFormOpen(true); }}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all duration-200 active:scale-[0.98]"
-                style={{ background: "var(--primary)" }}
-              >
-                <FiPlus className="w-3.5 h-3.5" />
-                Add Item
-              </button>
+              {!isAddressLevel && (
+                <button
+                  onClick={() => { setEditing(null); setFormOpen(true); }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all duration-200 active:scale-[0.98]"
+                  style={{ background: "var(--primary)" }}
+                >
+                  <FiPlus className="w-3.5 h-3.5" />
+                  Add Item
+                </button>
+              )}
             </div>
           </div>
+
+          {isAddressLevel && (
+            <p className="text-xs text-[var(--muted)] bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2">
+              Address data is loaded from the database and is read-only here. Add or
+              change divisions, districts, upazilas and thanas with a SQL import, not
+              from this screen.
+            </p>
+          )}
 
           {error && (
             <p className="text-sm text-red-200 bg-red-500/20 border border-red-400/40 rounded-lg px-3 py-2">{error}</p>
@@ -275,7 +296,7 @@ export function MasterDataView() {
             <table className="min-w-[560px] w-full">
               <thead>
                 <tr className="bg-[var(--bg)]">
-                  {["Label", "Code", ...(parentCategory ? ["Under"] : []), "Sort", "Status", "Actions"].map((col) => (
+                  {["Label", ...(isAddressLevel ? ["Bengali", "Source"] : []), "Code", ...(parentCategory ? ["Under"] : []), "Sort", "Status", "Actions"].map((col) => (
                     <th key={col} className="text-left text-[11px] font-bold text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">
                       {col}
                     </th>
@@ -284,15 +305,40 @@ export function MasterDataView() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={parentCategory ? 6 : 5} className="px-4 py-10 text-center"><div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--primary)]" /></td></tr>
+                  <tr><td colSpan={columnCount} className="px-4 py-10 text-center"><div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--primary)]" /></td></tr>
                 ) : categoryItems.length === 0 ? (
-                  <tr><td colSpan={parentCategory ? 6 : 5} className="px-4 py-10 text-center text-xs text-[var(--muted)]">
+                  <tr><td colSpan={columnCount} className="px-4 py-10 text-center text-xs text-[var(--muted)]">
                     {searchInput ? "No matching items." : `No items in ${MASTER_DATA_CATEGORY_LABELS[activeCategory]} yet.`}
                   </td></tr>
                 ) : (
                   categoryItems.map((item) => (
                     <tr key={item.id} className="hover:bg-[var(--primary-soft)]/10 transition-colors">
                       <td className="px-4 py-3 border-b border-[var(--border)] text-[12px] font-bold text-[var(--text)]">{item.label}</td>
+                      {isAddressLevel && (
+                        <td className="px-4 py-3 border-b border-[var(--border)] text-[12px] text-[var(--muted)]">{item.bnName ?? "—"}</td>
+                      )}
+                      {isAddressLevel && (
+                        <td className="px-4 py-3 border-b border-[var(--border)] text-[12px] text-[var(--muted)] whitespace-nowrap">
+                          {item.url ? (
+                            <a
+                              href={externalHref(item.url)}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                              className="text-[var(--primary)] hover:underline"
+                              title={item.url}
+                            >
+                              LGED
+                            </a>
+                          ) : (
+                            <span>—</span>
+                          )}
+                          {item.lat !== null && item.lon !== null && (
+                            <span className="ml-2 text-[11px]">
+                              {item.lat.toFixed(4)}, {item.lon.toFixed(4)}
+                            </span>
+                          )}
+                        </td>
+                      )}
                       <td className="px-4 py-3 border-b border-[var(--border)] text-[12px] text-[var(--muted)]">{item.code ?? "—"}</td>
                       {parentCategory && (
                         <td className="px-4 py-3 border-b border-[var(--border)] text-[12px] text-[var(--muted)]">
@@ -306,22 +352,28 @@ export function MasterDataView() {
                         <span className={`inline-block text-[10px] font-bold capitalize px-2 py-0.5 rounded-md border ${STATUS_STYLES[item.status]}`}>{item.status}</span>
                       </td>
                       <td className="px-4 py-3 border-b border-[var(--border)]">
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={() => { setEditing(item); setFormOpen(true); }}
-                            className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--primary-dark)] hover:border-[var(--primary)] transition-colors"
-                            title="Edit item"
-                          >
-                            <FiEdit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => setConfirmingDelete(item)}
-                            className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-red-600 hover:border-red-300 transition-colors"
-                            title="Delete item"
-                          >
-                            <FiTrash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                        {isAddressLevel ? (
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
+                            Read only
+                          </span>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => { setEditing(item); setFormOpen(true); }}
+                              className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--primary-dark)] hover:border-[var(--primary)] transition-colors"
+                              title="Edit item"
+                            >
+                              <FiEdit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setConfirmingDelete(item)}
+                              className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-red-600 hover:border-red-300 transition-colors"
+                              title="Delete item"
+                            >
+                              <FiTrash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))

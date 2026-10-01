@@ -18,10 +18,10 @@
         "db:seed": "tsx prisma/seed.ts",
         "db:studio": "prisma studio",
         "prisma:generate": "prisma generate",
-        "seed:address": "tsx prisma/seed-address.ts"
+        "seed:address": "tsx prisma/seed-address.ts",
+        "seed:address:sql": "tsx prisma/generateAddressSql.ts"
     },
     "dependencies": {
-        "@bangladeshi/bangladesh-address": "^2.1.0",
         "@prisma/client": "^5.22.0",
         "bcryptjs": "^2.4.3",
         "cookie-parser": "^1.4.7",

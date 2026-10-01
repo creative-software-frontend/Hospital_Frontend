@@ -303,18 +303,31 @@ export const listAddressLocalities = asyncHandler(async (req: Request, res: Resp
   success(res, { items });
 });
 
+export const listAddressUnions = asyncHandler(async (req: Request, res: Response) => {
+  const items = await settingService.listUnions(
+    req.user!,
+    typeof req.query.upazila === "string" ? req.query.upazila : undefined,
+  );
+  success(res, { items });
+});
+
 export const createMasterData = asyncHandler(async (req: Request, res: Response) => {
   const item = await settingService.createMasterData(req.user!, req.body);
   success(res, { item });
 });
 
 export const updateMasterData = asyncHandler(async (req: Request, res: Response) => {
-  const item = await settingService.updateMasterData(req.user!, Number(req.params.id), req.body);
+  const item = await settingService.updateMasterData(
+    req.user!,
+    req.params.category,
+    Number(req.params.id),
+    req.body,
+  );
   success(res, { item });
 });
 
 export const deleteMasterData = asyncHandler(async (req: Request, res: Response) => {
-  await settingService.deleteMasterData(req.user!, Number(req.params.id));
+  await settingService.deleteMasterData(req.user!, req.params.category, Number(req.params.id));
   success(res, { message: "Master data item deleted successfully" });
 });
 
