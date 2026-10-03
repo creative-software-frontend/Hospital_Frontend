@@ -30,7 +30,8 @@ Edit `backend/.env` and set at least:
 | `DATABASE_URL` | `mysql://USER:PASSWORD@HOST:PORT/hospital_management` |
 | `JWT_SECRET` | Generate one: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
 
-`SEED_ADMIN_PASSWORD` also matters — it becomes the first login's password.
+`SEED_DEMO_PASSWORD` also matters — every seeded role login shares it (default
+`12345678`).
 
 Then run the single setup command:
 
@@ -53,15 +54,30 @@ npm run dev                  # frontend -> http://localhost:3000
 npm run dev --prefix backend # backend  -> http://localhost:5000
 ```
 
-Sign in with `SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD` (default
-`admin` / `ChangeMe123!`).
+The seed creates one login per role, all sharing the same password (default
+`12345678`), and the login page's **Quick demo access** buttons fill them in:
+
+| Role | Email |
+|---|---|
+| Super Admin | `admin@hospital.com` |
+| Branch Admin | `admin2@hospital.com` |
+| Doctor | `doctor@hospital.com` |
+| Receptionist | `receptionist@hospital.com` |
+| Nurse | `nurse@hospital.com` |
+| Pharmacist | `pharmacist@hospital.com` |
+| Pathologist | `pathologist@hospital.com` |
+| Radiologist | `radiologist@hospital.com` |
+| Accountant | `accountant@hospital.com` |
+
+Recreate or reset them any time with `npm run seed:demo --prefix backend`.
 
 ## What the seed creates
 
 Everything the UI needs to be usable, so no screen starts empty in a way that
 looks like a bug:
 
-- **Login** — roles, permissions, and a bootstrap `SUPER_ADMIN` account.
+- **Login** — roles, permissions, and one ready-to-use account per role (shared
+  demo password).
 - **Branch** — one branch (`SEED_BRANCH_NAME` / `SEED_BRANCH_CODE`). Add more in
   the UI; the address dataset is copied into each one.
 - **Address hierarchy** — not seeded. Loaded from a SQL file you upload; see

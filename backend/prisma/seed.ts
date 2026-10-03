@@ -1,8 +1,8 @@
 import "dotenv/config";
-import bcrypt from "bcryptjs";
 import { PaymentMethodType, PrismaClient } from "@prisma/client";
 import { LOOKUP_SPECS, type MasterDataCategory } from "../src/lib/masterDataRegistry";
 import { branchScope, lookupDelegate } from "../src/lib/lookupDelegate";
+import { DEMO_ACCOUNTS, DEMO_PASSWORD, seedDemoAccounts } from "./demoAccounts";
 
 const prisma = new PrismaClient();
 
@@ -377,35 +377,11 @@ async function seed() {
     console.log(`Role ready: ${key} (permissions=${granted})`);
   }
 
-  // 4. Bootstrap SUPER_ADMIN user
-  const email = (process.env.SEED_ADMIN_EMAIL || "admin@hospital.com").toLowerCase();
-  const username = process.env.SEED_ADMIN_USERNAME || "admin";
-  const password = process.env.SEED_ADMIN_PASSWORD || "ChangeMe123!";
-  const passwordHash = await bcrypt.hash(password, 10);
-
-  const superAdminRole = await prisma.role.findUniqueOrThrow({ where: { seederKey: "SUPER_ADMIN" } });
-
-  const admin = await prisma.user.upsert({
-    where: { email },
-    update: { name: "System Administrator", username, branchId: branch.id, status: "ACTIVE" },
-    create: {
-      name: "System Administrator",
-      email,
-      username,
-      password: passwordHash,
-      branchId: branch.id,
-      status: "ACTIVE",
-    },
-  });
-
-  // idempotent role link
-  await prisma.userRole.upsert({
-    where: { userId_roleId: { userId: admin.id, roleId: superAdminRole.id } },
-    update: {},
-    create: { userId: admin.id, roleId: superAdminRole.id },
-  });
-
-  console.log(`Super admin ready: ${email}`);
+  // 4. Demo logins: one account per role, all sharing SEED_DEMO_PASSWORD.
+  //    The Super Admin is part of this set (email/username overridable via
+  //    SEED_ADMIN_EMAIL / SEED_ADMIN_USERNAME).
+  const demoReady = await seedDemoAccounts(prisma, branch.id);
+  console.log(`Demo accounts ready: ${demoReady} (shared password: ${DEMO_PASSWORD})`);
 
   // 5. Default system settings (branch-scoped; idempotent per (branchId, group, key))
   // Locale & formatting keys (currency, date/time formats, timezone, language) are owned by
@@ -1191,11 +1167,13 @@ async function seed() {
 
   console.log("Seed complete.");
   console.log("");
-  console.log("  Sign in with:");
-  console.log(`    username: ${process.env.SEED_ADMIN_USERNAME || "admin"}`);
-  console.log(`    password: ${process.env.SEED_ADMIN_PASSWORD || "ChangeMe123!"}`);
-  if (!process.env.SEED_ADMIN_PASSWORD) {
-    console.log("    (development default - set SEED_ADMIN_PASSWORD before any real deployment)");
+  console.log("  Sign in with any demo role (shared password):");
+  for (const account of DEMO_ACCOUNTS) {
+    console.log(`    ${account.role.padEnd(13)} ${account.email}  /  ${account.username}`);
+  }
+  console.log(`    password: ${DEMO_PASSWORD}`);
+  if (!process.env.SEED_DEMO_PASSWORD) {
+    console.log("    (development default - set SEED_DEMO_PASSWORD before any real deployment)");
   }
 }
 

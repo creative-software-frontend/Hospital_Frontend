@@ -23,7 +23,13 @@ export function createApp(): Express {
     cors({
       origin(origin, cb) {
         // Allow same-origin (no Origin header, e.g. curl) and allowlisted origins.
-        if (!origin || corsOrigins.includes(origin)) {
+        // In development also accept any localhost/127.0.0.1 port, since Next.js
+        // falls back to :3001+ when :3000 is taken by another app.
+        const isLocalhostDev =
+          config.env !== "production" &&
+          !!origin &&
+          /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+        if (!origin || corsOrigins.includes(origin) || isLocalhostDev) {
           cb(null, true);
         } else {
           cb(new Error("Not allowed by CORS"));

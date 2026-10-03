@@ -8,7 +8,7 @@ import { authApi, errorMessage } from "@/app/lib/api";
 import { toFrontendRole } from "@/app/lib/roles";
 import { authStorage } from "@/app/lib/auth";
 
-const DEMO_PASSWORD = "StaffDemo123!"; // ggshield:ignore
+const DEMO_PASSWORD = "12345678"; // ggshield:ignore
 
 const demoAccounts = [ // ggshield:ignore
   { role: "Super Admin", email: "admin@hospital.com", password: DEMO_PASSWORD }, // ggshield:ignore

@@ -19,6 +19,7 @@
         "db:studio": "prisma studio",
         "prisma:generate": "prisma generate",
         "seed:address": "tsx prisma/seed-address.ts",
+        "seed:demo": "tsx prisma/seedDemo.ts",
         "seed:address:sql": "tsx prisma/generateAddressSql.ts"
     },
     "dependencies": {
