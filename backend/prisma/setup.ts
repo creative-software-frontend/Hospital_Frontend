@@ -4,26 +4,19 @@
  *   npm run setup
  *
  * Runs the steps in the only order that works, and is safe to re-run:
- *   1. sanity-check .env so failures are readable instead of a Prisma stack trace
- *   2. generate the Prisma client
- *   3. create the database if the server does not have it yet
- *   4. apply migrations (migrate deploy never prompts and never resets data)
- *   5. seed reference data
- *
- * The seed refuses to run when NODE_ENV=production unless explicitly overridden.
+ *   1. [1/5] Checking environment...
+ *   2. [2/5] Preparing Prisma...
+ *   3. [3/5] Applying database migrations...
+ *   4. [4/5] Seeding required data...
+ *   5. [5/5] Verifying database...
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
-const required = ["DATABASE_URL", "JWT_SECRET"];
+const required = ["DATABASE_URL", "JWT_SECRET", "BACKUP_STORAGE_PATH", "MYSQLDUMP_PATH"];
 
-/**
- * Local CLIs are invoked through node directly rather than `npx` + shell. That
- * avoids Node's DEP0190 warning about unescaped shell arguments and works the
- * same on Windows, macOS and Linux.
- */
 const localBin = {
   prisma: resolve(root, "node_modules", "prisma", "build", "index.js"),
   tsx: resolve(root, "node_modules", "tsx", "dist", "cli.mjs"),
@@ -39,7 +32,6 @@ function run(tool: Tool, args: string[]): number | null {
   return result.status;
 }
 
-/** True when @prisma/client has already been generated into node_modules. */
 function prismaClientExists(): boolean {
   return existsSync(resolve(root, "node_modules", ".prisma", "client", "index.js"));
 }
@@ -50,7 +42,7 @@ function fail(message: string): never {
 }
 
 function step(n: number, total: number, title: string) {
-  console.log(`\n[${n}/${total}] ${title}`);
+  console.log(`[${n}/${total}] ${title}`);
 }
 
 const envPath = resolve(root, ".env");
@@ -58,8 +50,6 @@ if (!existsSync(envPath)) {
   fail("backend/.env not found. Copy backend/.env.example to backend/.env and set DATABASE_URL.");
 }
 
-// Read the file rather than trusting process.env, because setup is usually run
-// from the repo root where .env has not been loaded yet.
 const contents = readFileSync(envPath, "utf8");
 const entries = new Map<string, string>();
 for (const rawLine of contents.split("\n")) {
@@ -68,6 +58,20 @@ for (const rawLine of contents.split("\n")) {
   const eq = line.indexOf("=");
   if (eq === -1) continue;
   entries.set(line.slice(0, eq).trim(), line.slice(eq + 1).trim().replace(/^["']|["']$/g, ""));
+}
+
+// Populate process.env so subcommands and Prisma see backend/.env entries
+for (const [k, v] of entries.entries()) {
+  if (!process.env[k]) {
+    process.env[k] = v;
+  }
+}
+
+if (process.env.NODE_ENV === "production" && process.env.SEED_ALLOW_PRODUCTION !== "true") {
+  fail(
+    "Refusing to run setup in production environment (NODE_ENV=production).\n" +
+      "  If you intend to initialize a production database, set SEED_ALLOW_PRODUCTION=true explicitly.",
+  );
 }
 
 const missing = required.filter((key) => !entries.has(key));
@@ -87,19 +91,15 @@ if (placeholders.length > 0) {
 }
 
 const total = 5;
-step(1, total, "Checking configuration");
-console.log("  .env looks usable.");
+step(1, total, "Checking environment...");
+console.log("  .env configuration is valid.");
 
-step(2, total, "Generating the Prisma client");
-// On Windows a running dev server keeps the query engine DLL locked, so
-// regeneration fails with EPERM even though a perfectly good client is already
-// on disk. Only treat it as fatal when there is nothing to fall back on.
+step(2, total, "Preparing Prisma...");
 if (run("prisma", ["generate"]) !== 0) {
   if (prismaClientExists()) {
     console.log(
       "  prisma generate failed, but a generated client is already present - continuing.\n" +
-        "  (This normally means a dev server is running and holding the engine file.\n" +
-        "   Restart it afterwards so it picks up any schema change.)",
+        "  (This normally means a dev server is running and holding the engine file.)",
     );
   } else {
     fail(
@@ -109,22 +109,21 @@ if (run("prisma", ["generate"]) !== 0) {
   }
 }
 
-step(3, total, "Creating the database if it does not exist");
 if (run("tsx", ["prisma/create-database.ts"]) !== 0) {
   fail("Could not create the database. Check DATABASE_URL and that the MySQL server is running.");
 }
 
-step(4, total, "Applying migrations");
+step(3, total, "Applying database migrations...");
 if (run("prisma", ["migrate", "deploy"]) !== 0) {
   fail("Migrations failed. See the Prisma output above for the specific migration that failed.");
 }
 
-step(5, total, "Seeding reference data");
+step(4, total, "Seeding required data...");
 if (run("tsx", ["prisma/seed.ts"]) !== 0) {
   fail("Seeding failed. See the error above; the seed is safe to re-run once fixed.");
 }
 
-console.log("\nSetup complete.\n");
-console.log("  Start the backend:   npm run dev            (in backend/)");
-console.log("  Start the frontend:  npm run dev            (in the repo root)");
-console.log("  Then open            http://localhost:3000\n");
+step(5, total, "Verifying database...");
+if (run("tsx", ["prisma/verify-database.ts"]) !== 0) {
+  fail("Database verification failed.");
+}

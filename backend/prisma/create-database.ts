@@ -38,20 +38,28 @@ async function main() {
   }
 
   const { database, serverUrl } = parseDatabaseUrl(raw);
-  const client = new PrismaClient({ datasourceUrl: serverUrl });
+  if (!/^[A-Za-z0-9_$-]+$/.test(database)) {
+    throw new Error(`Refusing to use unsafe database name: ${database}`);
+  }
+
+  let client = new PrismaClient({ datasourceUrl: serverUrl });
 
   try {
-    // Identifier cannot be a bound parameter, so it is quoted instead. The name
-    // comes from our own .env, and the quoting still rejects anything malformed.
-    if (!/^[A-Za-z0-9_$-]+$/.test(database)) {
-      throw new Error(`Refusing to use unsafe database name: ${database}`);
-    }
+    await client.$executeRawUnsafe(
+      `CREATE DATABASE IF NOT EXISTS \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`,
+    );
+    console.log(`Database "${database}" is ready.`);
+  } catch {
+    await client.$disconnect().catch(() => {});
+    const fallbackUrl = new URL(raw);
+    fallbackUrl.pathname = "/information_schema";
+    client = new PrismaClient({ datasourceUrl: fallbackUrl.toString() });
     await client.$executeRawUnsafe(
       `CREATE DATABASE IF NOT EXISTS \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`,
     );
     console.log(`Database "${database}" is ready.`);
   } finally {
-    await client.$disconnect();
+    await client.$disconnect().catch(() => {});
   }
 }
 

@@ -3,6 +3,7 @@ import { PaymentMethodType, PrismaClient } from "@prisma/client";
 import { LOOKUP_SPECS, type MasterDataCategory } from "../src/lib/masterDataRegistry";
 import { branchScope, lookupDelegate } from "../src/lib/lookupDelegate";
 import { DEMO_ACCOUNTS, DEMO_PASSWORD, seedDemoAccounts } from "./demoAccounts";
+import { syncAddressMasterData } from "./syncAddressMasterData";
 
 const prisma = new PrismaClient();
 
@@ -1160,10 +1161,62 @@ async function seed() {
   }
   console.log(`Shift types ready (${SHIFT_TYPES.length}).`);
 
-  // The address hierarchy is deliberately NOT seeded here. Those rows are loaded
-  // from a SQL file and owned by whoever maintains that file, so running the
-  // setup must never overwrite labels or deactivate rows by hand. To apply the
-  // bundled dataset once, run `npm run seed:address` explicitly.
+  // Employee Types
+  const EMPLOYEE_TYPES = ["Full-time", "Part-time", "Contractual", "Visiting"];
+  for (const empType of EMPLOYEE_TYPES) {
+    await prisma.employeeType.upsert({
+      where: { name: empType },
+      update: { status: "active" },
+      create: { name: empType, status: "active" },
+    });
+  }
+  console.log(`Employee types ready (${EMPLOYEE_TYPES.length}).`);
+
+  // Leave Types
+  const LEAVE_TYPES = [
+    { name: "Casual Leave", daysAllowed: 14, paid: true },
+    { name: "Sick Leave", daysAllowed: 14, paid: true },
+    { name: "Earned Leave", daysAllowed: 18, paid: true },
+    { name: "Maternity Leave", daysAllowed: 120, paid: true },
+  ];
+  for (const lt of LEAVE_TYPES) {
+    await prisma.leaveType.upsert({
+      where: { name: lt.name },
+      update: { daysAllowed: lt.daysAllowed, paid: lt.paid, status: "active" },
+      create: { name: lt.name, daysAllowed: lt.daysAllowed, paid: lt.paid, status: "active" },
+    });
+  }
+  console.log(`Leave types ready (${LEAVE_TYPES.length}).`);
+
+  // Designations
+  const DESIGNATIONS = [
+    "Senior Consultant",
+    "Junior Consultant",
+    "Medical Officer",
+    "Head Nurse",
+    "Staff Nurse",
+    "Lab Technologist",
+    "Pharmacist",
+    "Accountant",
+    "Receptionist",
+  ];
+  for (const desig of DESIGNATIONS) {
+    const found = await prisma.designation.findFirst({ where: { name: desig } });
+    if (!found) {
+      await prisma.designation.create({
+        data: { name: desig, status: "active" },
+      });
+    }
+  }
+  console.log(`Designations ready (${DESIGNATIONS.length}).`);
+
+  // Bangladesh address hierarchy (Divisions, Districts, Upazilas, Unions)
+  const addressResult = await syncAddressMasterData(prisma);
+  console.log(
+    `Address master data ready (${addressResult.branches} branch(es) synced: ${Object.entries(addressResult.byCategory)
+      .map(([cat, count]) => `${cat}=${count}`)
+      .join(", ")}).`,
+  );
 
   console.log("Seed complete.");
   console.log("");
