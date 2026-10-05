@@ -9,6 +9,7 @@ import {
   createMasterDataSchema,
   createPrintTemplateSchema,
   createReportSettingSchema,
+  revealAssetPathSchema,
   updateAccountingSettingSchema,
   updateBackupSettingSchema,
   updateBillingSettingSchema,
@@ -55,6 +56,16 @@ router.delete(
   "/system/:id",
   requirePermission("systemSetting", "update"),
   settingController.deleteSystemSetting,
+);
+
+// Opens a file under the Next.js public/ folder in the OS file manager, so an
+// admin can jump from the hospital logo setting to the file on disk. Refused in
+// production by the service, and confined to public/ there as well.
+router.post(
+  "/system/reveal-path",
+  validate({ body: revealAssetPathSchema }),
+  requirePermission("systemSetting", "update"),
+  settingController.revealAssetPath,
 );
 
 // Security settings

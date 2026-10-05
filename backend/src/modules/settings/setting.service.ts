@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ConflictError, NotFoundError, ValidationError } from "../../errors/ApiError";
 import { writeAuditLog } from "../../utils/audit";
+import { revealPublicAsset } from "../../utils/revealPath";
 import { BLOOD_GROUP_VALUES } from "../patients/patient.validation";
 import { ADDRESS_CATEGORY, isAddressCategory } from "../../lib/bangladeshAddress";
 import {
@@ -26,6 +27,7 @@ import type {
   CreatePrintTemplateInput,
   CreateReportSettingInput,
   ListSystemSettingsQuery,
+  RevealAssetPathInput,
   UpdateAccountingSettingInput,
   UpdateBillingSettingInput,
   UpdateEmergencySettingInput,
@@ -163,6 +165,29 @@ export async function deleteSystemSetting(actor: AuthUser, id: number) {
     user: actor,
     branchId: setting.branchId ?? undefined,
   });
+}
+
+/* ---------------------------------------------------------------------------
+ * Local assets
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Opens a file under the Next.js `public/` folder in the OS file manager. The
+ * path is confined to that folder and the whole thing is refused in production;
+ * see utils/revealPath.ts for why.
+ */
+export async function revealAssetPath(actor: AuthUser, input: RevealAssetPathInput) {
+  const revealed = revealPublicAsset(input.path);
+
+  await writeAuditLog({
+    module: "systemSetting",
+    action: "reveal",
+    tableName: "SystemSetting",
+    newValues: { requestedPath: input.path, folder: revealed.folder },
+    user: actor,
+  });
+
+  return revealed;
 }
 
 /* ---------------------------------------------------------------------------

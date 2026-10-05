@@ -1540,6 +1540,12 @@ export const settingsApi = {
       }),
     remove: (id: number) =>
       request<{ message: string }>(`/settings/system/${id}`, { method: "DELETE" }),
+    /** Opens a file under /public in the OS file manager (development only). */
+    revealPath: (path: string) =>
+      request<{ revealed: { folder: string; file: string | null } }>(
+        "/settings/system/reveal-path",
+        { method: "POST", body: JSON.stringify({ path }) },
+      ),
   },
   security: {
     get: () => request<{ security: SecuritySetting }>("/settings/security"),

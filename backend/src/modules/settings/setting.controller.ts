@@ -19,6 +19,11 @@ export const deleteSystemSetting = asyncHandler(async (req: Request, res: Respon
   success(res, { message: "System setting deleted successfully" });
 });
 
+export const revealAssetPath = asyncHandler(async (req: Request, res: Response) => {
+  const revealed = await settingService.revealAssetPath(req.user!, req.body);
+  success(res, { revealed });
+});
+
 export const getSecuritySetting = asyncHandler(async (_req: Request, res: Response) => {
   const security = await settingService.getSecuritySetting();
   success(res, { security });

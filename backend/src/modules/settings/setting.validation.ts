@@ -34,6 +34,12 @@ export const upsertSystemSettingSchema = z.object({
   status: z.enum(SETTING_STATUS_VALUES).optional(),
 });
 
+// Revealing a file from the public folder in the OS file manager (development
+// only). The path is resolved and confined to public/ server-side.
+export const revealAssetPathSchema = z.object({
+  path: z.string().trim().min(1, "path is required").max(512),
+});
+
 /* Security settings -------------------------------------------------------- */
 
 export const updateSecuritySettingSchema = z.object({
@@ -50,6 +56,7 @@ export const updateSecuritySettingSchema = z.object({
 
 export type ListSystemSettingsQuery = z.infer<typeof listSystemSettingsQuerySchema>;
 export type UpsertSystemSettingInput = z.infer<typeof upsertSystemSettingSchema>;
+export type RevealAssetPathInput = z.infer<typeof revealAssetPathSchema>;
 export type UpdateSecuritySettingInput = z.infer<typeof updateSecuritySettingSchema>;
 
 /* Localization (Settings → Localization) ------------------------------------ */
