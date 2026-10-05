@@ -1,7 +1,17 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
-import { ConflictError, NotFoundError, ValidationError } from "../../errors/ApiError";
+import {
+  BusinessRuleError,
+  ConflictError,
+  NotFoundError,
+  ValidationError,
+} from "../../errors/ApiError";
 import { writeAuditLog } from "../../utils/audit";
+import {
+  invalidateSecurityPolicyCache,
+  ipInCidr,
+  parseAllowedIpRanges,
+} from "../auth/securityPolicy";
 import { revealPublicAsset } from "../../utils/revealPath";
 import { BLOOD_GROUP_VALUES } from "../patients/patient.validation";
 import { ADDRESS_CATEGORY, isAddressCategory } from "../../lib/bangladeshAddress";
@@ -207,6 +217,14 @@ export async function getSecuritySetting() {
         ipRestrictionEnabled: false,
         deviceRestrictionEnabled: false,
         auditLogEnabled: true,
+        passwordRequireUppercase: false,
+        passwordRequireLowercase: true,
+        passwordRequireNumber: true,
+        passwordRequireSymbol: false,
+        passwordHistoryCount: 0,
+        lockoutDurationMinutes: 15,
+        allowedIpRanges: null,
+        maxConcurrentSessions: 3,
         status: "active",
       },
     });
@@ -214,28 +232,87 @@ export async function getSecuritySetting() {
   return setting;
 }
 
+/** Fields that must never appear in the audit trail (defense in depth). */
+const SENSITIVE_SECURITY_KEYS = ["allowedIpRanges"] as const;
+
+/** A single IP or CIDR range is valid when it matches itself. */
+function isValidCidr(entry: string): boolean {
+  const [range] = entry.split("/");
+  return ipInCidr(range, entry);
+}
+
 export async function updateSecuritySetting(actor: AuthUser, input: UpdateSecuritySettingInput) {
   const current = await getSecuritySetting();
+
+  // Validate every submitted range first.
+  if (input.allowedIpRanges !== undefined) {
+    for (const cidr of parseAllowedIpRanges(input.allowedIpRanges)) {
+      if (!isValidCidr(cidr)) {
+        throw new BusinessRuleError(`"${cidr}" is not a valid IP address or CIDR range`);
+      }
+    }
+  }
+
+  // Enabling the restriction with no effective range would lock every user
+  // (including the administrator) out of the hospital, so refuse it. The
+  // effective list is the patched value when supplied, otherwise the stored one
+  // — an explicitly empty string counts as empty, not as "leave unchanged".
+  if (input.ipRestrictionEnabled === true) {
+    const effective = parseAllowedIpRanges(
+      input.allowedIpRanges === undefined ? current.allowedIpRanges : input.allowedIpRanges,
+    );
+    if (effective.length === 0) {
+      throw new BusinessRuleError(
+        "Cannot enable IP restriction without at least one allowed IP range. Add ranges such as 10.0.0.0/8 or 127.0.0.1 first, otherwise nobody can sign in.",
+      );
+    }
+  }
 
   const updated = await prisma.securitySetting.update({
     where: { id: current.id },
     data: { ...input },
   });
 
+  // The policy is cached for a few seconds; drop it so the change takes effect now.
+  invalidateSecurityPolicyCache();
+
+  const oldValues: Record<string, unknown> = {
+    passwordMinLength: current.passwordMinLength,
+    passwordRequireUppercase: current.passwordRequireUppercase,
+    passwordRequireLowercase: current.passwordRequireLowercase,
+    passwordRequireNumber: current.passwordRequireNumber,
+    passwordRequireSymbol: current.passwordRequireSymbol,
+    passwordHistoryCount: current.passwordHistoryCount,
+    passwordExpiryDays: current.passwordExpiryDays,
+    maxLoginAttempts: current.maxLoginAttempts,
+    lockoutDurationMinutes: current.lockoutDurationMinutes,
+    sessionTimeout: current.sessionTimeout,
+    twoFactorEnabled: current.twoFactorEnabled,
+    ipRestrictionEnabled: current.ipRestrictionEnabled,
+    deviceRestrictionEnabled: current.deviceRestrictionEnabled,
+    maxConcurrentSessions: current.maxConcurrentSessions,
+    auditLogEnabled: current.auditLogEnabled,
+  };
+  const newValues: Record<string, unknown> = { ...input };
+  for (const key of SENSITIVE_SECURITY_KEYS) {
+    if (key in newValues) newValues[key] = "<configured>";
+  }
+
   await writeAuditLog({
-    module: "securitySetting",
-    action: "update",
+    module: "SECURITY",
+    action: "security-setting-update",
     tableName: "SecuritySetting",
     recordId: String(current.id),
-    oldValues: {
-      passwordMinLength: current.passwordMinLength,
-      sessionTimeout: current.sessionTimeout,
-      twoFactorEnabled: current.twoFactorEnabled,
-    },
-    newValues: { ...input },
+    oldValues,
+    newValues,
     user: actor,
     branchId: actor.branchId,
+    always: true,
   });
+
+  // Enabling the audit log off must not silence its own change record, and the
+  // toggle should take effect for the very next write.
+  invalidateSecurityPolicyCache();
   return updated;
 }
 

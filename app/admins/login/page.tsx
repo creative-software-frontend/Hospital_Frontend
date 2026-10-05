@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import Link from "next/link";
@@ -50,9 +50,34 @@ export default function AdminLoginPage() {
 
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const [twoFactorCode, setTwoFactorCode] = useState<string>("");
+  const [useRecoveryCode, setUseRecoveryCode] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [submitting, setSubmitting] = useState<boolean>(false);
+  /**
+   * Set when the password was correct but a second factor is missing or wrong.
+   * The API returns the same message for both cases so we cannot know whether
+   * 2FA applies until the code is accepted.
+   */
+  const [needsTwoFactor, setNeedsTwoFactor] = useState<boolean>(false);
+
+  // One-shot confirmation left behind by account security (e.g. the password
+  // was changed, which signs every device out).
+  const [handoffNotice, setHandoffNotice] = useState<string>("");
+  useEffect(() => {
+    let stored = "";
+    try {
+      stored = sessionStorage.getItem("accountSecurityNotice") ?? "";
+      sessionStorage.removeItem("accountSecurityNotice");
+    } catch {
+      /* ignore storage failures */
+    }
+    if (stored) setHandoffNotice(stored);
+  }, []);
+
+  const TWO_FACTOR_HINT =
+    "A valid two-factor code or recovery code is required";
 
   const handleLogin = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -60,20 +85,43 @@ export default function AdminLoginPage() {
       setError("Please enter your email and password.");
       return;
     }
+    if (needsTwoFactor && !twoFactorCode.trim()) {
+      setError("Enter the code from your authenticator app.");
+      return;
+    }
     setError("");
     setMessage("");
     setSubmitting(true);
     try {
-      const result = await authApi.login(email.trim(), password);
+      const factor = needsTwoFactor
+        ? useRecoveryCode
+          ? { recoveryCode: twoFactorCode.trim() }
+          : { code: twoFactorCode.trim() }
+        : undefined;
+      const result = await authApi.login(email.trim(), password, factor);
+      setNeedsTwoFactor(false);
+      setTwoFactorCode("");
       const role = toFrontendRole(result.roles);
       if (!role) {
         setError("This account has no dashboard role assigned.");
         return;
       }
       authStorage.setSession(role, "admin", result.user.email);
+      // An expired or admin-reset password signs in but only unlocks the
+      // change-password screen.
+      if (result.mustChangePassword) {
+        router.push("/admins/account-security?mustChangePassword=1");
+        return;
+      }
       router.push(`/dashboard/${role}`);
     } catch (err) {
-      setError(errorMessage(err));
+      const text = errorMessage(err);
+      setError(text);
+      // Offer the second step instead of dumping the user back at the password.
+      if (text.includes(TWO_FACTOR_HINT)) {
+        setNeedsTwoFactor(true);
+        setMessage("Enter the 6-digit code from your authenticator app.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -123,6 +171,9 @@ export default function AdminLoginPage() {
                   type="button"
                   onClick={() => {
                     setError("");
+                    setMessage("");
+                    setNeedsTwoFactor(false);
+                    setTwoFactorCode("");
                     setEmail(acc.email);
                     setPassword(acc.password);
                   }}
@@ -165,6 +216,42 @@ export default function AdminLoginPage() {
                 className="w-full px-4 py-3 rounded-lg bg-white text-black"
               />
             </div>
+
+            {needsTwoFactor && (
+              <div>
+                <label className="block text-xs font-semibold text-white/70 mb-1.5">
+                  {useRecoveryCode ? "Recovery Code" : "Two-Factor Code"}
+                </label>
+                <input
+                  value={twoFactorCode}
+                  onChange={(e) => setTwoFactorCode(e.target.value)}
+                  type="text"
+                  inputMode={useRecoveryCode ? "text" : "numeric"}
+                  autoComplete="one-time-code"
+                  placeholder={useRecoveryCode ? "A7K2-9M4Q" : "000000"}
+                  className="w-full px-4 py-3 rounded-lg bg-white text-black font-mono tracking-widest"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUseRecoveryCode((v) => !v);
+                    setTwoFactorCode("");
+                    setError("");
+                  }}
+                  className="mt-2 text-xs text-white/70 hover:text-white hover:underline"
+                >
+                  {useRecoveryCode
+                    ? "Use authenticator app code instead"
+                    : "Use a recovery code instead"}
+                </button>
+              </div>
+            )}
+
+            {handoffNotice && (
+              <p className="text-sm text-emerald-100 bg-emerald-500/20 border border-emerald-300/40 rounded-lg px-3 py-2">
+                {handoffNotice}
+              </p>
+            )}
 
             {error && (
               <p className="text-sm text-red-200 bg-red-500/20 border border-red-400/40 rounded-lg px-3 py-2">

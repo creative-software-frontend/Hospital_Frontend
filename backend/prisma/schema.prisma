@@ -244,12 +244,30 @@ model User {
   password    String
   status      UserStatus @default(ACTIVE)
   lastLoginAt DateTime?
+  // Brute-force protection state
+  failedLoginAttempts Int       @default(0)
+  lockedUntil        DateTime?
+  lastFailedLoginAt  DateTime?
+  // Password lifecycle
+  passwordChangedAt DateTime?
+  mustChangePassword Boolean   @default(false)
+  /// Previous password hashes (newest first) used to enforce password history.
+  passwordHistory    Json?
+  // Two-factor authentication
+  twoFactorSecret      String?
+  twoFactorEnabled     Boolean   @default(false)
+  /// Bcrypt hashes of single-use recovery codes.
+  twoFactorRecovery    Json?
+  /// Bumped to revoke every issued session/token at once.
+  tokenVersion         Int       @default(0)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
   branch    Branch?    @relation(fields: [branchId], references: [id])
   userRoles UserRole[]
   auditLogs AuditLog[]
+  loginAttempts LoginAttempt[]
+  sessions     UserSession[]
   doctor    Doctor?
   nurse     Nurse?
   employee  Employee?
@@ -368,8 +386,64 @@ model SecuritySetting {
   ipRestrictionEnabled     Boolean  @default(false)
   deviceRestrictionEnabled Boolean  @default(false)
   auditLogEnabled          Boolean  @default(true)
+  // Extended password policy (all enforced, not decorative)
+  passwordRequireUppercase Boolean  @default(false)
+  passwordRequireLowercase Boolean  @default(true)
+  passwordRequireNumber    Boolean  @default(true)
+  passwordRequireSymbol    Boolean  @default(false)
+  passwordHistoryCount     Int      @default(0)
+  // Lockout window in minutes applied once maxLoginAttempts is reached
+  lockoutDurationMinutes   Int      @default(15)
+  // Comma-separated CIDR/IP allow-list used when ipRestrictionEnabled is true
+  allowedIpRanges          String?  @db.Text
+  // Maximum simultaneously active sessions per user when deviceRestrictionEnabled
+  maxConcurrentSessions    Int      @default(3)
   status                   String   @default("active")
   updatedAt                DateTime @updatedAt
+}
+
+/// Every authentication attempt (success and failure) for security review.
+model LoginAttempt {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  /// The identifier that was submitted (email or username), even when unknown.
+  identifier String
+  success   Boolean  @default(false)
+  /// Why the attempt failed: OK, BAD_PASSWORD, LOCKED, IP_BLOCKED, DEVICE_BLOCKED, TWO_FACTOR_FAILED, DISABLED
+  reason    String   @default("OK")
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([success])
+}
+
+/// Server-side session record so that the configured session timeout, device
+/// limits and logout actually revoke access (a JWT alone cannot be revoked).
+model UserSession {
+  id           Int       @id @default(autoincrement())
+  userId       Int
+  /// JWT id claim, ties the HTTP-only cookie to this row.
+  tokenId      String    @unique
+  ipAddress    String?
+  userAgent    String?
+  /// Stable hash of the device fingerprint; used for device accounting.
+  deviceId     String?
+  createdAt    DateTime  @default(now())
+  lastSeenAt   DateTime  @default(now())
+  /// Hard expiry = sessionTimeout minutes from login.
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  revokedReason String?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // ============================================================

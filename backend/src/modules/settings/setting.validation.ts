@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_SESSION_TIMEOUT_MINUTES } from "../../utils/token";
 import { ADDRESS_CATEGORY_PARENT, isAddressCategory } from "../../lib/bangladeshAddress";
 // Imported from the registry so the API's accepted categories and the tables that
 // actually back them cannot drift apart. Re-exported because other modules import
@@ -43,16 +44,29 @@ export const revealAssetPathSchema = z.object({
 /* Security settings -------------------------------------------------------- */
 
 export const updateSecuritySettingSchema = z.object({
-  passwordMinLength: z.number().int().min(4).max(64).optional(),
-  passwordExpiryDays: z.number().int().min(0).max(3650).optional(),
-  maxLoginAttempts: z.number().int().min(1).max(50).optional(),
-  sessionTimeout: z.number().int().min(1).max(1440).optional(),
-  twoFactorEnabled: z.boolean().optional(),
-  ipRestrictionEnabled: z.boolean().optional(),
-  deviceRestrictionEnabled: z.boolean().optional(),
-  auditLogEnabled: z.boolean().optional(),
-  status: z.enum(SETTING_STATUS_VALUES).optional(),
-});
+    passwordMinLength: z.number().int().min(4).max(64).optional(),
+    passwordExpiryDays: z.number().int().min(0).max(3650).optional(),
+    maxLoginAttempts: z.number().int().min(1).max(50).optional(),
+    /**
+     * Session timeout in minutes. Capped at the access-token ceiling in
+     * utils/token.ts so the configured value can always be honored; the token
+     * would otherwise expire first and the setting would silently do nothing.
+     */
+    sessionTimeout: z.number().int().min(1).max(MAX_SESSION_TIMEOUT_MINUTES).optional(),
+    twoFactorEnabled: z.boolean().optional(),
+    ipRestrictionEnabled: z.boolean().optional(),
+    deviceRestrictionEnabled: z.boolean().optional(),
+    auditLogEnabled: z.boolean().optional(),
+    passwordRequireUppercase: z.boolean().optional(),
+    passwordRequireLowercase: z.boolean().optional(),
+    passwordRequireNumber: z.boolean().optional(),
+    passwordRequireSymbol: z.boolean().optional(),
+    passwordHistoryCount: z.number().int().min(0).max(24).optional(),
+    lockoutDurationMinutes: z.number().int().min(1).max(1440).optional(),
+    allowedIpRanges: z.string().max(1000).optional(),
+    maxConcurrentSessions: z.number().int().min(1).max(50).optional(),
+    status: z.enum(SETTING_STATUS_VALUES).optional(),
+  });
 
 export type ListSystemSettingsQuery = z.infer<typeof listSystemSettingsQuerySchema>;
 export type UpsertSystemSettingInput = z.infer<typeof upsertSystemSettingSchema>;

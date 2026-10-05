@@ -58,3 +58,15 @@ export class BusinessRuleError extends ApiError {
     super(422, message, "BUSINESS_RULE", details);
   }
 }
+
+/**
+ * The caller is authenticated but not permitted to perform this action until a
+ * prerequisite is met (for example an expired password must be changed). The
+ * machine-readable code lets the frontend route to a "set a new password" screen
+ * instead of showing a generic failure.
+ */
+export class PrerequisiteError extends ApiError {
+  constructor(message: string, code = "PREREQUISITE_REQUIRED", details?: unknown) {
+    super(403, message, code, details);
+  }
+}

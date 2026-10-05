@@ -4,6 +4,7 @@
 import { FiPieChart, FiShield, FiLogOut, FiChevronDown, FiChevronUp } from "react-icons/fi";
 import Image from "next/image";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Dispatch, SetStateAction } from "react";
 import type { Feature, SubFeatureItem } from "@/app/data/features";
 import type { RolePermission, UserRole } from "@/app/config/roleConfig";
@@ -31,6 +32,8 @@ export const Sidebar = ({
     expandedFeature, setExpandedFeature,
     openLogoutModal
 }: SidebarProps) => {
+
+    const router = useRouter();
 
     const toggleFeature = (id: number) => {
         setExpandedFeature((prev: number | null) => (prev === id ? null : id));
@@ -236,6 +239,13 @@ export const Sidebar = ({
                         <span className="text-[10px] text-[var(--muted)] truncate block">{role || "Active Session"}</span>
                     </div>
                 </div>
+                <button
+                    onClick={() => router.push("/admins/account-security")}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 mb-2 bg-[var(--primary)]/10 text-[var(--primary-dark)] rounded-xl text-xs font-bold hover:bg-[var(--primary)]/15 transition-colors"
+                >
+                    <FiShield className="w-3.5 h-3.5" />
+                    <span>Account Security</span>
+                </button>
                 <button onClick={openLogoutModal} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[var(--danger)]/10 text-[var(--danger)] rounded-xl text-xs font-bold hover:bg-[var(--danger)]/15 transition-colors">
                     <FiLogOut className="w-3.5 h-3.5" />
                     <span>Logout Account</span>

@@ -27,6 +27,8 @@ export interface MeResult {
 export interface LoginResult {
   user: ApiUser;
   roles: string[];
+  /** The account must set a new password before using the app. */
+  mustChangePassword: boolean;
 }
 
 export interface PaginationMeta {
@@ -468,11 +470,60 @@ async function downloadFile(path: string): Promise<DownloadedFile> {
  * Auth endpoints
  * ------------------------------------------------------------------------- */
 
+export interface TwoFactorStatus {
+  /** Global switch in Settings -> Security. */
+  globallyEnabled: boolean;
+  /** This account has completed enrollment. */
+  enrolled: boolean;
+  /** A secret was issued but not yet confirmed. */
+  pending: boolean;
+  recoveryCodesRemaining: number;
+}
+
+export interface TwoFactorSetup {
+  secret: string;
+  otpauthUrl: string;
+}
+
+export interface UserSessionRow {
+  id: number;
+  ipAddress: string | null;
+  userAgent: string | null;
+  deviceId: string | null;
+  createdAt: string;
+  lastSeenAt: string;
+  expiresAt: string;
+}
+
+export interface LoginAttemptRow {
+  id: number;
+  success: boolean;
+  reason: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+}
+
+export interface PasswordPolicy {
+  minLength: number;
+  requireUppercase: boolean;
+  requireLowercase: boolean;
+  requireNumber: boolean;
+  requireSymbol: boolean;
+  historyCount: number;
+  expiryDays: number;
+}
+
 export const authApi = {
-  login: (identifier: string, password: string) =>
+  login: (identifier: string, password: string, twoFactor?: { code?: string; recoveryCode?: string }) =>
     request<LoginResult>("/auth/login", {
       method: "POST",
-      body: JSON.stringify({ identifier, password }),
+      body: JSON.stringify({
+        identifier,
+        password,
+        ...(twoFactor?.code ? { twoFactorCode: twoFactor.code } : {}),
+        ...(twoFactor?.recoveryCode ? { recoveryCode: twoFactor.recoveryCode } : {}),
+      }),
     }),
 
   me: () => request<MeResult>("/auth/me"),
@@ -485,6 +536,38 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify({ currentPassword, newPassword }),
     }),
+
+  passwordPolicy: () => request<PasswordPolicy>("/auth/password-policy"),
+
+  twoFactorStatus: () => request<TwoFactorStatus>("/auth/2fa/status"),
+
+  twoFactorSetup: () =>
+    request<TwoFactorSetup>("/auth/2fa/setup", { method: "POST" }),
+
+  twoFactorConfirm: (code: string) =>
+    request<{ recoveryCodes: string[] }>("/auth/2fa/confirm", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    }),
+
+  twoFactorDisable: (currentPassword: string, code?: string) =>
+    request<{ message?: string }>("/auth/2fa/disable", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword, ...(code ? { code } : {}) }),
+    }),
+
+  regenerateRecoveryCodes: () =>
+    request<{ recoveryCodes: string[] }>("/auth/2fa/recovery-codes", { method: "POST" }),
+
+  sessions: () => request<UserSessionRow[]>("/auth/sessions"),
+
+  revokeSessions: (sessionId?: number) =>
+    request<{ message?: string; data: { revoked: number } }>("/auth/sessions/revoke", {
+      method: "POST",
+      body: JSON.stringify(sessionId ? { sessionId } : {}),
+    }),
+
+  loginAttempts: () => request<LoginAttemptRow[]>("/auth/login-attempts"),
 };
 
 /* ---------------------------------------------------------------------------
@@ -804,6 +887,14 @@ export interface SecuritySetting {
   ipRestrictionEnabled: boolean;
   deviceRestrictionEnabled: boolean;
   auditLogEnabled: boolean;
+  passwordRequireUppercase: boolean;
+  passwordRequireLowercase: boolean;
+  passwordRequireNumber: boolean;
+  passwordRequireSymbol: boolean;
+  passwordHistoryCount: number;
+  lockoutDurationMinutes: number;
+  allowedIpRanges: string | null;
+  maxConcurrentSessions: number;
   status: "active" | "inactive";
   updatedAt: string;
 }
