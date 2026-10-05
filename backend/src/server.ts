@@ -2,6 +2,7 @@ import { createServer, type Server } from "node:http";
 import { createApp } from "./app";
 import { prisma } from "./lib/prisma";
 import { config } from "./config";
+import { startBackupScheduler, stopBackupScheduler } from "./modules/settings/backup.scheduler";
 
 function start(): Server {
   const app = createApp();
@@ -12,12 +13,16 @@ function start(): Server {
     console.log(`[server] Hospital Management API listening on port ${config.port} (${config.env})`);
   });
 
+  startBackupScheduler();
+
   return server;
 }
 
 async function shutdown(server: Server, signal: string): Promise<void> {
   // eslint-disable-next-line no-console
   console.log(`\n[server] ${signal} received, shutting down gracefully...`);
+
+  stopBackupScheduler();
 
   server.close(async () => {
     await prisma.$disconnect();

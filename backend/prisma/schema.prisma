@@ -1759,6 +1759,7 @@ model BackupSetting {
   storagePath       String?
   retentionDays     Int     @default(30)
   encryptionEnabled Boolean @default(true)
+  lastScheduledRunAt DateTime?
   status            String  @default("active")
 }
 

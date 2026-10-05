@@ -1218,7 +1218,18 @@ export interface BackupSetting {
   storagePath: string | null;
   retentionDays: number;
   encryptionEnabled: boolean;
+  lastScheduledRunAt?: string | null;
   status: "active" | "inactive";
+}
+
+export interface BackupOverview {
+  backupSetting: BackupSetting;
+  lastBackup: BackupLog | null;
+  storageDir: string;
+  mysqldumpAvailable: boolean;
+  mysqldumpVersion: string | null;
+  mysqldumpBinary: string;
+  nextScheduledRunAt: string | null;
 }
 
 export type UpdateBackupSettingInput = {
@@ -1687,7 +1698,7 @@ export const settingsApi = {
   },
   backup: {
     get: () =>
-      request<{ backupSetting: BackupSetting; lastBackup: BackupLog | null }>("/settings/backup"),
+      request<BackupOverview>("/settings/backup"),
     update: (input: UpdateBackupSettingInput) =>
       request<{ backupSetting: BackupSetting }>("/settings/backup", {
         method: "PATCH",

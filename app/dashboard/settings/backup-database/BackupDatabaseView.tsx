@@ -11,6 +11,7 @@ import {
   type ActiveStatus,
   type BackupFrequency,
   type BackupLog,
+  type BackupOverview,
   type BackupSetting,
   type BackupType,
   type StorageType,
@@ -61,8 +62,17 @@ function formatDate(value: string): string {
   }
 }
 
+function formatBytes(bytes: number | null | undefined): string {
+  if (bytes === null || bytes === undefined) return "?";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
 export function BackupDatabaseView() {
   const [data, setData] = useState<BackupSetting | null>(null);
+  const [overview, setOverview] = useState<BackupOverview | null>(null);
   const [lastBackup, setLastBackup] = useState<BackupLog | null>(null);
   const [logs, setLogs] = useState<BackupLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,12 +96,13 @@ const [clearingAll, setClearingAll] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [overview, history] = await Promise.all([
+      const [overviewData, history] = await Promise.all([
         settingsApi.backup.get(),
         settingsApi.backup.history(),
       ]);
-      setData(overview.backupSetting);
-      setLastBackup(overview.lastBackup);
+      setData(overviewData.backupSetting);
+      setOverview(overviewData);
+      setLastBackup(overviewData.lastBackup);
       setLogs(history.backups);
       setDirty(false);
       setError("");
@@ -142,7 +153,10 @@ const [clearingAll, setClearingAll] = useState(false);
     setError("");
     try {
       const { backup } = await settingsApi.backup.run();
-      notify("success", `Backup "${backup.fileName}" completed (${backup.fileSize ?? "?"} MB).`);
+      notify(
+        "success",
+        `Backup "${backup.fileName}" completed (${formatBytes(backup.fileSize)}).`,
+      );
       setReloadKey((k) => k + 1);
     } catch (err) {
       notify("error", errorMessage(err));
@@ -218,6 +232,25 @@ const [clearingAll, setClearingAll] = useState(false);
 
       {error && (
         <p className="text-sm text-red-200 bg-red-500/20 border border-red-400/40 rounded-lg px-3 py-2">{error}</p>
+      )}
+
+      {overview && !overview.mysqldumpAvailable && (
+        <p className="text-sm text-amber-200 bg-amber-500/20 border border-amber-400/40 rounded-lg px-3 py-2">
+          mysqldump was not found on this server, so backups cannot run. Set MYSQLDUMP_PATH in
+          backend/.env to the full path of the mysqldump executable.
+        </p>
+      )}
+
+      {overview?.mysqldumpAvailable && (
+        <p className="text-xs text-[var(--muted)]">
+          Dumping with <span className="font-mono">{overview.mysqldumpBinary}</span>
+          {overview.mysqldumpVersion ? ` — ${overview.mysqldumpVersion}` : ""}
+          {" · "}Saving to <span className="font-mono">{overview.storageDir}</span>
+          {" · "}
+          {overview.nextScheduledRunAt
+            ? `Next automatic backup: ${formatDate(overview.nextScheduledRunAt)}`
+            : "Automatic backups are currently off"}
+        </p>
       )}
 
       <div className="card p-5 rounded-2xl border border-[var(--border)] shadow-sm space-y-4">
@@ -385,21 +418,28 @@ const [clearingAll, setClearingAll] = useState(false);
                     <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">{formatDate(log.startedAt)}</td>
                     <td className="text-[12px] font-bold text-[var(--text)] px-4 py-3 border-b border-[var(--border)] capitalize">{BACKUP_TYPE_LABELS[log.backupType]}</td>
                     <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)] font-mono">{log.fileName ?? "—"}</td>
-                    <td className="text-[12px] text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">{log.fileSize != null ? `${log.fileSize} MB` : "—"}</td>
-                    <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)] capitalize">
-                      {log.storageLocation ? STORAGE_TYPE_LABELS[log.storageLocation as StorageType] ?? log.storageLocation : "—"}
+                    <td className="text-[12px] text-[var(--text)] px-4 py-3 border-b border-[var(--border)] whitespace-nowrap">{formatBytes(log.fileSize)}</td>
+                    <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)] font-mono text-[11px] break-all max-w-[220px]">
+                      {log.storageLocation ?? "—"}
                     </td>
                     <td className="px-4 py-3 border-b border-[var(--border)]">
                       <span className={`inline-block text-[10px] font-bold capitalize px-2 py-0.5 rounded-md border ${LOG_STATUS_STYLES[log.status]}`}>{log.status}</span>
+                      {log.errorMessage ? (
+                        <p className="text-[11px] text-red-300 mt-1 max-w-[260px] break-words">{log.errorMessage}</p>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3 border-b border-[var(--border)]">
                       <div className="flex items-center gap-1.5">
                         <button
-                          onClick={() => handleDownload(log)}
-                          disabled={downloadingId === log.id}
-                          className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--primary)] hover:border-[var(--primary)] disabled:opacity-50 transition-colors"
-                          title="Download backup file"
-                        >
+onClick={() => handleDownload(log)}
+    disabled={downloadingId === log.id || log.status !== "completed"}
+   className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--primary)] hover:border-[var(--primary)] disabled:opacity-50 transition-colors"
+   title={
+     log.status === "completed"
+       ? "Download backup file"
+      : "This backup did not complete, so there is no file to download"
+    }
+  >
                           {downloadingId === log.id ? <span className="inline-block w-3.5 h-3.5 animate-spin rounded-full border-b-2 border-[var(--primary)]" /> : <FiDownload className="w-3.5 h-3.5" />}
                         </button>
                         <button

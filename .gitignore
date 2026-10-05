@@ -45,3 +45,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 backend/sql/*.sql
+
+# database dumps produced by Settings -> Backup must never be committed
+backend/backups/
+backend/storage/

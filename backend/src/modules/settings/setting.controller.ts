@@ -1,8 +1,9 @@
 import type { Request, Response } from "express";
 import { asyncHandler } from "../../utils/asyncHandler";
-import { success, list } from "../../utils/apiResponse";
+import { success } from "../../utils/apiResponse";
 import * as settingService from "./setting.service";
 import * as backupService from "./backup.service";
+import { BusinessRuleError } from "../../errors/ApiError";
 
 export const listSystemSettings = asyncHandler(async (req: Request, res: Response) => {
   const settings = await settingService.listSystemSettings(req.user!, req.query as never);
@@ -218,12 +219,18 @@ export const updateBackupSetting = asyncHandler(async (req: Request, res: Respon
 });
 
 export const listBackupLogs = asyncHandler(async (req: Request, res: Response) => {
-  const backups = await backupService.listBackupLogs(req.user!);
+  const backups = await backupService.listBackupLogs();
   success(res, { backups });
 });
 
 export const runBackup = asyncHandler(async (req: Request, res: Response) => {
-  const backup = await backupService.runBackup(req.user!);
+  const backup = await backupService.runBackup(req.user!, "manual");
+  if (backup.status !== "completed") {
+    // Surface the real failure instead of a 200 with a phantom success.
+    throw new BusinessRuleError(
+      backup.errorMessage || "Backup failed. Check the backup history for details.",
+    );
+  }
   success(res, { backup });
 });
 
