@@ -15,6 +15,7 @@ import superAdminRoutes from "../modules/superadmin/superadmin.routes";
 import auditRoutes from "../modules/audit/audit.routes";
 import opdRoutes from "../modules/opd/opd.routes";
 import ipdRoutes from "../modules/ipd/ipd.routes";
+import pharmacyRoutes from "../modules/pharmacy/pharmacy.routes";
 
 const router = Router();
 
@@ -35,5 +36,6 @@ router.use("/superadmin", superAdminRoutes);
 router.use("/audit", auditRoutes);
 router.use("/opd", opdRoutes);
 router.use("/ipd", ipdRoutes);
+router.use("/pharmacy", pharmacyRoutes);
 
 export default router;
