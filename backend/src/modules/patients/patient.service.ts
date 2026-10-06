@@ -7,7 +7,7 @@ import {
   NotFoundError,
 } from "../../errors/ApiError";
 import { writeAuditLog } from "../../utils/audit";
-import { assertAddressChain } from "../settings/setting.service";
+import { assertAddressChain, settingsConfig } from "../settings/setting.service";
 import { CODE_ENTITIES, generateBusinessCode } from "../../utils/codeGenerator";
 import { parsePagination, buildPaginationMeta, type SortableField } from "../../utils/pagination";
 import type { AuthUser } from "../../types/auth";
@@ -195,6 +195,58 @@ function asGuardianRequirement(value: string): GuardianRequirement {
   return (GUARDIAN_REQUIREMENT_VALUES as readonly string[]).includes(value)
     ? (value as GuardianRequirement)
     : "MINORS_ONLY";
+}
+
+/**
+ * Calculate OPD fees for a branch based on settings.
+ * Returns the registration fee and consultation fee as Decimal values.
+ * Returns null for any fee not configured.
+ */
+export async function calculateOpdFees(branchId: number): Promise<{
+  registrationFee: Prisma.Decimal | null;
+  consultationFee: Prisma.Decimal | null;
+}> {
+  const config = await settingsConfig.loadOpdConfig(branchId);
+  return {
+    registrationFee: config.registrationFee,
+    consultationFee: config.consultationFee,
+  };
+}
+
+/**
+ * Calculate IPD fees for a branch based on settings.
+ */
+export async function calculateIpdFees(branchId: number): Promise<{
+  admissionFee: Prisma.Decimal | null;
+  dischargeFee: Prisma.Decimal | null;
+  bedCharge: Prisma.Decimal | null;
+  nursingCharge: Prisma.Decimal | null;
+  serviceCharge: Prisma.Decimal | null;
+}> {
+  const config = await settingsConfig.loadIpdConfig(branchId);
+  return {
+    admissionFee: config.admissionFee,
+    dischargeFee: config.dischargeFee,
+    bedCharge: config.bedCharge,
+    nursingCharge: config.nursingCharge,
+    serviceCharge: config.serviceCharge,
+  };
+}
+
+/**
+ * Calculate Emergency fees for a branch based on settings.
+ */
+export async function calculateEmergencyFees(branchId: number): Promise<{
+  registrationFee: Prisma.Decimal | null;
+  consultationFee: Prisma.Decimal | null;
+  serviceCharge: Prisma.Decimal | null;
+}> {
+  const config = await settingsConfig.loadEmergencyConfig(branchId);
+  return {
+    registrationFee: config.registrationFee,
+    consultationFee: config.consultationFee,
+    serviceCharge: config.serviceCharge,
+  };
 }
 
 /**

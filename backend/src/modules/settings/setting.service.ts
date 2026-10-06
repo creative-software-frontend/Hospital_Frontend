@@ -13,6 +13,7 @@ import {
   parseAllowedIpRanges,
 } from "../auth/securityPolicy";
 import { invalidateMaintenanceCache } from "../../middleware/maintenance.middleware";
+import * as settingsConfig from "./settingsConfig";
 import { revealPublicAsset } from "../../utils/revealPath";
 import { BLOOD_GROUP_VALUES } from "../patients/patient.validation";
 import { DEFAULT_PATIENT_SETTINGS } from "../patients/patient.policy";
@@ -133,11 +134,11 @@ export async function upsertSystemSetting(actor: AuthUser, input: UpsertSystemSe
       recordId: String(existing.id),
       oldValues: { settingValue: existing.settingValue, status: existing.status },
       newValues: { ...data, settingGroup: input.settingGroup, settingKey: input.settingKey },
-      user: actor,
-      branchId,
-    });
-    return updated;
-  }
+user: actor,
+    branchId: actor.branchId,
+  });
+  return updated;
+}
 
   const created = await prisma.systemSetting.create({
     data: {
