@@ -14,6 +14,8 @@ import {
 } from "../auth/securityPolicy";
 import { invalidateMaintenanceCache } from "../../middleware/maintenance.middleware";
 import * as settingsConfig from "./settingsConfig";
+// Re-export so other modules can import settingsConfig from this barrel.
+export { settingsConfig };
 import { revealPublicAsset } from "../../utils/revealPath";
 import { BLOOD_GROUP_VALUES } from "../patients/patient.validation";
 import { DEFAULT_PATIENT_SETTINGS } from "../patients/patient.policy";

@@ -545,26 +545,59 @@ export async function calculateInvoiceTotals(
 }
 
 /**
- * Generate next invoice number using branch billing settings.
+ * Generate next invoice number atomically using branch billing settings.
+ *
+ * MUST be called inside a prisma.$transaction() so that the sequence
+ * increment is rolled back if the invoice creation fails.
+ *
+ * Uses the CodeSequence table (same mechanism as patient/doctor codes) to
+ * guarantee no two concurrent requests receive the same number.
  */
-export async function generateNextInvoiceNumber(branchId: number): Promise<string> {
+export async function generateNextInvoiceNumber(
+  tx: import("@prisma/client").Prisma.TransactionClient,
+  branchId: number,
+): Promise<string> {
   const config = await loadBillingConfig(branchId);
-  const startNumber = config.invoiceStartNumber ?? 1;
   const prefix = config.invoicePrefix ?? "INV-";
 
-  // In real implementation, this would query the last invoice for the branch
-  // and increment. For now, return the format.
-  return `${prefix}${startNumber.toString().padStart(6, "0")}`;
+  const row = await tx.codeSequence.upsert({
+    where: { entity_branchId: { entity: "Invoice", branchId } },
+    update: { nextNumber: { increment: 1 } },
+    create: { entity: "Invoice", branchId, nextNumber: 1 },
+    select: { nextNumber: true },
+  });
+
+  const padded = String(row.nextNumber).padStart(6, "0");
+  // The prefix is stored with or without a trailing dash; normalise once.
+  const cleanPrefix = prefix.replace(/[-\s]+$/, "");
+  return `${cleanPrefix}-${padded}`;
 }
 
 /**
- * Generate next receipt number using branch billing settings.
+ * Generate next receipt number atomically using branch billing settings.
+ *
+ * MUST be called inside a prisma.$transaction() for the same reason as
+ * generateNextInvoiceNumber.
  */
-export async function generateNextReceiptNumber(branchId: number): Promise<string> {
+export async function generateNextReceiptNumber(
+  tx: import("@prisma/client").Prisma.TransactionClient,
+  branchId: number,
+): Promise<string> {
   const config = await loadBillingConfig(branchId);
   const prefix = config.receiptPrefix ?? "RCT-";
-  return `${prefix}${Date.now().toString(36).toUpperCase()}`;
+
+  const row = await tx.codeSequence.upsert({
+    where: { entity_branchId: { entity: "Receipt", branchId } },
+    update: { nextNumber: { increment: 1 } },
+    create: { entity: "Receipt", branchId, nextNumber: 1 },
+    select: { nextNumber: true },
+  });
+
+  const padded = String(row.nextNumber).padStart(6, "0");
+  const cleanPrefix = prefix.replace(/[-\s]+$/, "");
+  return `${cleanPrefix}-${padded}`;
 }
+
 
 /* ------------------------------------------------------------------ *
  * Composite loader — loads all configs for a branch in one call

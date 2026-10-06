@@ -5,6 +5,14 @@ export const CODE_ENTITIES = {
   DOCTOR: "Doctor",
   NURSE: "Nurse",
   SERVICE: "Service",
+  EMPLOYEE: "Employee",
+  INVOICE: "Invoice",
+  RECEIPT: "Receipt",
+  ADMISSION: "Admission",
+  APPOINTMENT: "Appointment",
+  LAB_ORDER: "LabOrder",
+  PRESCRIPTION: "Prescription",
+  EMERGENCY: "Emergency",
 } as const;
 
 export type CodeEntity = (typeof CODE_ENTITIES)[keyof typeof CODE_ENTITIES];
@@ -14,6 +22,14 @@ const ENTITY_PREFIX: Record<CodeEntity, string> = {
   [CODE_ENTITIES.DOCTOR]: "DOC",
   [CODE_ENTITIES.NURSE]: "NUR",
   [CODE_ENTITIES.SERVICE]: "SRV",
+  [CODE_ENTITIES.EMPLOYEE]: "EMP",
+  [CODE_ENTITIES.INVOICE]: "INV",
+  [CODE_ENTITIES.RECEIPT]: "RCT",
+  [CODE_ENTITIES.ADMISSION]: "ADM",
+  [CODE_ENTITIES.APPOINTMENT]: "APT",
+  [CODE_ENTITIES.LAB_ORDER]: "LAB",
+  [CODE_ENTITIES.PRESCRIPTION]: "RX",
+  [CODE_ENTITIES.EMERGENCY]: "EMR",
 };
 
 const DEFAULT_PADDING = 6;

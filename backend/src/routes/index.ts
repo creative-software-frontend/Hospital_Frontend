@@ -13,6 +13,8 @@ import nurseRoutes from "../modules/nurses/nurse.routes";
 import serviceRoutes from "../modules/services/service.routes";
 import superAdminRoutes from "../modules/superadmin/superadmin.routes";
 import auditRoutes from "../modules/audit/audit.routes";
+import opdRoutes from "../modules/opd/opd.routes";
+import ipdRoutes from "../modules/ipd/ipd.routes";
 
 const router = Router();
 
@@ -31,5 +33,7 @@ router.use("/nurses", nurseRoutes);
 router.use("/services", serviceRoutes);
 router.use("/superadmin", superAdminRoutes);
 router.use("/audit", auditRoutes);
+router.use("/opd", opdRoutes);
+router.use("/ipd", ipdRoutes);
 
 export default router;
