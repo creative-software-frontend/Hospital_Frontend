@@ -411,12 +411,18 @@ export function PatientModule({ role }: { role: UserRole | null }) {
           mode={editingPatient ? "edit" : "create"}
           patient={editingPatient}
           onClose={() => setFormOpen(false)}
-          onSaved={(newCode) => {
+          onSaved={(newCode, warnings) => {
             if (editingPatient) {
               notify("success", `Patient ${editingPatient.patientCode} updated.`);
             } else {
               notify("success", `Patient registered. Code: ${newCode ?? "generated"}.`);
               setPage(1);
+            }
+            if (warnings && warnings.length > 0) {
+              notify(
+                "info",
+                `Saved as a possible duplicate of ${warnings.map((w) => w.patientCode).join(", ")}.`,
+              );
             }
             setFormOpen(false);
             refreshList();

@@ -18,12 +18,20 @@ const ENTITY_PREFIX: Record<CodeEntity, string> = {
 
 const DEFAULT_PADDING = 6;
 
+/**
+ * Strips trailing separators so a configured prefix may be stored either as
+ * "PAT" or "PAT-" without producing "PAT--000001".
+ */
+export function normalizeCodePrefix(prefix: string | null | undefined): string {
+  return (prefix ?? "").trim().replace(/[-\s]+$/, "");
+}
+
 export function formatBusinessCode(
   prefix: string,
   sequence: number,
   padding = DEFAULT_PADDING,
 ): string {
-  return `${prefix}-${String(sequence).padStart(padding, "0")}`;
+  return `${normalizeCodePrefix(prefix)}-${String(sequence).padStart(padding, "0")}`;
 }
 
 /**
@@ -50,7 +58,11 @@ export async function generateBusinessCode(
   tx: Prisma.TransactionClient,
   entity: CodeEntity,
   branchId: number,
+  options?: { prefix?: string | null; padding?: number },
 ): Promise<string> {
   const sequence = await nextCodeNumber(tx, entity, branchId);
-  return formatBusinessCode(ENTITY_PREFIX[entity], sequence);
+  // A branch-configured prefix wins; the built-in one is the fallback for the
+  // entities that have no configurable prefix (doctor, nurse, service).
+  const prefix = options?.prefix?.trim() ? options.prefix : ENTITY_PREFIX[entity];
+  return formatBusinessCode(prefix, sequence, options?.padding ?? DEFAULT_PADDING);
 }

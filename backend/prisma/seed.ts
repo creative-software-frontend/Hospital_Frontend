@@ -2,6 +2,7 @@ import "dotenv/config";
 import { PaymentMethodType, PrismaClient } from "@prisma/client";
 import { LOOKUP_SPECS, type MasterDataCategory } from "../src/lib/masterDataRegistry";
 import { branchScope, lookupDelegate } from "../src/lib/lookupDelegate";
+import { DEFAULT_PATIENT_SETTINGS } from "../src/modules/patients/patient.policy";
 import { DEMO_ACCOUNTS, DEMO_PASSWORD, seedDemoAccounts } from "./demoAccounts";
 import { syncAddressMasterData } from "./syncAddressMasterData";
 
@@ -586,7 +587,7 @@ async function seed() {
   }
   console.log(`Doctors ready: ${doctorsReady}`);
 
-  // 8. Default patient settings (branch-scoped, single row per branch)
+  // 8. Default patient settings (branch-scoped, one row per branch)
   const existingPatientSetting = await prisma.patientSetting.findFirst({
     where: { branchId: branch.id },
   });
@@ -594,13 +595,7 @@ async function seed() {
     await prisma.patientSetting.create({
       data: {
         branchId: branch.id,
-        patientIdPrefix: "PT-",
-        autoGenerateId: true,
-        defaultPatientType: "NEW",
-        requireGuardian: "MINORS_ONLY",
-        duplicateDetection: true,
-        phoneRequired: true,
-        emailRequired: false,
+        ...DEFAULT_PATIENT_SETTINGS,
         status: "active",
       },
     });

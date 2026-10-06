@@ -7,9 +7,14 @@ import { useCallback, useEffect, useState } from "react";
 import { FiRefreshCcw, FiSave } from "react-icons/fi";
 import {
   settingsApi,
-  type PatientSetting,
   errorMessage,
+  ValidationError,
+  type PatientSetting,
 } from "@/app/lib/api";
+import {
+  GUARDIAN_REQUIREMENT_OPTIONS,
+  PATIENT_TYPE_OPTIONS,
+} from "@/app/patients/constants";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
 
 const INPUT_CLS =
@@ -60,6 +65,7 @@ export function PatientConfigurationView() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [reloadKey, setReloadKey] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -79,6 +85,7 @@ export function PatientConfigurationView() {
       setData(result.patientSetting);
       setDirty(false);
       setError("");
+      setFieldErrors({});
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -94,12 +101,22 @@ export function PatientConfigurationView() {
   const patch = (partial: Partial<PatientSetting>) => {
     setData((prev) => (prev ? { ...prev, ...partial } : prev));
     setDirty(true);
+    // A corrected value should drop its own message straight away rather than
+    // leaving a stale "invalid" under a now-valid field.
+    setFieldErrors((prev) => {
+      const keys = Object.keys(partial);
+      if (!keys.some((k) => prev[k])) return prev;
+      const next = { ...prev };
+      for (const k of keys) delete next[k];
+      return next;
+    });
   };
 
   const save = async () => {
     if (!data) return;
     setSaving(true);
     setError("");
+    setFieldErrors({});
     try {
       await settingsApi.patient.update({
         patientIdPrefix: data.patientIdPrefix,
@@ -115,7 +132,12 @@ export function PatientConfigurationView() {
       notify("success", "Patient configuration saved.");
       setReloadKey((k) => k + 1);
     } catch (err) {
-      setError(errorMessage(err));
+      if (err instanceof ValidationError) {
+        setFieldErrors(err.fieldErrors);
+        setError(err.message);
+      } else {
+        setError(errorMessage(err));
+      }
     } finally {
       setSaving(false);
     }
@@ -180,45 +202,80 @@ export function PatientConfigurationView() {
                 value={data.patientIdPrefix}
                 onChange={(e) => patch({ patientIdPrefix: e.target.value })}
                 className={INPUT_CLS}
+                disabled={saving}
               />
+              <p className="text-[11px] text-[var(--muted)]">
+                Codes are issued as{" "}
+                <span className="font-bold text-[var(--text)]">
+                  {`${(data.patientIdPrefix || "PAT").replace(/[-\s]+$/, "") || "PAT"}-000001`}
+                </span>
+                . Letters, digits, hyphen and underscore; 2–8 characters.
+              </p>
+              {fieldErrors.patientIdPrefix && (
+                <p className="text-[11px] font-bold text-rose-500">{fieldErrors.patientIdPrefix}</p>
+              )}
             </div>
+
             <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-3 space-y-1.5">
               <label className="block text-xs font-bold text-[var(--muted)]">Default Patient Type</label>
               <Select
                 value={data.defaultPatientType}
                 onChange={(v) => patch({ defaultPatientType: v })}
-                options={[
-                  { value: "NEW", label: "New" },
-                  { value: "FOLLOWUP", label: "Follow-up" },
-                  { value: "REFERRAL", label: "Referral" },
-                ]}
+                options={PATIENT_TYPE_OPTIONS}
               />
+              <p className="text-[11px] text-[var(--muted)]">
+                Pre-selected on the registration form; staff can still override it per patient.
+              </p>
+              {fieldErrors.defaultPatientType && (
+                <p className="text-[11px] font-bold text-rose-500">{fieldErrors.defaultPatientType}</p>
+              )}
             </div>
+
             <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-3 space-y-1.5">
               <label className="block text-xs font-bold text-[var(--muted)]">Require Guardian For</label>
               <Select
                 value={data.requireGuardian}
                 onChange={(v) => patch({ requireGuardian: v as PatientSetting["requireGuardian"] })}
-                options={[
-                  { value: "NEVER", label: "Never" },
-                  { value: "MINORS_ONLY", label: "Minors only" },
-                  { value: "ALWAYS", label: "Always" },
-                ]}
+                options={GUARDIAN_REQUIREMENT_OPTIONS.map(({ value, label }) => ({ value, label }))}
               />
+              <p className="text-[11px] text-[var(--muted)]">
+                {GUARDIAN_REQUIREMENT_OPTIONS.find((o) => o.value === data.requireGuardian)?.hint}
+              </p>
+              {fieldErrors.requireGuardian && (
+                <p className="text-[11px] font-bold text-rose-500">{fieldErrors.requireGuardian}</p>
+              )}
             </div>
 
-            <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-3">
+            <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-3 space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-[var(--muted)]">Auto Generate Patient ID</span>
                 <Toggle checked={data.autoGenerateId} onChange={(v) => patch({ autoGenerateId: v })} />
               </div>
+              <p className="text-[11px] text-[var(--muted)]">
+                {data.autoGenerateId
+                  ? "The server issues the next code; the registration form hides the ID field."
+                  : "Staff type the ID themselves and the form refuses to submit without one."}
+              </p>
+              {fieldErrors.autoGenerateId && (
+                <p className="text-[11px] font-bold text-rose-500">{fieldErrors.autoGenerateId}</p>
+              )}
             </div>
-            <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-3">
+
+            <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-3 space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-[var(--muted)]">Duplicate Detection</span>
                 <Toggle checked={data.duplicateDetection} onChange={(v) => patch({ duplicateDetection: v })} />
               </div>
+              <p className="text-[11px] text-[var(--muted)]">
+                {data.duplicateDetection
+                  ? "Refuses a repeated national ID, phone or email; a repeated name and date of birth asks for confirmation."
+                  : "No comparison is made — every registration is accepted as given."}
+              </p>
+              {fieldErrors.duplicateDetection && (
+                <p className="text-[11px] font-bold text-rose-500">{fieldErrors.duplicateDetection}</p>
+              )}
             </div>
+
             <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-[var(--muted)]">Phone Number Required</span>

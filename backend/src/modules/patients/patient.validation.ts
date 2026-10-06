@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PATIENT_TYPE_VALUES } from "./patient.policy";
 
 export const GENDER_VALUES = ["MALE", "FEMALE", "OTHER"] as const;
 export const BLOOD_GROUP_VALUES = [
@@ -74,6 +75,29 @@ export const listPatientsQuerySchema = z.object({
 
 export const createPatientSchema = z.object({
   name: z.string().trim().min(1, "name is required").max(255),
+  /**
+   * Only honoured when the branch has autoGenerateId disabled. When generation
+   * is on, sending a code is rejected rather than silently ignored so a caller
+   * never believes it chose the identifier.
+   */
+  patientCode: z
+    .string()
+    .trim()
+    .min(3, "Patient ID must be at least 3 characters")
+    .max(32, "Patient ID must be at most 32 characters")
+    .regex(/^[A-Za-z0-9][A-Za-z0-9\-_./]*$/, "Patient ID may only contain letters, numbers and - _ . /")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  /**
+   * Registration type. Defaults to the branch's defaultPatientType when omitted.
+   */
+  patientType: z.enum(PATIENT_TYPE_VALUES).optional(),
+  /**
+   * Acknowledges an advisory (name + date of birth) duplicate match so the
+   * receptionist can knowingly register what may be the same person twice.
+   * Strong matches (phone / email / national ID) are never overridable.
+   */
+  overrideDuplicate: z.boolean().optional(),
   dateOfBirth: z
     .string()
     .refine((v) => !Number.isNaN(Date.parse(v)), "Invalid date")
@@ -109,8 +133,12 @@ export const createPatientSchema = z.object({
     .optional(),
 });
 
+/**
+ * The patient ID is immutable once issued: printed cards, barcodes and lab
+ * labels already reference it, so it is excluded from updates.
+ */
 export const updatePatientSchema = createPatientSchema
-  .omit({ branchId: true, contacts: true })
+  .omit({ branchId: true, contacts: true, patientCode: true })
   .partial();
 
 export const updatePatientStatusSchema = z.object({

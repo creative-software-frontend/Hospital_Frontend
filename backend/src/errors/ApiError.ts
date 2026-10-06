@@ -43,8 +43,13 @@ export class ValidationError extends ApiError {
 }
 
 export class ConflictError extends ApiError {
-  constructor(message = "Resource conflict") {
-    super(409, message, "CONFLICT");
+  /**
+   * Like BusinessRuleError, `details` carries either a flat `{ field: message }`
+   * map (so a form can highlight the offending input) or structured payload the
+   * client needs to act on, such as the existing records a duplicate check found.
+   */
+  constructor(message = "Resource conflict", details?: unknown) {
+    super(409, message, "CONFLICT", details);
   }
 }
 

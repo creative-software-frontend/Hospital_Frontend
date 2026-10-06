@@ -9,13 +9,17 @@ import { FiX, FiPlus, FiTrash2, FiSave } from "react-icons/fi";
 import {
   patientApi,
   type CreatePatientInput,
+  type DuplicateMatch,
   type Gender,
   type BloodGroup,
   type MaritalStatus,
   type PatientDetail,
   type PatientListRecord,
+  type PatientRegistrationConfig,
+  type PatientType,
   ValidationError,
   BusinessRuleError,
+  ConflictError,
   errorMessage,
 } from "@/app/lib/api";
 import {
@@ -23,6 +27,7 @@ import {
   BLOOD_GROUP_OPTIONS,
   MARITAL_STATUS_OPTIONS,
   OCCUPATION_OPTIONS,
+  PATIENT_TYPE_OPTIONS,
 } from "@/app/patients/constants";
 import { useMasterDataOptions } from "@/app/lib/useMasterData";
 import { useAddressCascade } from "@/app/lib/useAddressCascade";
@@ -65,6 +70,8 @@ interface FormState {
   nationalId: string;
   occupation: string;
   photo: string;
+  patientCode: string;
+  patientType: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -84,6 +91,8 @@ const EMPTY_FORM: FormState = {
   nationalId: "",
   occupation: "",
   photo: "",
+  patientCode: "",
+  patientType: "",
 };
 
 function prefillFromPatient(p: PatientDetail | PatientListRecord | null): FormState {
@@ -105,12 +114,24 @@ function prefillFromPatient(p: PatientDetail | PatientListRecord | null): FormSt
     nationalId: (p as PatientDetail).nationalId ?? "",
     occupation: (p as PatientDetail).occupation ?? "",
     photo: (p as PatientDetail).photo ?? "",
+    // The code is immutable, so the edit form never shows or sends it.
+    patientCode: "",
+    patientType: p.patientType ?? "",
   };
 }
 
+/** Same 18-year rule as the backend's `isMinor`, applied to the raw date field. */
+function isMinorDob(value: string): boolean {
+  if (!value) return false;
+  const dob = new Date(value);
+  if (Number.isNaN(dob.getTime())) return false;
+  const threshold = new Date(dob);
+  threshold.setFullYear(threshold.getFullYear() + 18);
+  return threshold.getTime() > Date.now();
+}
+
 const inputCls =
-  "w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15";
-const selectCls = inputCls;
+  "w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15";const selectCls = inputCls;
 const labelCls = "block text-[11px] font-bold text-[var(--muted)] mb-1.5 uppercase tracking-wider";
 
 export function PatientFormModal({
@@ -122,13 +143,23 @@ export function PatientFormModal({
   mode: "create" | "edit";
   patient: PatientDetail | PatientListRecord | null;
   onClose: () => void;
-  onSaved: (patientCode?: string) => void;
+  /** `warnings` are the advisory duplicates the user acknowledged before saving. */
+  onSaved: (patientCode?: string, warnings?: DuplicateMatch[]) => void;
 }) {
   const [form, setForm] = useState<FormState>(() => prefillFromPatient(patient));
   const [contacts, setContacts] = useState<ContactDraft[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Branch registration settings. Loaded on mount for create; while it is in
+  // flight the form stays in auto-ID mode so no stale manual field flashes up.
+  const [config, setConfig] = useState<PatientRegistrationConfig | null>(null);
+  // A duplicate refusal that is safe to acknowledge (name + date of birth).
+  // Strong matches (national ID / phone / email) never land here — the server
+  // omits requiresAcknowledgement for them, so they stay a plain form error.
+  const [duplicate, setDuplicate] = useState<DuplicateMatch[] | null>(null);
+  const [overrideDuplicate, setOverrideDuplicate] = useState(false);
 
   // Master Data is authoritative for these lists; the hardcoded constants are
   // only a fallback for when the category has not been configured yet.
@@ -161,8 +192,36 @@ export function PatientFormModal({
     return [...masterBloodGroups, { code: current, label: current.replace("_", " "), value: current, sortOrder: 999, fallback: true }];
   }, [masterBloodGroups, form.bloodGroup]);
 
+  // Registration settings only matter when creating: the code is fixed and the
+  // type can be corrected on an existing record, so edit mode skips the request.
+  useEffect(() => {
+    if (mode !== "create") return;
+    let cancelled = false;
+    patientApi
+      .configuration()
+      .then(({ configuration }) => {
+        if (!cancelled) setConfig(configuration);
+      })
+      .catch(() => {
+        // Without the settings the form still works: it falls back to
+        // auto-generation and lets the server reject anything it dislikes.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mode]);
+
+  const autoGenerateId = config?.autoGenerateId ?? true;
+  const guardianRequired = config?.requireGuardian ?? "NEVER";
+
   const set = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFieldErrors((prev) => ({ ...prev, [key]: "" }));
+    // Changing the two fields the soft duplicate check compares withdraws the
+    // acknowledgement: it was given for the previous values, not these.
+    if (key === "name" || key === "dateOfBirth") {
+      setDuplicate(null);
+      setOverrideDuplicate(false);
+    }
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
   };
 
@@ -286,6 +345,15 @@ export function PatientFormModal({
       nationalId: opt(form.nationalId),
       occupation: hasOccupation ? (form.occupation as Occupation) : undefined,
       photo: opt(form.photo),
+      // The code is immutable, so only create ever offers it — and only when the
+      // branch issues IDs by hand. Sending one while autoGenerateId is on is
+      // rejected by the server rather than ignored.
+      patientCode: mode === "create" && !autoGenerateId ? opt(form.patientCode) : undefined,
+      patientType: PATIENT_TYPE_OPTIONS.some((o) => o.value === form.patientType)
+        ? (form.patientType as PatientType)
+        : undefined,
+      overrideDuplicate:
+        mode === "create" && overrideDuplicate ? true : undefined,
     };
   };
 
@@ -318,6 +386,12 @@ export function PatientFormModal({
       }
     }
 
+    // The branch issues IDs by hand, so an empty code would be rejected
+    // server-side; catching it here keeps the field and its message aligned.
+    if (mode === "create" && !autoGenerateId && !form.patientCode.trim()) {
+      local.patientCode = "Patient ID is required — this branch does not generate them.";
+    }
+
     // Emergency contacts were previously sent unchecked, so a typo in a
     // relative's phone number only surfaced as a server error.
     if (contacts.length > MAX_CONTACTS) {
@@ -330,6 +404,19 @@ export function PatientFormModal({
       addError(local, `contacts.${i}.relationship`, checkText(c.relationship, SHORT_TEXT_MAX, "Relationship"));
       addError(local, `contacts.${i}.address`, checkText(c.address, ADDRESS_MAX, "Address"));
     });
+
+    // Mirrors the server's requireGuardian rule so the form says which contact
+    // is missing instead of failing on submit. The server stays authoritative.
+    const needsGuardian =
+      mode === "create" &&
+      (guardianRequired === "ALWAYS" ||
+        (guardianRequired === "MINORS_ONLY" && isMinorDob(form.dateOfBirth)));
+    if (needsGuardian && !contacts.some((c) => c.phone.trim() !== "")) {
+      local.contacts =
+        guardianRequired === "ALWAYS"
+          ? "An emergency contact with a phone number is required."
+          : "A patient under 18 needs an emergency contact with a phone number.";
+    }
 
     if (Object.keys(local).length > 0) {
       setFieldErrors(local);
@@ -348,23 +435,37 @@ export function PatientFormModal({
         isPrimary: c.isPrimary,
       }));
 
+    setFormError("");
     setSubmitting(true);
     try {
       if (mode === "create") {
         const created = await patientApi.create(mappedContacts.length > 0 ? { ...input, contacts: mappedContacts } : input);
-        onSaved(created.patient.patientCode);
+        const warnings = overrideDuplicate ? duplicate ?? [] : [];
+        setDuplicate(null);
+        onSaved(created.patient.patientCode, warnings);
       } else if (patient) {
         await patientApi.update(patient.id, input);
         onSaved(patient.patientCode);
       }
     } catch (err) {
-      if (err instanceof ValidationError) {
+      if (err instanceof ConflictError && err.requiresAcknowledgement && err.matches.length > 0) {
+        // A soft match (name + date of birth): show who it collided with and
+        // wait for the user to confirm this really is a different person.
+        setDuplicate(err.matches);
+        setOverrideDuplicate(false);
+        setFormError("");
+      } else if (err instanceof ValidationError) {
         setFieldErrors(err.fieldErrors ?? {});
         setFormError(err.message);
       } else if (err instanceof BusinessRuleError) {
         // Branch-configured required channels (phone / whatsapp / email) report
         // the field they rejected.
         setFieldErrors(err.fieldErrors ?? {});
+        setFormError(err.message);
+      } else if (err instanceof ConflictError) {
+        // Strong match (national ID / phone / email) or a duplicate patient ID.
+        setDuplicate(null);
+        setFieldErrors(err.details ?? {});
         setFormError(err.message);
       } else {
         setFormError(errorMessage(err));
@@ -409,6 +510,36 @@ export function PatientFormModal({
               </div>
             )}
 
+            {/* Advisory duplicate: name + date of birth matched an existing
+                patient. The server allows the write only once the user has
+                confirmed this really is a different person. */}
+            {duplicate && (
+              <div className="bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 space-y-2">
+                <p className="text-xs font-bold text-amber-800">
+                  Possible duplicate — same name and date of birth as{" "}
+                  {duplicate.map((m) => m.patientCode).join(", ")}.
+                </p>
+                <ul className="space-y-1">
+                  {duplicate.map((m) => (
+                    <li key={`${m.patientCode}-${m.field}`} className="text-[11px] font-semibold text-amber-700">
+                      {m.patientCode} — {m.name}
+                      {m.deleted ? " (registration deleted)" : ""}
+                    </li>
+                  ))}
+                </ul>
+                <label className="inline-flex items-start gap-2 text-[11px] font-bold text-amber-800 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={overrideDuplicate}
+                    onChange={(e) => setOverrideDuplicate(e.target.checked)}
+                    disabled={submitting}
+                    className="mt-0.5"
+                  />
+                  <span>Yes, this is a different person — register anyway.</span>
+                </label>
+              </div>
+            )}
+
             {/* Identity */}
             <div>
               <h4 className="text-xs font-extrabold text-[var(--text)] mb-3 uppercase tracking-wider">Identity</h4>
@@ -418,6 +549,23 @@ export function PatientFormModal({
                   <input className={inputCls} value={form.name} onChange={set("name")} placeholder="Full name" disabled={submitting} />
                   {fieldError("name")}
                 </div>
+
+                {/* Manual ID is offered only when the branch has turned
+                    auto-generation off; otherwise the code is server-issued. */}
+                {mode === "create" && !autoGenerateId && (
+                  <div className="sm:col-span-2">
+                    <label className={labelCls}>Patient ID *</label>
+                    <input
+                      className={inputCls}
+                      value={form.patientCode}
+                      onChange={set("patientCode")}
+                      placeholder={`e.g. ${config?.patientIdPrefix ?? "PAT"}-000001`}
+                      disabled={submitting}
+                    />
+                    {fieldError("patientCode")}
+                  </div>
+                )}
+
                 <div>
                   <label className={labelCls}>Date of Birth</label>
                   <input type="date" className={inputCls} value={form.dateOfBirth} onChange={set("dateOfBirth")} disabled={submitting} />
@@ -432,6 +580,20 @@ export function PatientFormModal({
                     ))}
                   </select>
                   {fieldError("gender")}
+                </div>
+                <div>
+                  <label className={labelCls}>Patient Type</label>
+                  <select className={selectCls} value={form.patientType} onChange={set("patientType")} disabled={submitting}>
+                    <option value="">
+                      {config
+                        ? `Default (${PATIENT_TYPE_OPTIONS.find((o) => o.value === config.defaultPatientType)?.label ?? config.defaultPatientType})`
+                        : "Select type"}
+                    </option>
+                    {PATIENT_TYPE_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                  {fieldError("patientType")}
                 </div>
               </div>
             </div>
@@ -613,6 +775,14 @@ export function PatientFormModal({
                     <FiPlus className="w-3.5 h-3.5" /> Add Contact
                   </button>
                 </div>
+
+                {guardianRequired !== "NEVER" && (
+                  <p className="text-[11px] font-semibold text-[var(--muted)] mb-3">
+                    {guardianRequired === "ALWAYS"
+                      ? "This branch requires an emergency contact with a phone number for every patient."
+                      : "This branch requires an emergency contact with a phone number for patients under 18."}
+                  </p>
+                )}
 
                 {contacts.length === 0 ? (
                   <p className="text-[11px] text-[var(--muted)]">No contacts added yet.</p>

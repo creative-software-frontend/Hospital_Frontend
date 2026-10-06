@@ -2,7 +2,15 @@
 // Display labels for enums used by the Patient module. Values are the exact
 // backend enum strings; labels are what the UI shows.
 
-import type { BloodGroup, Gender, MaritalStatus, Occupation, PatientStatus } from "@/app/lib/api";
+import type {
+  BloodGroup,
+  Gender,
+  GuardianRequirement,
+  MaritalStatus,
+  Occupation,
+  PatientStatus,
+  PatientType,
+} from "@/app/lib/api";
 
 export const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "MALE", label: "Male" },
@@ -41,6 +49,23 @@ export const PATIENT_STATUS_OPTIONS: { value: PatientStatus; label: string }[] =
   { value: "active", label: "Active" },
   { value: "inactive", label: "Inactive" },
 ];
+
+export const PATIENT_TYPE_OPTIONS: { value: PatientType; label: string }[] = [
+  { value: "NEW", label: "New" },
+  { value: "FOLLOWUP", label: "Follow-up" },
+  { value: "REFERRAL", label: "Referral" },
+];
+
+export const GUARDIAN_REQUIREMENT_OPTIONS: { value: GuardianRequirement; label: string; hint: string }[] = [
+  { value: "NEVER", label: "Not required", hint: "Anyone can be registered without an emergency contact." },
+  { value: "MINORS_ONLY", label: "Minors only", hint: "Only patients under 18 need an emergency contact." },
+  { value: "ALWAYS", label: "Everyone", hint: "Every registration needs a reachable emergency contact." },
+];
+
+export function patientTypeLabel(value: PatientType | null | undefined): string {
+  if (!value) return "—";
+  return PATIENT_TYPE_OPTIONS.find((o) => o.value === value)?.label ?? value;
+}
 
 export function bloodGroupLabel(value: BloodGroup | null | undefined): string {
   if (!value) return "—";

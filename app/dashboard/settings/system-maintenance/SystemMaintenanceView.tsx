@@ -129,6 +129,8 @@ export function SystemMaintenanceView() {
       await settingsApi.systemMaintenance.update({
         systemVersion: data.systemVersion,
         status: data.status,
+        maintenanceMode: data.maintenanceMode,
+        cacheEnabled: data.cacheEnabled,
       });
       setDirty(false);
       notify("success", "System maintenance settings saved.");

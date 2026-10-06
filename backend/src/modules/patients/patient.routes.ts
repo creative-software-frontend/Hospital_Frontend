@@ -25,6 +25,13 @@ router.get(
   patientController.listPatients,
 );
 
+// Declared before "/:id" so "configuration" is never parsed as a patient id.
+router.get(
+  "/configuration",
+  requirePermission("patient", "create"),
+  patientController.getPatientConfiguration,
+);
+
 router.post(
   "/",
   validate({ body: createPatientSchema }),

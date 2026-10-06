@@ -4,6 +4,22 @@ import { success, created, list } from "../../utils/apiResponse";
 import * as patientService from "./patient.service";
 
 /**
+ * GET /api/patients/configuration
+ *
+ * Registration settings for the branch the caller will register into. Guarded
+ * by patient create (not patientSetting:read) because the person filling in the
+ * form is exactly the person who lacks the settings permission.
+ */
+export const getPatientConfiguration = asyncHandler(async (req: Request, res: Response) => {
+  const requestedBranchId = req.query.branchId ? Number(req.query.branchId) : undefined;
+  const configuration = await patientService.getPatientRegistrationConfig(
+    req.user!,
+    Number.isFinite(requestedBranchId) ? requestedBranchId : undefined,
+  );
+  success(res, { configuration });
+});
+
+/**
  * POST /api/patients
  */
 export const createPatient = asyncHandler(async (req: Request, res: Response) => {

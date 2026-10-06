@@ -703,6 +703,8 @@ model Patient {
   branchId      Int
   patientCode   String
   name          String
+  /// Registration type, defaulted from PatientSetting.defaultPatientType.
+  patientType   String          @default("NEW")
   gender        Gender?
   dateOfBirth   DateTime?
   bloodGroup    BloodGroupCode?
@@ -741,6 +743,8 @@ model Patient {
   @@unique([branchId, patientCode])
   @@index([branchId])
   @@index([phone])
+  @@index([email])
+  @@index([nationalId])
   @@index([deletedAt])
 }
 
@@ -1588,8 +1592,8 @@ model IpdSetting {
 
 model PatientSetting {
   id                 Int      @id @default(autoincrement())
-  branchId           Int
-  patientIdPrefix    String   @default("PT-")
+  branchId           Int      @unique
+  patientIdPrefix    String   @default("PAT")
   autoGenerateId     Boolean  @default(true)
   defaultPatientType String   @default("NEW")
   requireGuardian    String   @default("MINORS_ONLY")

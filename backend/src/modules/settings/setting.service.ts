@@ -14,6 +14,7 @@ import {
 } from "../auth/securityPolicy";
 import { revealPublicAsset } from "../../utils/revealPath";
 import { BLOOD_GROUP_VALUES } from "../patients/patient.validation";
+import { DEFAULT_PATIENT_SETTINGS } from "../patients/patient.policy";
 import { ADDRESS_CATEGORY, isAddressCategory } from "../../lib/bangladeshAddress";
 import {
   APP_OWNED_CATEGORIES,
@@ -368,6 +369,8 @@ export async function updateBillingSetting(actor: AuthUser, input: UpdateBilling
  * ------------------------------------------------------------------------- */
 
 export async function getPatientSetting(actor: AuthUser) {
+  // One row per branch is now enforced by a unique index, so the read can rely
+  // on it existing for any branch that has been configured at least once.
   let setting = await prisma.patientSetting.findFirst({
     where: { branchId: actor.branchId },
     orderBy: { id: "asc" },
@@ -376,14 +379,7 @@ export async function getPatientSetting(actor: AuthUser) {
     setting = await prisma.patientSetting.create({
       data: {
         branchId: actor.branchId,
-        patientIdPrefix: "PT-",
-        autoGenerateId: true,
-        defaultPatientType: "NEW",
-        requireGuardian: "MINORS_ONLY",
-        duplicateDetection: true,
-        phoneRequired: true,
-        emailRequired: false,
-        whatsappRequired: false,
+        ...DEFAULT_PATIENT_SETTINGS,
         status: "active",
       },
     });
@@ -391,28 +387,41 @@ export async function getPatientSetting(actor: AuthUser) {
   return setting;
 }
 
+/** Every field the screen can change, so the audit trail captures the full set. */
+const PATIENT_SETTING_FIELDS = [
+  "patientIdPrefix",
+  "autoGenerateId",
+  "defaultPatientType",
+  "requireGuardian",
+  "duplicateDetection",
+  "phoneRequired",
+  "emailRequired",
+  "whatsappRequired",
+  "status",
+] as const;
+
 export async function updatePatientSetting(actor: AuthUser, input: UpdatePatientSettingInput) {
   const current = await getPatientSetting(actor);
 
+  // Store the prefix exactly as the admin typed it (a trailing "-" is a valid
+  // choice) rather than silently rewriting their input.
   const updated = await prisma.patientSetting.update({
     where: { id: current.id },
     data: { ...input },
   });
+
+  const pick = (source: typeof current) =>
+    Object.fromEntries(
+      PATIENT_SETTING_FIELDS.map((field) => [field, source[field]]),
+    ) as Record<string, unknown>;
 
   await writeAuditLog({
     module: "patientSetting",
     action: "update",
     tableName: "PatientSetting",
     recordId: String(current.id),
-    oldValues: {
-      patientIdPrefix: current.patientIdPrefix,
-      autoGenerateId: current.autoGenerateId,
-      defaultPatientType: current.defaultPatientType,
-      phoneRequired: current.phoneRequired,
-      emailRequired: current.emailRequired,
-      whatsappRequired: current.whatsappRequired,
-    },
-    newValues: { ...input },
+    oldValues: pick(current),
+    newValues: { ...pick(updated), ...input },
     user: actor,
     branchId: actor.branchId,
   });
@@ -1106,9 +1115,14 @@ export async function updateIntegration(actor: AuthUser, id: number, input: Upda
   const data: Prisma.IntegrationUncheckedUpdateInput = {
     ...(input.integrationType ? { integrationType: input.integrationType } : {}),
     ...(input.providerName ? { providerName: input.providerName } : {}),
-    ...(input.apiUrl !== undefined ? { apiUrl: input.apiUrl } : {}),
-    ...(input.apiKey !== undefined ? { apiKey: input.apiKey } : {}),
-    ...(input.secretKey !== undefined ? { secretKey: input.secretKey } : {}),
+    // The UI treats a blank secret/URL as "keep the stored value", and the API
+    // sends a literal null for a blank field. Only a non-empty value may
+    // overwrite what is already stored — otherwise "leave blank to keep" would
+    // silently destroy credentials, and a stray null in a bulk export could
+    // wipe secrets without an explicit confirmation.
+    ...(typeof input.apiUrl === "string" && input.apiUrl.length > 0 ? { apiUrl: input.apiUrl } : {}),
+    ...(typeof input.apiKey === "string" && input.apiKey.length > 0 ? { apiKey: input.apiKey } : {}),
+    ...(typeof input.secretKey === "string" && input.secretKey.length > 0 ? { secretKey: input.secretKey } : {}),
     ...(input.configuration !== undefined
       ? { configuration: input.configuration as Prisma.InputJsonValue }
       : {}),
@@ -1160,6 +1174,45 @@ export async function deleteIntegration(actor: AuthUser, id: number) {
   });
 }
 
+// "Test connection" has to mean something. A HEAD (falling back to GET for
+// gateways that reject HEAD) is enough to prove the endpoint is reachable and
+// to report a real status code — anything more would depend on the provider.
+const INTEGRATION_TEST_TIMEOUT_MS = 5000;
+
+async function probeIntegration(rawUrl: string): Promise<{ ok: boolean; detail: string; latencyMs: number }> {
+  const started = Date.now();
+  let url: URL;
+  try {
+    url = new URL(rawUrl.trim());
+  } catch {
+    return { ok: false, detail: `"${rawUrl}" is not a valid URL`, latencyMs: 0 };
+  }
+  // Scheme allow-list: a stored value must never be able to trigger a file://
+  // or other non-HTTP request from the server.
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    return { ok: false, detail: `unsupported scheme "${url.protocol}"`, latencyMs: 0 };
+  }
+
+  try {
+    const request = (method: "HEAD" | "GET") =>
+      fetch(url, { method, redirect: "follow", signal: AbortSignal.timeout(INTEGRATION_TEST_TIMEOUT_MS) });
+
+    let response = await request("HEAD");
+    if (response.status === 405 || response.status === 501) {
+      response = await request("GET");
+    }
+    return { ok: response.ok, detail: `HTTP ${response.status}`, latencyMs: Date.now() - started };
+  } catch (err) {
+    const timedOut = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
+    const detail = timedOut
+      ? `no response within ${INTEGRATION_TEST_TIMEOUT_MS / 1000}s`
+      : err instanceof Error
+        ? err.message
+        : "request failed";
+    return { ok: false, detail, latencyMs: Date.now() - started };
+  }
+}
+
 export async function testIntegration(actor: AuthUser, id: number) {
   const current = await prisma.integration.findFirst({ where: { id, branchId: actor.branchId } });
   if (!current) {
@@ -1179,21 +1232,34 @@ export async function testIntegration(actor: AuthUser, id: number) {
   if (current.status !== "active") {
     return {
       success: false,
+      verified: false,
       message: `Integration "${current.providerName}" is not active. Enable it before testing.`,
       latencyMs: 0,
     };
   }
-  if (!current.apiUrl && !current.apiKey) {
+  if (!current.apiUrl) {
+    // No endpoint to reach. Saying the connection is "valid" here would be a
+    // lie, and calling it an error would be wrong too — the stored
+    // configuration is simply unverifiable without a URL.
     return {
-      success: false,
-      message: `Missing connection details for "${current.providerName}". Provide an API URL or key first.`,
+      success: true,
+      verified: false,
+      message: `No API URL configured for "${current.providerName}", so only the stored settings were checked.`,
       latencyMs: 0,
     };
   }
+
+  const probe = await probeIntegration(current.apiUrl);
+  const reached = probe.ok || probe.detail.startsWith("HTTP ");
   return {
-    success: true,
-    message: `Connection configuration for "${current.providerName}" is valid (no live request performed).`,
-    latencyMs: 0,
+    success: probe.ok,
+    verified: true,
+    message: reached
+      ? probe.ok
+        ? `Reached "${current.providerName}" at ${current.apiUrl} (${probe.detail}, ${probe.latencyMs}ms).`
+        : `Endpoint for "${current.providerName}" responded ${probe.detail} (expected 2xx).`
+      : `Could not reach "${current.providerName}" at ${current.apiUrl}: ${probe.detail}.`,
+    latencyMs: probe.latencyMs,
   };
 }
 
@@ -2151,18 +2217,28 @@ export async function clearSystemCache(actor: AuthUser) {
     data: { lastCacheClear: now },
   });
 
+  // The only process-local cache the API keeps is the parsed security policy.
+  // Dropping it here is what makes the button mean something: the next request
+  // re-reads the row instead of serving the copy cached at boot.
+  invalidateSecurityPolicyCache();
+
   await writeAuditLog({
     module: "systemMaintenance",
     action: "cache-clear",
     tableName: "SystemMaintenance",
     recordId: String(updated.id),
     oldValues: { lastCacheClear: first.lastCacheClear },
-    newValues: { lastCacheClear: now },
+    newValues: { lastCacheClear: now, cleared: ["securityPolicy"] },
     user: actor,
     branchId: actor.branchId,
   });
   return updated;
 }
+
+// Extra safety around interpolating table names into ANALYZE TABLE: the names
+// come from information_schema (server-generated), but never trust a value that
+// does not match plain identifiers.
+const ANALYZE_TABLE_NAME = /^[A-Za-z0-9_]+$/;
 
 export async function optimizeDatabase(actor: AuthUser) {
   const now = new Date();
@@ -2170,6 +2246,22 @@ export async function optimizeDatabase(actor: AuthUser) {
   if (!first) {
     throw new NotFoundError("System maintenance record not found");
   }
+
+  // ANALYZE TABLE is metadata-only: it refreshes the query planner's
+  // statistics and never rewrites or locks rows for long, so it is safe to run
+  // against a live database. That makes the button do real work instead of
+  // just stamping a timestamp.
+  const tables = await prisma.$queryRaw<Array<{ TABLE_NAME: string }>>`
+    SELECT TABLE_NAME FROM information_schema.TABLES
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'
+  `;
+  const safeNames = tables.map((t) => t.TABLE_NAME).filter((n) => ANALYZE_TABLE_NAME.test(n));
+  let analyzed = 0;
+  if (safeNames.length > 0) {
+    await prisma.$queryRawUnsafe(`ANALYZE TABLE ${safeNames.map((n) => `\`${n}\``).join(", ")}`);
+    analyzed = safeNames.length;
+  }
+
   const updated = await prisma.systemMaintenance.update({
     where: { id: first.id },
     data: { databaseOptimization: now },
@@ -2181,7 +2273,7 @@ export async function optimizeDatabase(actor: AuthUser) {
     tableName: "SystemMaintenance",
     recordId: String(updated.id),
     oldValues: { databaseOptimization: first.databaseOptimization },
-    newValues: { databaseOptimization: now },
+    newValues: { databaseOptimization: now, tablesAnalyzed: analyzed },
     user: actor,
     branchId: actor.branchId,
   });

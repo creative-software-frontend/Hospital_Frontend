@@ -95,7 +95,11 @@ export function ApiIntegrationView() {
     setTestingId(integration.id);
     try {
       const { result } = await settingsApi.integrations.test(integration.id);
-      notify(result.success ? "success" : "error", result.message);
+      if (!result.verified) {
+        notify("info", result.message);
+      } else {
+        notify(result.success ? "success" : "error", result.message);
+      }
     } catch (err) {
       notify("error", errorMessage(err));
     } finally {

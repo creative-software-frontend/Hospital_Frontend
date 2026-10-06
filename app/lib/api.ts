@@ -50,6 +50,21 @@ export type BloodGroup =
   | "AB_POS" | "AB_NEG" | "O_POS" | "O_NEG";
 export type MaritalStatus = "SINGLE" | "MARRIED" | "DIVORCED" | "WIDOWED";
 export type PatientStatus = "active" | "inactive";
+
+/** Mirrors backend `PATIENT_TYPE_VALUES` (patient.policy.ts). */
+export type PatientType = "NEW" | "FOLLOWUP" | "REFERRAL";
+
+/** Mirrors backend `GUARDIAN_REQUIREMENT_VALUES` (patient.policy.ts). */
+export type GuardianRequirement = "NEVER" | "MINORS_ONLY" | "ALWAYS";
+
+/** A single field match reported by the duplicate check. */
+export interface DuplicateMatch {
+  field: "nationalId" | "phone" | "email" | "nameWithDateOfBirth";
+  label: string;
+  patientCode: string;
+  name: string;
+  deleted: boolean;
+}
 export type Occupation =
   | "Business"
   | "Doctor"
@@ -77,6 +92,7 @@ export interface PatientContact {
 export interface PatientListRecord {
   id: number;
   patientCode: string;
+  patientType: PatientType;
   name: string;
   gender: Gender | null;
   dateOfBirth: string | null;
@@ -147,10 +163,17 @@ export interface CreatePatientInput {
   occupation?: Occupation | null;
   photo?: string | null;
   contacts?: PatientContactInput[];
+  /** Only meaningful when the branch has autoGenerateId switched off. */
+  patientCode?: string;
+  /** Defaults to the branch's defaultPatientType when omitted. */
+  patientType?: PatientType;
+  /** Acknowledges an advisory (name + date of birth) duplicate match. */
+  overrideDuplicate?: boolean;
 }
 
 export type UpdatePatientInput = Partial<
-  Omit<CreatePatientInput, "contacts">
+  // patientCode is immutable after creation, so it is not offered on update.
+  Omit<CreatePatientInput, "contacts" | "patientCode" | "overrideDuplicate">
 >;
 
 export interface PatientListQuery {
@@ -287,9 +310,33 @@ export class NotFoundError extends ApiError {
 }
 
 export class ConflictError extends ApiError {
-  constructor(message: string, code = "CONFLICT") {
-    super(409, code, message);
+  /**
+   * Raw `details` payload. The base class types `details` as a flat
+   * `{ field: message }` map, but a 409 also carries structured data such as
+   * the duplicate matches, so the original value is kept untyped here.
+   */
+  private readonly payload: unknown;
+
+  /**
+   * `details` carries whatever the server used to refuse the write — for a
+   * duplicate patient check that is `{ matches: DuplicateMatch[] }`, for an
+   * immutable field it is a flat `{ field: message }` map.
+   */
+  constructor(message: string, code = "CONFLICT", details?: unknown) {
+    super(409, code, message, details);
     this.name = "ConflictError";
+    this.payload = details ?? null;
+  }
+
+  /** Existing records the duplicate check matched on, if the server sent them. */
+  get matches(): DuplicateMatch[] {
+    const matches = (this.payload as { matches?: unknown } | null)?.matches;
+    return Array.isArray(matches) ? (matches as DuplicateMatch[]) : [];
+  }
+
+  /** True when the server merely wants the match acknowledged before saving. */
+  get requiresAcknowledgement(): boolean {
+    return Boolean((this.payload as { requiresAcknowledgement?: unknown } | null)?.requiresAcknowledgement);
   }
 }
 
@@ -327,7 +374,7 @@ function toApiError(status: number, code: string, message: string, details?: unk
       return new NotFoundError(message);
     case "CONFLICT":
     case "UNIQUE_CONSTRAINT":
-      return new ConflictError(message, code);
+      return new ConflictError(message, code, details);
       case "BUSINESS_RULE":
         return new BusinessRuleError(message, details);
     case "VALIDATION_ERROR":
@@ -730,8 +777,28 @@ export const patientApi = {
 
   get: (id: number) => request<{ patient: PatientDetail }>(`/patients/${id}`),
 
+  /**
+   * Registration settings for the branch the caller will register into.
+   * Guarded by `patient:create`, not `patientSetting:read`, so the create form
+   * can learn whether it must render a manual ID field.
+   */
+  configuration: (branchId?: number) =>
+    request<{ configuration: PatientRegistrationConfig }>(
+      `/patients/configuration${qs(branchId ? { branchId } : {})}`,
+    ),
+
+
   create: (input: CreatePatientInput) =>
-    request<{ patient: { id: number; branchId: number; patientCode: string } }>("/patients", {
+    request<{
+      patient: {
+        id: number;
+        branchId: number;
+        patientCode: string;
+        patientType: PatientType;
+        /** Advisory matches the user acknowledged before saving. */
+        duplicateWarnings: DuplicateMatch[];
+      };
+    }>("/patients", {
       method: "POST",
       body: JSON.stringify(input),
     }),
@@ -909,7 +976,7 @@ export interface PatientSetting {
   patientIdPrefix: string;
   autoGenerateId: boolean;
   defaultPatientType: string;
-  requireGuardian: "NEVER" | "MINORS_ONLY" | "ALWAYS";
+  requireGuardian: GuardianRequirement;
   duplicateDetection: boolean;
   phoneRequired: boolean;
   emailRequired: boolean;
@@ -921,6 +988,18 @@ export interface PatientSetting {
 export type UpdatePatientSettingInput = Partial<
   Omit<PatientSetting, "id" | "branchId" | "status" | "updatedAt">
 >;
+
+/**
+ * The subset of Patient Setting the patient create form needs to render itself.
+ * Returned by `GET /patients/configuration`.
+ */
+export interface PatientRegistrationConfig {
+  autoGenerateId: boolean;
+  patientIdPrefix: string;
+  defaultPatientType: PatientType;
+  requireGuardian: GuardianRequirement;
+  duplicateDetection: boolean;
+}
 
 /* -- Clinical settings (Settings → Clinical Settings) ---------------------- */
 
@@ -1271,6 +1350,8 @@ export type UpdateIntegrationInput = Partial<CreateIntegrationInput>;
 
 export interface IntegrationTestResult {
   success: boolean;
+  /** True when a live request was actually made; false when only stored config exists. */
+  verified: boolean;
   message: string;
   latencyMs: number;
 }

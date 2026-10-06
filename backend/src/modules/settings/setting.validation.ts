@@ -5,18 +5,30 @@ import { ADDRESS_CATEGORY_PARENT, isAddressCategory } from "../../lib/bangladesh
 // actually back them cannot drift apart. Re-exported because other modules import
 // the list from here.
 import { MASTER_DATA_CATEGORIES } from "../../lib/masterDataRegistry";
+import {
+  GUARDIAN_REQUIREMENT_VALUES,
+  PATIENT_TYPE_VALUES,
+} from "../patients/patient.policy";
 
 export { MASTER_DATA_CATEGORIES };
 
 export const SETTING_STATUS_VALUES = ["active", "inactive"] as const;
 
+/**
+ * Optional free text. The API clients send JSON `null` for a blank optional
+ * field (and `""` for a cleared one), so both have to collapse to `undefined`
+ * — otherwise every create without a key fails validation, and an update that
+ * intends to *keep* the stored value can never be expressed.
+ */
 const optionalString = (max: number) =>
   z
-    .string()
-    .trim()
-    .max(max, `Must be at most ${max} characters`)
+    .union([
+      z.string().trim().max(max, `Must be at most ${max} characters`),
+      z.literal(""),
+      z.null(),
+    ])
     .optional()
-    .or(z.literal("").transform(() => undefined));
+    .transform((value) => (value === null || value === "" ? undefined : value));
 
 /* System settings (general) ----------------------------------------------- */
 
@@ -107,10 +119,24 @@ export type UpdateLocalizationSettingInput = z.infer<typeof updateLocalizationSe
 /* Patient configuration settings ------------------------------------------- */
 
 export const updatePatientSettingSchema = z.object({
-  patientIdPrefix: z.string().trim().max(16).optional(),
+  /**
+   * Stored verbatim; codes are rendered as `<prefix>-<sequence>` so a trailing
+   * separator is optional. Kept to letters and digits because the value is
+   * printed on patient cards and barcodes.
+   */
+  patientIdPrefix: z
+    .string()
+    .trim()
+    .min(2, "Patient ID prefix must be at least 2 characters")
+    .max(8, "Patient ID prefix must be at most 8 characters")
+    .regex(
+      /^[A-Za-z0-9]+[-\s]*$/,
+      "Patient ID prefix may only contain letters and numbers",
+    )
+    .optional(),
   autoGenerateId: z.boolean().optional(),
-  defaultPatientType: z.string().trim().max(32).optional(),
-  requireGuardian: z.enum(["NEVER", "MINORS_ONLY", "ALWAYS"]).optional(),
+  defaultPatientType: z.enum(PATIENT_TYPE_VALUES).optional(),
+  requireGuardian: z.enum(GUARDIAN_REQUIREMENT_VALUES).optional(),
   duplicateDetection: z.boolean().optional(),
   phoneRequired: z.boolean().optional(),
   emailRequired: z.boolean().optional(),

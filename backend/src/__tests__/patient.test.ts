@@ -68,10 +68,16 @@ const mockPrisma = (await import("../lib/prisma")).prisma as unknown as {
   $transaction: ReturnType<typeof vi.fn>;
 };
 
-// Default branch PatientSetting for the required-contact guard. Nothing is
-// required by default, so existing specs are unaffected; the enforcement specs
-// below override this to assert the real behaviour.
+// Default branch PatientSetting. Required channels are off so existing specs are
+// unaffected; the auto-ID switch is on (the shipped default) because every create
+// spec relies on the server issuing the code. The enforcement specs below override
+// individual fields to assert real behaviour.
 mockPrisma.patientSetting.findFirst.mockResolvedValue({
+  patientIdPrefix: "PAT",
+  autoGenerateId: true,
+  defaultPatientType: "NEW",
+  requireGuardian: "NEVER",
+  duplicateDetection: false,
   phoneRequired: false,
   emailRequired: false,
   whatsappRequired: false,
@@ -221,6 +227,570 @@ describe("patient service — create", () => {
         branchId: 2,
       }),
     ).rejects.toThrow("You do not have permission");
+  });
+});
+
+/* ---------------------------------------------------------------------------
+ * P1 Patient Configuration — the five switches the settings screen exposes.
+ * ------------------------------------------------------------------------- */
+
+const setting = (overrides: Record<string, unknown> = {}) => ({
+  patientIdPrefix: "PAT",
+  autoGenerateId: true,
+  defaultPatientType: "NEW",
+  requireGuardian: "NEVER",
+  duplicateDetection: false,
+  phoneRequired: false,
+  emailRequired: false,
+  whatsappRequired: false,
+  ...overrides,
+});
+
+describe("patient configuration — patient ID generation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("builds the code from the configured prefix, not a hardcoded one", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(
+      setting({ patientIdPrefix: "PAT" }),
+    );
+    (mockPrisma.codeSequence.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({
+      nextNumber: 1,
+    });
+    (mockPrisma.patient.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 1,
+      branchId: 1,
+      patientCode: "PAT-000001",
+    });
+
+    await patientService.createPatient(actor, { name: "First" });
+
+    expect(mockPrisma.patient.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ patientCode: "PAT-000001" }),
+      }),
+    );
+  });
+
+  it("keeps the next three codes sequential for the same prefix", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValue(
+      setting({ patientIdPrefix: "PAT" }),
+    );
+
+    for (let n = 1; n <= 3; n += 1) {
+      (mockPrisma.codeSequence.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({
+        nextNumber: n,
+      });
+      (mockPrisma.patient.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: n,
+        branchId: 1,
+        patientCode: `PAT-${String(n).padStart(6, "0")}`,
+      });
+
+      const created = await patientService.createPatient(actor, {
+        name: `Patient ${n}`,
+      });
+      expect(created.patientCode).toBe(`PAT-${String(n).padStart(6, "0")}`);
+    }
+  });
+
+  it("does not double the hyphen when the prefix already ends with one", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(
+      setting({ patientIdPrefix: "PT-" }),
+    );
+    (mockPrisma.codeSequence.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({
+      nextNumber: 7,
+    });
+    (mockPrisma.patient.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 7,
+      branchId: 1,
+      patientCode: "PT-000007",
+    });
+
+    await patientService.createPatient(actor, { name: "Hyphen" });
+
+    expect(mockPrisma.patient.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ patientCode: "PT-000007" }),
+      }),
+    );
+  });
+
+  it("uses a manual patient ID when autoGenerateId is off", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(
+      setting({ autoGenerateId: false }),
+    );
+    (mockPrisma.patient.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 20,
+      branchId: 1,
+      patientCode: "HOSP-88",
+    });
+
+    const result = await patientService.createPatient(actor, {
+      name: "Manual",
+      patientCode: "HOSP-88",
+    });
+
+    expect(result.patientCode).toBe("HOSP-88");
+    // The sequence must not be consumed when the ID was supplied by hand.
+    expect(mockPrisma.codeSequence.upsert).not.toHaveBeenCalled();
+  });
+
+  it("demands a patient ID when autoGenerateId is off", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(
+      setting({ autoGenerateId: false }),
+    );
+
+    await expect(
+      patientService.createPatient(actor, { name: "No ID" }),
+    ).rejects.toThrow(/does not generate patient IDs automatically/i);
+
+    expect(mockPrisma.patient.create).not.toHaveBeenCalled();
+  });
+
+  it("refuses a patient ID while autoGenerateId is on", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(
+      setting({ autoGenerateId: true }),
+    );
+
+    await expect(
+      patientService.createPatient(actor, { name: "Injected", patientCode: "FAKE-1" }),
+    ).rejects.toThrow(/generated automatically/i);
+
+    expect(mockPrisma.patient.create).not.toHaveBeenCalled();
+  });
+
+  it("maps a duplicate manual ID to a conflict naming the field", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(
+      setting({ autoGenerateId: false }),
+    );
+    (mockPrisma.patient.create as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+        code: "P2002",
+        clientVersion: "5.22.0",
+      }),
+    );
+
+    await expect(
+      patientService.createPatient(actor, { name: "Dup", patientCode: "HOSP-88" }),
+    ).rejects.toThrow(/HOSP-88 is already used/);
+  });
+});
+
+describe("patient configuration — defaultPatientType", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("applies the branch default when the caller does not choose", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(
+      setting({ defaultPatientType: "REFERRAL" }),
+    );
+    (mockPrisma.codeSequence.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({
+      nextNumber: 1,
+    });
+    (mockPrisma.patient.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 30,
+      branchId: 1,
+      patientCode: "PAT-000001",
+      patientType: "REFERRAL",
+    });
+
+    const result = await patientService.createPatient(actor, { name: "Referred" });
+
+    expect(mockPrisma.patient.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ patientType: "REFERRAL" }),
+      }),
+    );
+    expect(result.patientType).toBe("REFERRAL");
+  });
+
+  it("lets the caller choose a type over the branch default", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(
+      setting({ defaultPatientType: "NEW" }),
+    );
+    (mockPrisma.codeSequence.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({
+      nextNumber: 1,
+    });
+    (mockPrisma.patient.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 31,
+      branchId: 1,
+      patientCode: "PAT-000001",
+      patientType: "FOLLOWUP",
+    });
+
+    const result = await patientService.createPatient(actor, {
+      name: "Returning",
+      patientType: "FOLLOWUP",
+    });
+
+    expect(mockPrisma.patient.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ patientType: "FOLLOWUP" }),
+      }),
+    );
+    expect(result.patientType).toBe("FOLLOWUP");
+  });
+
+  it("falls back to NEW when an unknown type was stored before the enum existed", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(
+      setting({ defaultPatientType: "LEGACY_TYPE" }),
+    );
+    (mockPrisma.codeSequence.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({
+      nextNumber: 1,
+    });
+    (mockPrisma.patient.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 32,
+      branchId: 1,
+      patientCode: "PAT-000001",
+      patientType: "NEW",
+    });
+
+    const result = await patientService.createPatient(actor, { name: "Legacy" });
+
+    expect(result.patientType).toBe("NEW");
+  });
+});
+
+describe("patient configuration — requireGuardian", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const minor = new Date();
+  minor.setUTCFullYear(minor.getUTCFullYear() - 10);
+  const adult = new Date();
+  adult.setUTCFullYear(adult.getUTCFullYear() - 40);
+
+  it("refuses a minor with no emergency contact when MINORS_ONLY", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(
+      setting({ requireGuardian: "MINORS_ONLY" }),
+    );
+
+    await expect(
+      patientService.createPatient(actor, { name: "Child", dateOfBirth: minor }),
+    ).rejects.toThrow(/emergency contact with a phone number/i);
+
+    expect(mockPrisma.patient.create).not.toHaveBeenCalled();
+  });
+
+  it("accepts a minor who has an emergency contact", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(
+      setting({ requireGuardian: "MINORS_ONLY" }),
+    );
+    (mockPrisma.codeSequence.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({
+      nextNumber: 1,
+    });
+    (mockPrisma.patient.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 40,
+      branchId: 1,
+      patientCode: "PAT-000001",
+    });
+
+    const result = await patientService.createPatient(actor, {
+      name: "Child",
+      dateOfBirth: minor,
+      contacts: [{ name: "Mother", phone: "01711111111" }],
+    });
+
+    expect(result.patientCode).toBe("PAT-000001");
+  });
+
+  it("lets an adult through under MINORS_ONLY without a contact", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(
+      setting({ requireGuardian: "MINORS_ONLY" }),
+    );
+    (mockPrisma.codeSequence.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({
+      nextNumber: 1,
+    });
+    (mockPrisma.patient.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 41,
+      branchId: 1,
+      patientCode: "PAT-000001",
+    });
+
+    const result = await patientService.createPatient(actor, {
+      name: "Adult",
+      dateOfBirth: adult,
+    });
+
+    expect(result.patientCode).toBe("PAT-000001");
+  });
+
+  it("requires a contact from everyone when ALWAYS", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(
+      setting({ requireGuardian: "ALWAYS" }),
+    );
+
+    await expect(
+      patientService.createPatient(actor, { name: "Adult", dateOfBirth: adult }),
+    ).rejects.toThrow(/emergency contact with a phone number/i);
+  });
+
+  it("requires a reachable contact, not just a name", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(
+      setting({ requireGuardian: "ALWAYS" }),
+    );
+
+    await expect(
+      patientService.createPatient(actor, {
+        name: "Adult",
+        dateOfBirth: adult,
+        contacts: [{ name: "Nobody" }],
+      }),
+    ).rejects.toThrow(/emergency contact with a phone number/i);
+  });
+
+  it("does not require a contact under NEVER", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(
+      setting({ requireGuardian: "NEVER" }),
+    );
+    (mockPrisma.codeSequence.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({
+      nextNumber: 1,
+    });
+    (mockPrisma.patient.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 42,
+      branchId: 1,
+      patientCode: "PAT-000001",
+    });
+
+    const result = await patientService.createPatient(actor, { name: "Child", dateOfBirth: minor });
+
+    expect(result.patientCode).toBe("PAT-000001");
+  });
+});
+
+describe("patient configuration — duplicateDetection", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // The default create specs do not expect a duplicate query.
+    mockPrisma.patient.findMany.mockResolvedValue([]);
+  });
+
+  const enabled = (overrides: Record<string, unknown> = {}) =>
+    setting({ duplicateDetection: true, ...overrides });
+
+  it("blocks a second registration with the same phone number", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(enabled());
+    mockPrisma.patient.findMany.mockResolvedValueOnce([
+      {
+        patientCode: "PAT-000001",
+        name: "John Doe",
+        phone: "01711111111",
+        email: null,
+        nationalId: null,
+        dateOfBirth: null,
+        deletedAt: null,
+      },
+    ]);
+
+    await expect(
+      patientService.createPatient(actor, {
+        name: "Someone Else",
+        phone: "+8801711111111",
+      }),
+    ).rejects.toThrow(/already registered as PAT-000001/);
+
+    expect(mockPrisma.patient.create).not.toHaveBeenCalled();
+  });
+
+  it("blocks a second registration with the same national ID", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(enabled());
+    mockPrisma.patient.findMany.mockResolvedValueOnce([
+      {
+        patientCode: "PAT-000002",
+        name: "John Doe",
+        phone: null,
+        email: null,
+        nationalId: "1234-5678-9012",
+        dateOfBirth: null,
+        deletedAt: null,
+      },
+    ]);
+
+    await expect(
+      patientService.createPatient(actor, {
+        name: "Someone Else",
+        nationalId: "123456789012",
+      }),
+    ).rejects.toThrow(/national ID already registered/);
+  });
+
+  it("blocks a second registration with the same email", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(enabled());
+    mockPrisma.patient.findMany.mockResolvedValueOnce([
+      {
+        patientCode: "PAT-000003",
+        name: "John Doe",
+        phone: null,
+        email: "john@example.com",
+        nationalId: null,
+        dateOfBirth: null,
+        deletedAt: null,
+      },
+    ]);
+
+    await expect(
+      patientService.createPatient(actor, {
+        name: "Someone Else",
+        email: "John@Example.com",
+      }),
+    ).rejects.toThrow(/email address already registered/);
+  });
+
+  it("warns on name + date of birth and requires an acknowledgement", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(enabled());
+    mockPrisma.patient.findMany.mockResolvedValueOnce([
+      {
+        patientCode: "PAT-000004",
+        name: "John Doe",
+        phone: "01811111111",
+        email: null,
+        nationalId: null,
+        dateOfBirth: new Date("1990-01-01"),
+        deletedAt: null,
+      },
+    ]);
+
+    await expect(
+      patientService.createPatient(actor, {
+        name: "JOHN   DOE",
+        dateOfBirth: new Date("1990-01-01"),
+        phone: "01911111111",
+      }),
+    ).rejects.toThrow(/Confirm this is a different person/);
+  });
+
+  it("fetches records sharing the date of birth alongside strong matches", async () => {
+    // Regression: the fetch used to be narrowed to the strong fields, so a
+    // registration carrying a brand-new phone number never pulled the existing
+    // record into scope and the name + date of birth match went unnoticed.
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(enabled());
+    mockPrisma.patient.findMany.mockResolvedValue([]);
+    (mockPrisma.codeSequence.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({
+      nextNumber: 6,
+    });
+    (mockPrisma.patient.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 61,
+      branchId: 1,
+      patientCode: "PAT-000006",
+    });
+
+    await patientService.createPatient(actor, {
+      name: "John Doe",
+      dateOfBirth: new Date("1990-01-01"),
+      phone: "01999999999",
+      email: "fresh@example.com",
+    });
+
+    const where = mockPrisma.patient.findMany.mock.calls[0][0].where;
+    expect(where.OR).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ dateOfBirth: new Date("1990-01-01") }),
+        expect.objectContaining({ phone: expect.any(String) }),
+        expect.objectContaining({ email: "fresh@example.com" }),
+      ]),
+    );
+  });
+
+  it("accepts the acknowledged soft match and reports it back", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(enabled());
+    mockPrisma.patient.findMany.mockResolvedValueOnce([
+      {
+        patientCode: "PAT-000004",
+        name: "John Doe",
+        phone: "01811111111",
+        email: null,
+        nationalId: null,
+        dateOfBirth: new Date("1990-01-01"),
+        deletedAt: null,
+      },
+    ]);
+    (mockPrisma.codeSequence.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({
+      nextNumber: 5,
+    });
+    (mockPrisma.patient.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 50,
+      branchId: 1,
+      patientCode: "PAT-000005",
+    });
+
+    const result = await patientService.createPatient(actor, {
+      name: "JOHN   DOE",
+      dateOfBirth: new Date("1990-01-01"),
+      phone: "01911111111",
+      overrideDuplicate: true,
+    });
+
+    expect(result.patientCode).toBe("PAT-000005");
+    expect(result.duplicateWarnings).toHaveLength(1);
+    expect(result.duplicateWarnings[0].patientCode).toBe("PAT-000004");
+  });
+
+  it("never lets an override bypass a strong match", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(enabled());
+    mockPrisma.patient.findMany.mockResolvedValueOnce([
+      {
+        patientCode: "PAT-000001",
+        name: "John Doe",
+        phone: "01711111111",
+        email: null,
+        nationalId: null,
+        dateOfBirth: null,
+        deletedAt: null,
+      },
+    ]);
+
+    await expect(
+      patientService.createPatient(actor, {
+        name: "Someone Else",
+        phone: "01711111111",
+        overrideDuplicate: true,
+      }),
+    ).rejects.toThrow(/already registered as PAT-000001/);
+  });
+
+  it("makes no duplicate query when the switch is off", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(
+      setting({ duplicateDetection: false }),
+    );
+    (mockPrisma.codeSequence.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({
+      nextNumber: 9,
+    });
+    (mockPrisma.patient.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 60,
+      branchId: 1,
+      patientCode: "PAT-000009",
+    });
+
+    const result = await patientService.createPatient(actor, {
+      name: "John Doe",
+      phone: "01711111111",
+    });
+
+    expect(result.patientCode).toBe("PAT-000009");
+    expect(mockPrisma.patient.findMany).not.toHaveBeenCalled();
+  });
+
+  it("includes soft-deleted records, since their identifiers are still consumed", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce(enabled());
+    mockPrisma.patient.findMany.mockResolvedValueOnce([
+      {
+        patientCode: "PAT-000008",
+        name: "John Doe",
+        phone: "01711111111",
+        email: null,
+        nationalId: null,
+        dateOfBirth: null,
+        deletedAt: new Date(),
+      },
+    ]);
+
+    await expect(
+      patientService.createPatient(actor, { name: "Else", phone: "01711111111" }),
+    ).rejects.toThrow(/already registered as PAT-000008/);
   });
 });
 

@@ -52,6 +52,12 @@ vi.mock("../lib/prisma", () => ({
       create: vi.fn(),
       update: vi.fn(),
     },
+    systemMaintenance: {
+      findFirst: vi.fn(),
+    },
+    rolePermission: {
+      count: vi.fn(),
+    },
     // Supports both the array-of-operations form and the interactive
     // callback form used by createUser.
     $transaction: vi.fn(async (arg: unknown) => {
@@ -138,6 +144,8 @@ beforeEach(() => {
   // The policy reader caches for a few seconds; reset it so each test starts clean.
   invalidateSecurityPolicyCache();
   asMock("securitySetting", "findFirst").mockResolvedValue(null);
+  asMock("systemMaintenance", "findFirst").mockResolvedValue({ maintenanceMode: false });
+  asMock("rolePermission", "count").mockResolvedValue(1);
   asMock("loginAttempt", "create").mockResolvedValue({});
   asMock("userSession", "count").mockResolvedValue(0);
   asMock("userSession", "create").mockResolvedValue({});
@@ -227,6 +235,34 @@ describe("auth.service — login", () => {
     await expect(
       authService.login({ identifier: "test@example.com", password: "correctpass" }),
     ).rejects.toThrow("Account is not active");
+  });
+
+  it("blocks sign-in while maintenance mode is active unless the role can manage it", async () => {
+    asMock("user", "findFirst").mockResolvedValue(makeUser());
+    asMock("systemMaintenance", "findFirst").mockResolvedValue({ maintenanceMode: true });
+    asMock("rolePermission", "count").mockResolvedValue(0);
+
+    await expect(
+      authService.login({ identifier: "test@example.com", password: "correctpass" }),
+    ).rejects.toThrow("maintenance mode");
+
+    expect(asMock("userSession", "create")).not.toHaveBeenCalled();
+    expect(asMock("loginAttempt", "create")).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ reason: "MAINTENANCE_MODE" }) }),
+    );
+    expect(writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ module: "AUTH", action: "LOGIN_BLOCKED_MAINTENANCE", always: true }),
+    );
+  });
+
+  it("lets a role with systemMaintenance:update sign in during maintenance mode", async () => {
+    asMock("user", "findFirst").mockResolvedValue(makeUser());
+    asMock("systemMaintenance", "findFirst").mockResolvedValue({ maintenanceMode: true });
+    asMock("rolePermission", "count").mockResolvedValue(1);
+
+    const result = await authService.login({ identifier: "test@example.com", password: "correctpass" });
+
+    expect(result.accessToken).toBe("mock-jwt-token");
   });
 });
 

@@ -110,6 +110,31 @@ function deviceFingerprint(userAgent: string | undefined): string | null {
   return crypto.createHash("sha256").update(userAgent).digest("hex").slice(0, 32);
 }
 
+/**
+ * True when maintenance mode is active for everyone except users whose roles
+ * hold the `systemMaintenance:update` permission. The bypass exists so whoever
+ * can turn maintenance mode off is always able to sign in and do so â€” without
+ * it, one toggle could lock the entire installation out.
+ */
+async function maintenanceBlocksSignIn(user: {
+  userRoles: Array<{ role: { id: number } }>;
+}): Promise<boolean> {
+  const record = await prisma.systemMaintenance.findFirst({
+    select: { maintenanceMode: true },
+  });
+  if (!record?.maintenanceMode) return false;
+
+  const roleIds = user.userRoles.map((ur) => ur.role.id);
+  if (roleIds.length === 0) return true;
+  const bypass = await prisma.rolePermission.count({
+    where: {
+      roleId: { in: roleIds },
+      permission: { module: "systemMaintenance", action: "update" },
+    },
+  });
+  return bypass === 0;
+}
+
 async function getUserWithRoles(identifier: string) {
   return prisma.user.findFirst({
     where: { OR: [{ email: identifier }, { username: identifier }] },
@@ -223,7 +248,34 @@ export async function login(input: LoginInput, meta: RequestMeta = {}): Promise<
     );
   }
 
-  // 3. Password.
+  // 3. Maintenance mode restricts new sign-ins to privileged users, BEFORE the
+  //    password check, so a blocked network probe cannot learn whether
+  //    maintenance is on by observing which message it gets back.
+  if (await maintenanceBlocksSignIn(user)) {
+    await recordAttempt({
+      userId: user.id,
+      identifier,
+      success: false,
+      reason: "MAINTENANCE_MODE",
+      meta,
+    });
+    await writeAuditLog({
+      module: "AUTH",
+      action: "LOGIN_BLOCKED_MAINTENANCE",
+      tableName: "User",
+      recordId: String(user.id),
+      user: userToAuth(user),
+      branchId: user.branchId,
+      ipAddress: meta.ip,
+      userAgent: meta.userAgent,
+      always: true,
+    });
+    throw new AuthenticationError(
+      "System is currently in maintenance mode. Please contact your administrator or try again later.",
+    );
+  }
+
+  // 4. Password.
   const passwordMatches = await bcrypt.compare(input.password, user.password);
   if (!passwordMatches) {
     const next = nextFailureState(
@@ -271,7 +323,7 @@ export async function login(input: LoginInput, meta: RequestMeta = {}): Promise<
     );
   }
 
-  // 4. Second factor.
+  // 5. Second factor.
   let usedRecovery = false;
   if (requiresTwoFactor(user, policy)) {
     const secret = user.twoFactorSecret ?? "";
@@ -323,7 +375,7 @@ export async function login(input: LoginInput, meta: RequestMeta = {}): Promise<
     }
   }
 
-  // 5. Device restriction.
+  // 6. Device restriction.
   const deviceId = deviceFingerprint(meta.userAgent);
   const now = new Date();
   const activeSessions = await prisma.userSession.count({
@@ -351,12 +403,12 @@ export async function login(input: LoginInput, meta: RequestMeta = {}): Promise<
     throw new AuthenticationError(deviceCheck.reason ?? "Device limit reached");
   }
 
-  // 6. Password expiry forces a change but still lets the user sign in enough
+  // 7. Password expiry forces a change but still lets the user sign in enough
   //    to perform it.
   const expired = isPasswordExpired(user.passwordChangedAt, policy.passwordExpiryDays, now);
   const mustChangePassword = user.mustChangePassword || expired;
 
-  // 7. Create the server-side session. Its expiry IS the session timeout.
+  // 8. Create the server-side session. Its expiry IS the session timeout.
   const expiresAt = sessionExpiry(policy.sessionTimeout, now);
   const jti = crypto.randomUUID();
 
