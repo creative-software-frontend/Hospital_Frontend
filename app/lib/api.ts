@@ -375,12 +375,21 @@ function toApiError(status: number, code: string, message: string, details?: unk
     case "CONFLICT":
     case "UNIQUE_CONSTRAINT":
       return new ConflictError(message, code, details);
-      case "BUSINESS_RULE":
-        return new BusinessRuleError(message, details);
+    case "BUSINESS_RULE":
+      return new BusinessRuleError(message, details);
     case "VALIDATION_ERROR":
       return new ValidationError(message, details);
+    case "MAINTENANCE_MODE":
+      return new MaintenanceError(message, details);
     default:
       return new ApiError(status, code, message, details);
+  }
+}
+
+export class MaintenanceError extends ApiError {
+  constructor(message: string, details?: unknown) {
+    super(503, "MAINTENANCE_MODE", message, details);
+    this.name = "MaintenanceError";
   }
 }
 
@@ -420,6 +429,13 @@ async function rawRequest<TBody>(path: string, init?: RequestInit): Promise<TBod
     const errBody = body as ErrorBody | null;
     const message = errBody?.message || `Request failed (${res.status})`;
     const code = errBody?.code || "ERROR";
+
+    if (res.status === 503 && code === "MAINTENANCE_MODE") {
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/maintenance")) {
+        window.location.href = "/maintenance";
+      }
+    }
+
     throw toApiError(res.status, code, message, errBody?.details);
   }
 

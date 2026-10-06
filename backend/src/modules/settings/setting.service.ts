@@ -12,6 +12,7 @@ import {
   ipInCidr,
   parseAllowedIpRanges,
 } from "../auth/securityPolicy";
+import { invalidateMaintenanceCache } from "../../middleware/maintenance.middleware";
 import { revealPublicAsset } from "../../utils/revealPath";
 import { BLOOD_GROUP_VALUES } from "../patients/patient.validation";
 import { DEFAULT_PATIENT_SETTINGS } from "../patients/patient.policy";
@@ -2220,6 +2221,7 @@ export async function updateSystemMaintenance(
     user: actor,
     branchId: actor.branchId,
   });
+  invalidateMaintenanceCache();
   return updated;
 }
 

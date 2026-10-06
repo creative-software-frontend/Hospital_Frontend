@@ -36,7 +36,7 @@ declare module "express-serve-static-core" {
   }
 }
 
-async function verifyToken(token: string): Promise<TokenPayload> {
+export async function verifyToken(token: string): Promise<TokenPayload> {
   try {
     const decoded = jwt.verify(token, config.jwtSecret) as TokenPayload;
     if (typeof decoded.sub !== "string" || typeof decoded.jti !== "string") {

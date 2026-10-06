@@ -7,6 +7,7 @@ import { corsOrigins } from "./config";
 import { config } from "./config";
 import apiRoutes from "./routes";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware";
+import { requireMaintenanceAccess } from "./middleware/maintenance.middleware";
 
 export function createApp(): Express {
   const app = express();
@@ -49,6 +50,9 @@ export function createApp(): Express {
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
+
+  // Maintenance mode check (runs on all routes, allows health/auth public paths)
+  app.use(requireMaintenanceAccess);
 
   // API routes
   app.use("/api", apiRoutes);
