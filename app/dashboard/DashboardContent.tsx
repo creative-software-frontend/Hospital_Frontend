@@ -35,6 +35,7 @@ import { DoctorModule } from "@/app/doctors/DoctorModule";
 import { SuperAdminOverviewStats } from "@/app/dashboard/superadmin/SuperAdminOverviewStats";
 import { RolePermissionEditorModal } from "@/app/dashboard/role-permissions/RolePermissionEditorModal";
 import { useCurrency } from "@/app/hooks/useCurrency";
+import { useLocalization } from "@/app/hooks/useCurrency";
 import { formatCurrency } from "@/app/lib/currency";
 
 const iconMap: Record<string, IconType> = {
@@ -84,6 +85,7 @@ export const DashboardContent = ({
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [editingRole, setEditingRole] = useState<{ seederKey: string; name: string } | null>(null);
   const { currency } = useCurrency();
+  const { weekDays } = useLocalization();
 
   const environment = useMemo(
     () =>
@@ -368,13 +370,9 @@ ${tbody}
                 </div>
 
                 <div className="flex justify-between px-2 text-[9px] font-extrabold text-[var(--muted)]">
-                  <span>Mon</span>
-                  <span>Tue</span>
-                  <span>Wed</span>
-                  <span>Thu</span>
-                  <span>Fri</span>
-                  <span>Sat</span>
-                  <span>Sun</span>
+                  {weekDays.map((day) => (
+                    <span key={day}>{day.slice(0, 3)}</span>
+                  ))}
                 </div>
               </div>
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion } from "motion/react";
 import { authStorage } from "@/app/lib/auth";
+import { useLocalization } from "@/app/hooks/useCurrency";
 import {
   FiCalendar,
   FiFileText,
@@ -104,6 +105,7 @@ const navItems = [
 
 export default function UserDashboard() {
   const router = useRouter();
+  const { formatDate } = useLocalization();
   const [activeTab, setActiveTab] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userEmail] = useState(() => authStorage.getUserEmail() ?? "user@example.com");
@@ -244,12 +246,7 @@ export default function UserDashboard() {
                   : navItems.find((n) => n.id === activeTab)?.label}
               </h2>
               <p className="text-xs" style={{ color: "var(--muted)" }}>
-                {new Date().toLocaleDateString("en-US", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
+                {formatDate(new Date())}
               </p>
             </div>
           </div>

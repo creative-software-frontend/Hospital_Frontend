@@ -11,24 +11,12 @@ import {
   type AuditLogRecord,
   errorMessage,
 } from "@/app/lib/api";
+import { useLocalization } from "@/app/hooks/useCurrency";
 
 const INPUT_CLS =
   "w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15 text-[var(--text)]";
 
 const PAGE_SIZE = 20;
-
-function formatDate(value: string | null | undefined) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 function actionBadge(action: string) {
   if (action.startsWith("LOGIN")) return "bg-sky-50 text-sky-600 border-sky-200";
@@ -38,6 +26,7 @@ function actionBadge(action: string) {
 }
 
 export function AuditCenterView() {
+  const { formatDateTime } = useLocalization();
   const [logs, setLogs] = useState<AuditLogRecord[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, totalPages: 0 });
   const [loading, setLoading] = useState(true);
@@ -186,7 +175,7 @@ export function AuditCenterView() {
                 {logs.map((log) => (
                   <tr key={log.id} className="hover:bg-[var(--primary-soft)]/10 transition-colors">
                     <td className="text-[11px] text-[var(--text)] px-4 py-3 border-b border-[var(--border)] whitespace-nowrap">
-                      {formatDate(log.createdAt)}
+                      {formatDateTime(log.createdAt)}
                     </td>
                     <td className="text-[11px] font-bold text-[var(--primary-dark)] px-4 py-3 border-b border-[var(--border)] uppercase">
                       {log.module}

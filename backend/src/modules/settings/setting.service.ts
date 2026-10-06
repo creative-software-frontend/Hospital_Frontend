@@ -2040,17 +2040,37 @@ const DEFAULT_CURRENCY = "BDT";
 const DEFAULT_CURRENCY_SYMBOL = "৳";
 
 /**
- * The Localization currency is THE hospital-wide display currency (Settings →
- * Localization → Currency). Every branch shares one value: reads reuse whichever
- * existing row is present (all rows are kept in sync), and any currency change is
- * propagated to every branch/language row. This is NOT an exchange-rate conversion;
- * stored amounts are never modified.
+ * The fields that are hospital-wide (Settings → Localization): a change to any
+ * of them is propagated to every branch/language row. `language` is deliberately
+ * NOT in this list — language is the only per-branch/per-user preference and is
+ * never synced. This is NOT an exchange-rate conversion: stored amounts are
+ * never modified, only how they are displayed.
  */
-async function getCentralCurrencyDefaults() {
+const LOCALIZATION_GLOBAL_FIELDS = [
+  "currency",
+  "currencySymbol",
+  "dateFormat",
+  "timeFormat",
+  "timezone",
+  "numberFormat",
+  "weekStartDay",
+] as const satisfies ReadonlyArray<keyof UpdateLocalizationSettingInput>;
+
+/**
+ * The values every new branch row is seeded from. Reads whichever existing row
+ * is present (all rows are kept in sync); falls back to built-in defaults only
+ * when no localization row exists anywhere yet.
+ */
+async function getCentralLocalizationDefaults() {
   const any = await prisma.localizationSetting.findFirst({ orderBy: { id: "asc" } });
   return {
     currency: any?.currency ?? DEFAULT_CURRENCY,
     currencySymbol: any?.currencySymbol ?? DEFAULT_CURRENCY_SYMBOL,
+    dateFormat: any?.dateFormat ?? "DD-MM-YYYY",
+    timeFormat: (any?.timeFormat ?? "24h") as "12h" | "24h",
+    timezone: any?.timezone ?? "Asia/Dhaka",
+    numberFormat: any?.numberFormat ?? "en-US",
+    weekStartDay: any?.weekStartDay ?? 1,
   };
 }
 
@@ -2060,18 +2080,12 @@ export async function getLocalizationSetting(actor: AuthUser) {
   });
   if (existing) return existing;
 
-  const central = await getCentralCurrencyDefaults();
+  const central = await getCentralLocalizationDefaults();
   return prisma.localizationSetting.create({
     data: {
       branchId: actor.branchId,
       language: "English",
-      currency: central.currency,
-      currencySymbol: central.currencySymbol,
-      dateFormat: "DD-MM-YYYY",
-      timeFormat: "24h",
-      timezone: "Asia/Dhaka",
-      numberFormat: "en-US",
-      weekStartDay: 1,
+      ...central,
     },
   });
 }
@@ -2082,44 +2096,47 @@ export async function updateLocalizationSetting(
 ) {
   const current = await getLocalizationSetting(actor);
 
+  const globalData: Prisma.LocalizationSettingUncheckedUpdateInput = {};
+  for (const field of LOCALIZATION_GLOBAL_FIELDS) {
+    if (input[field] !== undefined) {
+      (globalData as Record<string, unknown>)[field] = input[field];
+    }
+  }
+  const languageData = input.language !== undefined ? { language: input.language } : {};
+
   const updated = await prisma.localizationSetting.update({
     where: { id: current.id },
-    data: { ...input },
+    data: { ...globalData, ...languageData },
   });
 
-  // Currency is CENTRAL: a change to currency/currencySymbol is applied to every
-  // branch (and every language) row so no branch can override the shared value.
-  if (input.currency !== undefined || input.currencySymbol !== undefined) {
+  // Every non-language value is hospital-wide: propagate the change to all
+  // branch/language rows so no branch can drift from the shared configuration.
+  if (Object.keys(globalData).length > 0) {
     await prisma.localizationSetting.updateMany({
       where: {},
-      data: {
-        ...(input.currency !== undefined ? { currency: input.currency } : {}),
-        ...(input.currencySymbol !== undefined ? { currencySymbol: input.currencySymbol } : {}),
-      },
+      data: globalData,
     });
   }
+
+  const changed = { ...globalData, ...languageData } as Record<string, unknown>;
+  const oldValues = {
+    language: current.language,
+    currency: current.currency,
+    currencySymbol: current.currencySymbol,
+    dateFormat: current.dateFormat,
+    timeFormat: current.timeFormat,
+    timezone: current.timezone,
+    numberFormat: current.numberFormat,
+    weekStartDay: current.weekStartDay,
+  };
 
   await writeAuditLog({
     module: "localizationSetting",
     action: "update",
     tableName: "LocalizationSetting",
     recordId: String(updated.id),
-    oldValues: {
-      language: current.language,
-      currency: current.currency,
-      currencySymbol: current.currencySymbol,
-      dateFormat: current.dateFormat,
-      timeFormat: current.timeFormat,
-      timezone: current.timezone,
-    },
-    newValues: {
-      ...(input.language ? { language: input.language } : {}),
-      ...(input.currency ? { currency: input.currency } : {}),
-      ...(input.currencySymbol ? { currencySymbol: input.currencySymbol } : {}),
-      ...(input.dateFormat ? { dateFormat: input.dateFormat } : {}),
-      ...(input.timeFormat ? { timeFormat: input.timeFormat } : {}),
-      ...(input.timezone ? { timezone: input.timezone } : {}),
-    },
+    oldValues,
+    newValues: changed,
     user: actor,
     branchId: actor.branchId,
   });

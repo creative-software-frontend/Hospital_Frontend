@@ -16,13 +16,13 @@ import {
   type PatientStatus,
   errorMessage,
   calcAge,
-  formatDate,
 } from "@/app/lib/api";
 import type { UserRole } from "@/app/config/roleConfig";
 import { patientCapabilities } from "@/app/lib/roles";
 import { genderLabel } from "@/app/patients/constants";
 import { formatAddress } from "@/app/lib/api";
 import { useMasterDataLabels } from "@/app/lib/useMasterData";
+import { useLocalization } from "@/app/hooks/useCurrency";
 import { PatientFormModal } from "@/app/patients/PatientFormModal";
 import { PatientProfileModal } from "@/app/patients/PatientProfileModal";
 import { ConfirmDialog } from "@/app/patients/ConfirmDialog";
@@ -39,6 +39,7 @@ interface ConfirmState {
 
 export function PatientModule({ role }: { role: UserRole | null }) {
   const caps = patientCapabilities(role);
+  const { formatDate } = useLocalization();
 
   const [rows, setRows] = useState<PatientListRecord[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);

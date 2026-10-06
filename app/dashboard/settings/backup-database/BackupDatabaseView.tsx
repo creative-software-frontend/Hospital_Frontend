@@ -24,6 +24,7 @@ import {
   errorMessage,
 } from "@/app/lib/api";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
+import { useLocalization } from "@/app/hooks/useCurrency";
 
 const INPUT_CLS =
   "w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15 text-[var(--text)]";
@@ -54,14 +55,6 @@ function Toggle({
   );
 }
 
-function formatDate(value: string): string {
-  try {
-    return new Date(value).toLocaleString();
-  } catch {
-    return value;
-  }
-}
-
 function formatBytes(bytes: number | null | undefined): string {
   if (bytes === null || bytes === undefined) return "?";
   if (bytes < 1024) return `${bytes} B`;
@@ -71,6 +64,7 @@ function formatBytes(bytes: number | null | undefined): string {
 }
 
 export function BackupDatabaseView() {
+  const { formatDateTime } = useLocalization();
   const [data, setData] = useState<BackupSetting | null>(null);
   const [overview, setOverview] = useState<BackupOverview | null>(null);
   const [lastBackup, setLastBackup] = useState<BackupLog | null>(null);
@@ -248,7 +242,7 @@ const [clearingAll, setClearingAll] = useState(false);
           {" · "}Saving to <span className="font-mono">{overview.storageDir}</span>
           {" · "}
           {overview.nextScheduledRunAt
-            ? `Next automatic backup: ${formatDate(overview.nextScheduledRunAt)}`
+            ? `Next automatic backup: ${formatDateTime(overview.nextScheduledRunAt)}`
             : "Automatic backups are currently off"}
         </p>
       )}
@@ -259,7 +253,7 @@ const [clearingAll, setClearingAll] = useState(false);
             <h4 className="text-sm font-extrabold text-[var(--text)]">Backup Configuration</h4>
             <p className="text-xs text-[var(--muted)]">
               {lastBackup
-                ? `Last backup: ${formatDate(lastBackup.startedAt)} (${lastBackup.fileName})`
+                ? `Last backup: ${formatDateTime(lastBackup.startedAt)} (${lastBackup.fileName})`
                 : "No backups recorded yet"}
             </p>
           </div>
@@ -415,7 +409,7 @@ const [clearingAll, setClearingAll] = useState(false);
               ) : (
                 logs.map((log) => (
                   <tr key={log.id} className="hover:bg-[var(--primary-soft)]/10 transition-colors">
-                    <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">{formatDate(log.startedAt)}</td>
+                    <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">{formatDateTime(log.startedAt)}</td>
                     <td className="text-[12px] font-bold text-[var(--text)] px-4 py-3 border-b border-[var(--border)] capitalize">{BACKUP_TYPE_LABELS[log.backupType]}</td>
                     <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)] font-mono">{log.fileName ?? "—"}</td>
                     <td className="text-[12px] text-[var(--text)] px-4 py-3 border-b border-[var(--border)] whitespace-nowrap">{formatBytes(log.fileSize)}</td>

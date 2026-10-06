@@ -14,6 +14,7 @@ import {
   errorMessage,
 } from "@/app/lib/api";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
+import { useLocalization } from "@/app/hooks/useCurrency";
 
 const INPUT_CLS =
   "w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15 text-[var(--text)]";
@@ -30,19 +31,6 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       />
     </button>
   );
-}
-
-function formatDate(value: string | null | undefined) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 function formatUptime(seconds?: number) {
@@ -81,6 +69,7 @@ function StatCard({
 }
 
 export function SystemMaintenanceView() {
+  const { formatDateTime } = useLocalization();
   const [data, setData] = useState<SystemMaintenance | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -221,7 +210,7 @@ export function SystemMaintenanceView() {
               tone={data.maintenanceMode ? "warn" : systemStatus === "Healthy" ? "good" : "bad"}
             />
             <StatCard label="Uptime" value={formatUptime(data.uptimeSeconds)} />
-            <StatCard label="Last Maintenance" value={formatDate(lastMaintenance)} />
+            <StatCard label="Last Maintenance" value={formatDateTime(lastMaintenance)} />
             <StatCard
               label="Database Health"
               value={data.dbHealth ?? "—"}
@@ -242,7 +231,7 @@ export function SystemMaintenanceView() {
           <h4 className="text-sm font-extrabold text-[var(--text)]">Maintenance Tools</h4>
           <p className="text-xs text-[var(--muted)]">
             {data
-              ? `Version ${data.systemVersion ?? "—"} · Last update ${formatDate(data.lastUpdate)}`
+              ? `Version ${data.systemVersion ?? "—"} · Last update ${formatDateTime(data.lastUpdate)}`
               : "Loading…"}
           </p>
         </div>

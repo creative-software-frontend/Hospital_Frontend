@@ -11,6 +11,7 @@ import {
   errorMessage,
 } from "@/app/lib/api";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
+import { useCurrency } from "@/app/hooks/useCurrency";
 
 const INPUT_CLS =
   "w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15 text-[var(--text)]";
@@ -36,6 +37,7 @@ function Toggle({
 }
 
 export function EmergencySettingsView() {
+  const { currency } = useCurrency();
   const [data, setData] = useState<EmergencySetting | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -163,15 +165,15 @@ export function EmergencySettingsView() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-3 space-y-1.5">
-              <label className="block text-xs font-bold text-[var(--muted)]">Registration Fee (BDT)</label>
+              <label className="block text-xs font-bold text-[var(--muted)]">Registration Fee ({currency.currencySymbol})</label>
               {money(data.registrationFee, (v) => patch({ registrationFee: v }))}
             </div>
             <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-3 space-y-1.5">
-              <label className="block text-xs font-bold text-[var(--muted)]">Consultation Fee (BDT)</label>
+              <label className="block text-xs font-bold text-[var(--muted)]">Consultation Fee ({currency.currencySymbol})</label>
               {money(data.consultationFee, (v) => patch({ consultationFee: v }))}
             </div>
             <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-3 space-y-1.5">
-              <label className="block text-xs font-bold text-[var(--muted)]">Service Charge (BDT)</label>
+              <label className="block text-xs font-bold text-[var(--muted)]">Service Charge ({currency.currencySymbol})</label>
               {money(data.serviceCharge, (v) => patch({ serviceCharge: v }))}
             </div>
 

@@ -138,8 +138,12 @@ describe("getLocalizationSetting (localization = single central currency source)
     expect(mockPrisma.localizationSetting.create).not.toHaveBeenCalled();
   });
 
-  it("creates a missing branch row using the CURRENT central currency from existing rows", async () => {
+  it("creates a missing branch row using the CURRENT central config from existing rows", async () => {
     store.push(makeRow(1, "USD", "$"));
+    store[0].dateFormat = "DD/MM/YYYY";
+    store[0].timezone = "Asia/Dhaka";
+    store[0].numberFormat = "bn-BD";
+    store[0].weekStartDay = 6;
 
     const result = await settingService.getLocalizationSetting(ACTOR_BRANCH_2);
 
@@ -148,6 +152,10 @@ describe("getLocalizationSetting (localization = single central currency source)
     expect(result.currencySymbol).toBe("$");
     const createData = mockPrisma.localizationSetting.create.mock.calls[0][0] as { data: LocRow };
     expect(createData.data.currency).toBe("USD");
+    expect(createData.data.dateFormat).toBe("DD/MM/YYYY");
+    expect(createData.data.timezone).toBe("Asia/Dhaka");
+    expect(createData.data.numberFormat).toBe("bn-BD");
+    expect(createData.data.weekStartDay).toBe(6);
   });
 
   it("falls back to BDT defaults when no localization rows exist yet", async () => {
@@ -178,7 +186,7 @@ describe("updateLocalizationSetting (currency is central/global)", () => {
     expect(store.every((r) => r.currency === "USD" && r.currencySymbol === "$")).toBe(true);
   });
 
-  it("syncs currency even when only currencySymbol changes", async () => {
+  it("syncs the DISPLAY fields globally when currencySymbol changes", async () => {
     store.push(makeRow(1, "USD", "$"));
 
     await settingService.updateLocalizationSetting(SUPER_ADMIN, { currencySymbol: "US$" });
@@ -188,14 +196,47 @@ describe("updateLocalizationSetting (currency is central/global)", () => {
     expect(store[0].currency).toBe("USD");
   });
 
-  it("does NOT touch other branches when a non-currency field changes", async () => {
+  it("propagates EVERY non-language field to every branch on a single-field update", async () => {
     store.push(makeRow(1, "BDT"));
     store.push(makeRow(2, "BDT"));
 
     await settingService.updateLocalizationSetting(SUPER_ADMIN, { timezone: "UTC" });
 
-    expect(mockPrisma.localizationSetting.updateMany).not.toHaveBeenCalled();
+    expect(mockPrisma.localizationSetting.updateMany).toHaveBeenCalledWith({
+      where: {},
+      data: { timezone: "UTC" },
+    });
+    expect(store.every((r) => r.timezone === "UTC")).toBe(true);
     expect(store.every((r) => r.currency === "BDT")).toBe(true);
+  });
+
+  it("syncs dateFormat, timeFormat, numberFormat and weekStartDay like currency", async () => {
+    store.push(makeRow(1, "BDT"));
+    store.push(makeRow(2, "BDT"));
+
+    await settingService.updateLocalizationSetting(SUPER_ADMIN, {
+      dateFormat: "DD/MM/YYYY",
+      timeFormat: "12h",
+      numberFormat: "bn-BD",
+      weekStartDay: 0,
+    });
+
+    expect(mockPrisma.localizationSetting.updateMany).toHaveBeenCalledTimes(1);
+    expect(store.every((r) => r.dateFormat === "DD/MM/YYYY")).toBe(true);
+    expect(store.every((r) => r.timeFormat === "12h")).toBe(true);
+    expect(store.every((r) => r.numberFormat === "bn-BD")).toBe(true);
+    expect(store.every((r) => r.weekStartDay === 0)).toBe(true);
+  });
+
+  it("keeps language branch-scoped: a language change never touches other branches", async () => {
+    store.push(makeRow(1, "BDT"));
+    store.push(makeRow(2, "BDT"));
+
+    await settingService.updateLocalizationSetting(SUPER_ADMIN, { language: "Bangla" });
+
+    expect(store[0].language).toBe("Bangla");
+    expect(store[1].language).toBe("English");
+    expect(mockPrisma.localizationSetting.updateMany).not.toHaveBeenCalled();
   });
 
   it("writes an audit log with old/new currency values", async () => {

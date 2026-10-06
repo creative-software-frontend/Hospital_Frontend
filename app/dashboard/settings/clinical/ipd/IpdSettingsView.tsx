@@ -11,11 +11,13 @@ import {
   errorMessage,
 } from "@/app/lib/api";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
+import { useCurrency } from "@/app/hooks/useCurrency";
 
 const INPUT_CLS =
   "w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15 text-[var(--text)]";
 
 export function IpdSettingsView() {
+  const { currency } = useCurrency();
   const [data, setData] = useState<IpdSetting | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -92,11 +94,11 @@ export function IpdSettingsView() {
   );
 
   const fields: { label: string; value: string | null; set: (s: string | null) => void }[] = [
-    { label: "Admission Fee (BDT)", value: data?.admissionFee ?? null, set: (v) => patch({ admissionFee: v }) },
-    { label: "Discharge Fee (BDT)", value: data?.dischargeFee ?? null, set: (v) => patch({ dischargeFee: v }) },
-    { label: "Bed Charge (BDT / day)", value: data?.bedCharge ?? null, set: (v) => patch({ bedCharge: v }) },
-    { label: "Nursing Charge (BDT)", value: data?.nursingCharge ?? null, set: (v) => patch({ nursingCharge: v }) },
-    { label: "Service Charge (BDT)", value: data?.serviceCharge ?? null, set: (v) => patch({ serviceCharge: v }) },
+    { label: "Admission Fee (" + currency.currencySymbol + ")", value: data?.admissionFee ?? null, set: (v) => patch({ admissionFee: v }) },
+    { label: "Discharge Fee (" + currency.currencySymbol + ")", value: data?.dischargeFee ?? null, set: (v) => patch({ dischargeFee: v }) },
+    { label: "Bed Charge (" + currency.currencySymbol + " / day)", value: data?.bedCharge ?? null, set: (v) => patch({ bedCharge: v }) },
+    { label: "Nursing Charge (" + currency.currencySymbol + ")", value: data?.nursingCharge ?? null, set: (v) => patch({ nursingCharge: v }) },
+    { label: "Service Charge (" + currency.currencySymbol + ")", value: data?.serviceCharge ?? null, set: (v) => patch({ serviceCharge: v }) },
   ];
 
   return (

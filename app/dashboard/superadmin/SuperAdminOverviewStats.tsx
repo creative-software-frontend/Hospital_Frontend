@@ -8,19 +8,7 @@
 import { useEffect, useState } from "react";
 import { FiUsers, FiUser, FiShield, FiClock, FiDatabase, FiActivity, FiAlertCircle } from "react-icons/fi";
 import { superAdminApi, type SuperAdminStats, errorMessage } from "@/app/lib/api";
-
-function formatDate(value: string | null | undefined) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+import { useLocalization } from "@/app/hooks/useCurrency";
 
 function StatCard({ icon: Icon, label, value }: { icon: typeof FiUsers; label: string; value: string }) {
   return (
@@ -43,6 +31,7 @@ function StatCard({ icon: Icon, label, value }: { icon: typeof FiUsers; label: s
 }
 
 export const SuperAdminOverviewStats = () => {
+  const { formatDateTime } = useLocalization();
   const [stats, setStats] = useState<SuperAdminStats | null>(null);
   const [error, setError] = useState("");
 
@@ -144,7 +133,7 @@ export const SuperAdminOverviewStats = () => {
                   <div className="min-w-0">
                     <p className="text-[11px] font-bold truncate">{a.action}</p>
                     <span className="text-[10px] text-[var(--muted)]">
-                      {a.user?.name ?? "System"} · {formatDate(a.createdAt)}
+                      {a.user?.name ?? "System"} · {formatDateTime(a.createdAt)}
                     </span>
                   </div>
                 </div>

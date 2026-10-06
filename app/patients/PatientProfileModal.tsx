@@ -16,13 +16,13 @@ import {
   type PatientListRecord,
   type PatientContact,
   errorMessage,
-  formatDate,
   calcAge,
 } from "@/app/lib/api";
 import {
   genderLabel, maritalStatusLabel, occupationLabel,
 } from "@/app/patients/constants";
 import { useMasterDataLabels } from "@/app/lib/useMasterData";
+import { useLocalization } from "@/app/hooks/useCurrency";
 import type { PatientCapabilities } from "@/app/lib/roles";
 import type { ToastKind } from "@/app/patients/Toast";
 
@@ -59,6 +59,7 @@ export function PatientProfileModal({
   onRequestDelete: (patient: PatientListRecord) => void;
   notify: (kind: ToastKind, message: string) => void;
 }) {
+  const { formatDate } = useLocalization();
   const [detail, setDetail] = useState<PatientDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");

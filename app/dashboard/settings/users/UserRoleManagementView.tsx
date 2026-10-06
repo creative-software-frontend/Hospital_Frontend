@@ -15,12 +15,12 @@ import {
   type UserRecord,
   type UserStatus,
   errorMessage,
-  formatDate,
 } from "@/app/lib/api";
 import { UserFormModal } from "@/app/dashboard/settings/users/UserFormModal";
 import { RolePermissionsModal } from "@/app/dashboard/settings/users/RolePermissionsModal";
 import { ConfirmDialog } from "@/app/patients/ConfirmDialog";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
+import { useLocalization } from "@/app/hooks/useCurrency";
 
 const PAGE_SIZE = 10;
 
@@ -59,6 +59,7 @@ function statusConfirmMessage(user: UserRecord): string {
 }
 
 export function UserRoleManagementView() {
+  const { formatDate } = useLocalization();
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [roles, setRoles] = useState<RoleRecord[]>([]);

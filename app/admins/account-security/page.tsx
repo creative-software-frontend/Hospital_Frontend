@@ -31,6 +31,7 @@ import {
   type UserSessionRow,
 } from "@/app/lib/api";
 import { authStorage } from "@/app/lib/auth";
+import { useLocalization } from "@/app/hooks/useCurrency";
 
 const INPUT_CLS =
   "w-full px-4 py-3 rounded-lg bg-white text-black placeholder:text-black/40";
@@ -62,16 +63,11 @@ function Card({
   );
 }
 
-function fmt(value: string | null): string {
-  if (!value) return "—";
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString();
-}
-
 function AccountSecurityInner() {
   const router = useRouter();
   const params = useSearchParams();
   const forced = params.get("mustChangePassword") === "1";
+  const { formatDateTime } = useLocalization();
 
   const [policy, setPolicy] = useState<PasswordPolicy | null>(null);
   const [status, setStatus] = useState<TwoFactorStatus | null>(null);
@@ -502,8 +498,8 @@ function AccountSecurityInner() {
                   <p className="text-white/90 font-semibold">{s.ipAddress ?? "unknown IP"}</p>
                   <p className="break-all">{s.userAgent ?? "Unknown device"}</p>
                   <p className="mt-0.5">
-                    Started {fmt(s.createdAt)} · Last active {fmt(s.lastSeenAt)} · Expires{" "}
-                    {fmt(s.expiresAt)}
+                    Started {formatDateTime(s.createdAt)} · Last active {formatDateTime(s.lastSeenAt)} · Expires{" "}
+                    {formatDateTime(s.expiresAt)}
                   </p>
                 </li>
               ))}
@@ -539,7 +535,7 @@ function AccountSecurityInner() {
                     {a.success ? "Success" : "Failed"} · {a.reason}
                   </span>
                   <span className="text-white/50">
-                    {a.ipAddress ?? "—"} · {fmt(a.createdAt)}
+                    {a.ipAddress ?? "—"} · {formatDateTime(a.createdAt)}
                   </span>
                 </li>
               ))}
