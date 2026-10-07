@@ -557,4 +557,12 @@ export const settingsData: Record<string, SettingsPageData> = {
       },
     ],
   },
+
+  "audit-center": {
+    title: "Audit Center",
+    description:
+      "Append-only access log of every significant action. Filter by module, action and date range; export the matching rows as CSV.",
+    blocks: [],
+  },
 };
+

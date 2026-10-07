@@ -34,9 +34,11 @@ import { MockSettingsView } from "@/app/dashboard/settings/mock/MockSettingsView
 export const SettingsPageView = ({
   page,
   pageKey,
+  onNavigate,
 }: {
   page: SettingsPageData;
   pageKey?: string;
+  onNavigate?: (id: string) => void;
 }) => {
   if (pageKey === "user-role-management") {
     return <UserRoleManagementView />;
@@ -143,8 +145,9 @@ export const SettingsPageView = ({
   }
 
   if (pageKey === "audit-center") {
-    return <AuditCenterView />;
+    return <AuditCenterView onNavigate={onNavigate} />;
   }
 
   return <MockSettingsView page={page} />;
 };
+

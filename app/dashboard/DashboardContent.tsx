@@ -25,7 +25,7 @@ import type { IconType } from "react-icons";
 import { useMemo, useState } from "react";
 
 import { ADMIN_TABLE_BY_FEATURE_ID, type TableRow } from "@/app/data/adminTableData";
-import type { Feature, SubFeatureItem } from "@/app/data/features";
+import { keyFeatures, type Feature, type SubFeatureItem } from "@/app/data/features";
 import type { RolePermission, RoleStat } from "@/app/config/roleConfig";
 import { settingsData } from "@/app/data/settingsData";
 import { SettingsPageView } from "@/app/dashboard/settings/SettingsPageView";
@@ -158,10 +158,22 @@ export const DashboardContent = ({
     ? ADMIN_TABLE_BY_FEATURE_ID[selectedFeature.id]
     : null;
 
+  const handleNavigateSettings = (id: string) => {
+    const settingsFeat =
+      accessibleFeatures.find((f) => f.id === 21) ||
+      keyFeatures.find((f) => f.id === 21);
+    if (settingsFeat) {
+      setSelectedFeature(settingsFeat);
+    }
+    setSelectedSubFeatureId(id);
+    setActiveSection("feature-detail");
+  };
+
   const selectedSettingsPage =
     selectedSubFeatureId && settingsData[selectedSubFeatureId]
       ? settingsData[selectedSubFeatureId]
       : null;
+
 
 
   const filteredTable = useMemo(() => {
@@ -519,7 +531,11 @@ ${tbody}
             </button>
 
             {selectedSettingsPage ? (
-              <SettingsPageView page={selectedSettingsPage} pageKey={selectedSubFeatureId ?? undefined} />
+              <SettingsPageView
+                page={selectedSettingsPage}
+                pageKey={selectedSubFeatureId ?? undefined}
+                onNavigate={handleNavigateSettings}
+              />
             ) : selectedFeature.id === 1 ? (
               <PatientModule role={permissions?.role ?? null} />
             ) : selectedFeature.id === 2 ? (
@@ -762,7 +778,11 @@ ${tbody}
                                   {sub.children.map((child: SubFeatureItem, cIdx: number) => {
                                     const ChildIcon = child.icon;
                                     return (
-                                      <div key={cIdx} className="card flex items-center gap-3 p-2.5 rounded-xl group">
+                                      <div
+                                        key={cIdx}
+                                        onClick={() => child.id && (selectedFeature.id === 21 ? handleNavigateSettings(child.id) : setSelectedSubFeatureId(child.id))}
+                                        className="card flex items-center gap-3 p-2.5 rounded-xl group cursor-pointer hover:border-[var(--primary)] transition-all"
+                                      >
                                         <div className="w-6 h-6 rounded-md bg-[var(--primary-soft)]/30 flex items-center justify-center text-[var(--primary-dark)] group-hover:bg-[var(--primary)] group-hover:text-white transition-colors shrink-0">
                                           <ChildIcon className="w-3 h-3" />
                                         </div>
@@ -775,7 +795,11 @@ ${tbody}
                             );
                           }
                           return (
-                            <div key={sIdx} className="card flex items-center gap-3 p-3 rounded-xl group">
+                            <div
+                              key={sIdx}
+                              onClick={() => sub.id && (selectedFeature.id === 21 ? handleNavigateSettings(sub.id) : setSelectedSubFeatureId(sub.id))}
+                              className="card flex items-center gap-3 p-3 rounded-xl group cursor-pointer hover:border-[var(--primary)] transition-all"
+                            >
                               <div className="w-7 h-7 rounded-lg bg-[var(--primary-soft)]/35 flex items-center justify-center text-[var(--primary-dark)] group-hover:bg-[var(--primary)] group-hover:text-white transition-colors shrink-0">
                                 <SubIcon className="w-3.5 h-3.5" />
                               </div>

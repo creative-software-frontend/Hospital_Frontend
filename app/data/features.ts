@@ -354,3 +354,40 @@ export const keyFeatures: Feature[] = [
         ]
     },
 ];
+
+export interface SettingsNavItem {
+    id: string;
+    label: string;
+    icon: IconType;
+    category?: string;
+}
+
+export function getSettingsNavItems(): SettingsNavItem[] {
+    const settingsFeature = keyFeatures.find((f) => f.id === 21);
+    if (!settingsFeature) return [];
+
+    const items: SettingsNavItem[] = [];
+
+    for (const sub of settingsFeature.subFeatures) {
+        if (sub.children && sub.children.length > 0) {
+            for (const child of sub.children) {
+                if (child.id) {
+                    items.push({
+                        id: child.id,
+                        label: child.label,
+                        icon: child.icon,
+                        category: sub.label,
+                    });
+                }
+            }
+        } else if (sub.id) {
+            items.push({
+                id: sub.id,
+                label: sub.label,
+                icon: sub.icon,
+            });
+        }
+    }
+
+    return items;
+}

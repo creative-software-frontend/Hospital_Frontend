@@ -13,6 +13,8 @@ import {
 } from "@/app/lib/api";
 import { useLocalization } from "@/app/hooks/useCurrency";
 
+import { getSettingsNavItems } from "@/app/data/features";
+
 const INPUT_CLS =
   "w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15 text-[var(--text)]";
 
@@ -25,7 +27,11 @@ function actionBadge(action: string) {
   return "bg-emerald-50 text-emerald-600 border-emerald-200";
 }
 
-export function AuditCenterView() {
+export function AuditCenterView({
+  onNavigate,
+}: {
+  onNavigate?: (id: string) => void;
+}) {
   const { formatDateTime } = useLocalization();
   const [logs, setLogs] = useState<AuditLogRecord[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, totalPages: 0 });
@@ -37,6 +43,8 @@ export function AuditCenterView() {
   const [fromFilter, setFromFilter] = useState("");
   const [toFilter, setToFilter] = useState("");
   const [applied, setApplied] = useState(false);
+
+  const navItems = getSettingsNavItems();
 
   const load = useCallback(async (page: number) => {
     setLoading(true);
@@ -89,6 +97,68 @@ export function AuditCenterView() {
           export the matching rows as CSV.
         </p>
       </div>
+
+      {/* Settings & Configuration Quick Navigation */}
+      <div className="card p-5 rounded-2xl border border-[var(--border)] shadow-sm space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="text-xs font-black uppercase tracking-wider text-[var(--primary-dark)]">
+              Settings & Configuration Modules
+            </h4>
+            <p className="text-[11px] text-[var(--muted)] mt-0.5">
+              Click any setting item to open its page directly
+            </p>
+          </div>
+          <span className="text-[10px] font-extrabold text-[var(--primary)] bg-[var(--primary-soft)]/30 px-2.5 py-1 rounded-full border border-[var(--primary)]/20">
+            {navItems.length} Settings Pages
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 pt-1">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isCurrent = item.id === "audit-center";
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onNavigate?.(item.id)}
+                className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-all duration-150 cursor-pointer ${
+                  isCurrent
+                    ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-sm font-bold"
+                    : "bg-[var(--bg)] text-[var(--text)] border-[var(--border)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]/20"
+                }`}
+                title={item.category ? `${item.category} → ${item.label}` : item.label}
+              >
+                <div
+                  className={`p-1.5 rounded-lg shrink-0 ${
+                    isCurrent
+                      ? "bg-white/20 text-white"
+                      : "bg-[var(--primary-soft)]/40 text-[var(--primary-dark)]"
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                </div>
+                <div className="overflow-hidden">
+                  <span className="text-[11px] font-bold truncate block leading-tight">
+                    {item.label}
+                  </span>
+                  {item.category && (
+                    <span
+                      className={`text-[9px] truncate block ${
+                        isCurrent ? "text-white/80" : "text-[var(--muted)]"
+                      }`}
+                    >
+                      {item.category}
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
 
       <div className="card p-5 rounded-2xl border border-[var(--border)] shadow-sm space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
