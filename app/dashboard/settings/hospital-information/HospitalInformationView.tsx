@@ -34,14 +34,14 @@ interface HospitalField {
 const HOSPITAL_FIELDS: HospitalField[] = [
   { key: "hospital_name", label: "Hospital Name", placeholder: "e.g. MediCare Hospital Ltd." },
   { key: "hospital_logo", label: "Logo (URL or path)", placeholder: "/images/hospitalogo.png" },
-  { key: "hospital_address", label: "Address", placeholder: "Street, area, post code", fullWidth: true },
+  { key: "hospital_registration_no", label: "Registration No." },
   { key: "hospital_phone", label: "Phone" },
   { key: "hospital_email", label: "Email", placeholder: "info@hospital.com" },
   { key: "hospital_website", label: "Website", placeholder: "https://www.hospital.com" },
   { key: DIVISION_KEY, label: "Division", addressLevel: "division" },
   { key: DISTRICT_KEY, label: "District", addressLevel: "district" },
   { key: THANA_KEY, label: "Thana", addressLevel: "thana" },
-  { key: "hospital_registration_no", label: "Registration No." },
+  { key: "hospital_address", label: "Address", placeholder: "Street, area, post code", fullWidth: true },
 ];
 
 interface FormState {
