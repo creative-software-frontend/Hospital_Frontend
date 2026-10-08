@@ -4,11 +4,12 @@
  *   npm run setup
  *
  * Runs the steps in the only order that works, and is safe to re-run:
- *   1. [1/5] Checking environment...
- *   2. [2/5] Preparing Prisma...
- *   3. [3/5] Applying database migrations...
- *   4. [4/5] Seeding required data...
- *   5. [5/5] Verifying database...
+ *   1. [1/6] Checking environment...
+ *   2. [2/6] Preparing Prisma...
+ *   3. [3/6] Applying database migrations...
+ *   4. [4/6] Seeding required data...
+ *   5. [5/6] Seeding address hierarchy...
+ *   6. [6/6] Verifying database...
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -90,7 +91,7 @@ if (placeholders.length > 0) {
   );
 }
 
-const total = 5;
+const total = 6;
 step(1, total, "Checking environment...");
 console.log("  .env configuration is valid.");
 
@@ -123,7 +124,12 @@ if (run("tsx", ["prisma/seed.ts"]) !== 0) {
   fail("Seeding failed. See the error above; the seed is safe to re-run once fixed.");
 }
 
-step(5, total, "Verifying database...");
+step(5, total, "Seeding address hierarchy...");
+if (run("tsx", ["prisma/seed-address.ts"]) !== 0) {
+  fail("Address seeding failed. See the error above; seed-address.ts is safe to re-run once fixed.");
+}
+
+step(6, total, "Verifying database...");
 if (run("tsx", ["prisma/verify-database.ts"]) !== 0) {
   fail("Database verification failed.");
 }

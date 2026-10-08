@@ -46,6 +46,7 @@ That is safe to re-run and performs, in order:
 3. creates the database if the server does not have it yet
 4. applies migrations with `prisma migrate deploy`
 5. seeds reference data
+6. seeds the address hierarchy (divisions, districts, upazilas, unions)
 
 Finally start both servers in two terminals:
 
@@ -97,9 +98,12 @@ matched on their natural keys.
 ## Address data
 
 The Division / District / Upazila cascade on the patient form reads from Master
-Data, and that data is **not** seeded — it is loaded once from a SQL file you
-upload yourself. `npm run setup` deliberately leaves it alone, so re-running
-setup can never overwrite it.
+Data. **`npm run setup` seeds this automatically** (divisions, districts, upazilas, unions)
+for all branches. Re-running `npm run setup` or `npm run seed:address --prefix backend`
+will refresh the dataset if the source dumps in `backend/prisma/address-source/` change.
+
+`npm run setup` deliberately does not re-import address data on top of existing rows
+without confirmation — re-running is safe because the sync is idempotent.
 
 The dataset lives in `backend/prisma/address-source/` as the four published
 dumps (`divisions`, `districts`, `upazilas`, `unions`):
