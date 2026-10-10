@@ -6,7 +6,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { FiPlus, FiRefreshCcw, FiSearch, FiEdit2 } from "react-icons/fi";
+import { FiPlus, FiRefreshCcw, FiSearch, FiEdit2, FiEye, FiUserCheck, FiUserX } from "react-icons/fi";
 import {
   departmentApi,
   doctorApi,
@@ -64,6 +64,7 @@ export function DoctorModule() {
   const [reloadKey, setReloadKey] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<DoctorRecord | null>(null);
+  const [viewing, setViewing] = useState<DoctorRecord | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const notify = useCallback((kind: ToastKind, message: string) => {
@@ -120,6 +121,17 @@ export function DoctorModule() {
     }
     setFormOpen(false);
     setReloadKey((k) => k + 1);
+  };
+
+  const toggleStatus = async (d: DoctorRecord) => {
+    const next = d.status === "active" ? "inactive" : "active";
+    try {
+      await doctorApi.update(d.id, { status: next });
+      notify("success", `Doctor "${d.name}" ${next === "active" ? "activated" : "deactivated"}.`);
+      setReloadKey((k) => k + 1);
+    } catch (err) {
+      notify("error", errorMessage(err));
+    }
   };
 
   return (
@@ -201,13 +213,33 @@ export function DoctorModule() {
                       <span className={`inline-block text-[10px] font-bold capitalize px-2 py-0.5 rounded-md border ${STATUS_STYLES[d.status]}`}>{d.status}</span>
                     </td>
                     <td className="px-4 py-3 border-b border-[var(--border)]">
-                      <button
-                        onClick={() => { setEditing(d); setFormOpen(true); }}
-                        className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--primary-dark)] hover:border-[var(--primary)] transition-colors"
-                        title="Edit doctor"
-                      >
-                        <FiEdit2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setViewing(d)}
+                          className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--primary-dark)] hover:border-[var(--primary)] transition-colors"
+                          title="View doctor profile"
+                        >
+                          <FiEye className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => { setEditing(d); setFormOpen(true); }}
+                          className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--primary-dark)] hover:border-[var(--primary)] transition-colors"
+                          title="Edit doctor"
+                        >
+                          <FiEdit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => toggleStatus(d)}
+                          className={`p-2 rounded-lg border bg-[var(--bg)] transition-colors ${
+                            d.status === "active"
+                              ? "text-amber-600 border-amber-200 hover:text-amber-700 hover:border-amber-400"
+                              : "text-emerald-600 border-emerald-200 hover:text-emerald-700 hover:border-emerald-400"
+                          }`}
+                          title={d.status === "active" ? "Deactivate doctor" : "Activate doctor"}
+                        >
+                          {d.status === "active" ? <FiUserX className="w-3.5 h-3.5" /> : <FiUserCheck className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -241,6 +273,13 @@ export function DoctorModule() {
         />
       )}
 
+      {viewing && (
+        <DoctorProfileModal
+          doctor={viewing}
+          onClose={() => setViewing(null)}
+        />
+      )}
+
       <ToastViewport toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
@@ -267,6 +306,8 @@ function DoctorFormModal({
   const [consultationFee, setConsultationFee] = useState(doctor?.consultationFee ?? "");
   const [followupFee, setFollowupFee] = useState(doctor?.followupFee ?? "");
   const [emergencyFee, setEmergencyFee] = useState(doctor?.emergencyFee ?? "");
+  const [commissionType, setCommissionType] = useState<"" | "PERCENT" | "FIXED">(doctor?.commissionType as "" | "PERCENT" | "FIXED" ?? "");
+  const [commissionValue, setCommissionValue] = useState(doctor?.commissionValue ?? "");
   const [status, setStatus] = useState<ActiveStatus>(doctor?.status ?? "active");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -308,8 +349,12 @@ function DoctorFormModal({
         ["consultationFee", "Consultation fee"],
         ["followupFee", "Follow-up fee"],
         ["emergencyFee", "Emergency fee"],
+        ["commissionValue", "Commission value"],
       ] as const) {
-        addError(next, key, checkMoney({ consultationFee, followupFee, emergencyFee }[key], label));
+        addError(next, key, checkMoney({ consultationFee, followupFee, emergencyFee, commissionValue }[key], label));
+      }
+      if (commissionType && !commissionValue.trim()) {
+        addError(next, "commissionValue", "Commission value is required when commission type is set.");
       }
       setFieldErrors(next);
       return Object.keys(next).length === 0;
@@ -333,6 +378,8 @@ function DoctorFormModal({
         consultationFee: consultationFee.trim() || null,
         followupFee: followupFee.trim() || null,
         emergencyFee: emergencyFee.trim() || null,
+        commissionType: commissionType || null,
+        commissionValue: commissionValue.trim() || null,
         status,
       });
     } catch (err) {
@@ -420,6 +467,26 @@ function DoctorFormModal({
             {fieldError("emergencyFee")}
           </div>
           <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Commission Type</label>
+            <select value={commissionType} onChange={(e) => setCommissionType(e.target.value as "" | "PERCENT" | "FIXED")} className={INPUT_CLS}>
+              <option value="">— None —</option>
+              <option value="PERCENT">Percentage (%)</option>
+              <option value="FIXED">Fixed amount</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Commission Value</label>
+            <input
+              value={commissionValue}
+              inputMode="decimal"
+              disabled={!commissionType}
+              placeholder={commissionType === "PERCENT" ? "e.g. 5" : commissionType === "FIXED" ? "e.g. 50" : ""}
+              onChange={(e) => setCommissionValue(setField("commissionValue", sanitizeMoney(e.target.value)))}
+              className={INPUT_CLS}
+            />
+            {fieldError("commissionValue")}
+          </div>
+          <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Status</label>
             <select value={status} onChange={(e) => setStatus(e.target.value as ActiveStatus)} className={INPUT_CLS}>
               <option value="active">Active</option>
@@ -443,6 +510,87 @@ function DoctorFormModal({
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function DoctorProfileModal({
+  doctor,
+  onClose,
+}: {
+  doctor: DoctorRecord;
+  onClose: () => void;
+}) {
+  const { currency } = useCurrency();
+  const [data, setData] = useState<DoctorRecord | null>(doctor);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    doctorApi.get(doctor.id)
+      .then((r) => { if (active) setData(r.doctor); })
+      .catch((err) => { if (active) setError(errorMessage(err)); });
+    return () => { active = false; };
+  }, [doctor.id]);
+
+  const fee = (v: string | null | undefined) =>
+    v ? formatCurrency(Number(v), currency) : "—";
+
+  const fields: [string, string | null | undefined][] = [
+    ["Doctor Code", data?.doctorCode],
+    ["Name", data?.name],
+    ["Department", data?.department?.name ?? "—"],
+    ["Specialization", data?.specialization],
+    ["Qualification", data?.qualification],
+    ["Registration No.", data?.registrationNo],
+    ["Phone", data?.phone],
+    ["Email", data?.email],
+    ["Consultation Fee", fee(data?.consultationFee)],
+    ["Follow-up Fee", fee(data?.followupFee)],
+    ["Emergency Fee", fee(data?.emergencyFee)],
+    [
+      "Commission",
+      data?.commissionType
+        ? `${data.commissionType === "PERCENT" ? "Percentage" : "Fixed"} · ${fee(data?.commissionValue)}`
+        : "—",
+    ],
+    ["Status", data?.status],
+    ["Created", data ? new Date(data.createdAt).toLocaleString() : "—"],
+    ["Last Updated", data ? new Date(data.updatedAt).toLocaleString() : "—"],
+  ];
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" />
+      <div
+        className="relative bg-[var(--card)] border border-[var(--border)] rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 animate-[scaleIn_0.25s_ease-out]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button type="button" onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-xl text-[var(--muted)] hover:bg-[var(--bg)] hover:text-[var(--text)] transition-colors" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+
+        <div className="flex items-center justify-between gap-3 pr-8">
+          <div>
+            <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">Doctor Profile</span>
+            <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">{data?.name ?? "Loading…"}</h3>
+          </div>
+          <span className={`inline-block text-[10px] font-bold capitalize px-2 py-0.5 rounded-md border ${STATUS_STYLES[data?.status ?? "active"]}`}>
+            {data?.status ?? "—"}
+          </span>
+        </div>
+
+        {error && <p className="mt-4 text-sm text-red-200 bg-red-500/20 border border-red-400/40 rounded-lg px-3 py-2">{error}</p>}
+
+        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+          {fields.map(([label, value]) => (
+            <div key={label} className="flex items-center justify-between gap-4 border-b border-[var(--border)]/60 pb-2">
+              <span className="text-[11px] font-bold text-[var(--muted)]">{label}</span>
+              <span className="text-xs font-semibold text-[var(--text)] text-right break-all">{value ?? "—"}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
