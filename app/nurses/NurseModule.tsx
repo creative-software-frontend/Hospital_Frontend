@@ -35,6 +35,8 @@ import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/To
 
 const PAGE_SIZE = 10;
 
+const sanitizePhone = (v: string) => v.replace(/[^0-9+\-\s()]/g, "");
+
 const STATUS_STYLES: Record<ActiveStatus, string> = {
   active: "bg-emerald-50 text-emerald-600 border-emerald-200",
   inactive: "bg-slate-100 text-slate-500 border-slate-200",
@@ -49,7 +51,7 @@ export function NurseModule() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [reloadKey, setReloadKey] = useState(0);
-  const [formOpen, setFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState<"list" | "form">("list");
   const [editing, setEditing] = useState<NurseRecord | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
@@ -105,9 +107,44 @@ export function NurseModule() {
       setSearchTerm("");
       setSearchInput("");
     }
-    setFormOpen(false);
+    setFormMode("list");
+    setEditing(null);
     setReloadKey((k) => k + 1);
   };
+
+  if (formMode === "form") {
+    return (
+      <div className="space-y-6">
+        <div className="card p-5 rounded-2xl border border-[var(--border)] shadow-sm">
+          <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">
+            Nursing Management
+          </span>
+          <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">{editing ? "Edit Nurse" : "Add Nurse"}</h3>
+          <p className="text-xs text-[var(--muted)] mt-1.5 leading-relaxed max-w-3xl">
+            {editing
+              ? "Update the nurse profile, department and shift assignment."
+              : "Register a new nurse; a login account is created with the password."}
+          </p>
+        </div>
+
+        <button
+          onClick={() => { setFormMode("list"); setEditing(null); }}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] hover:text-[var(--primary-dark)] transition-colors cursor-pointer"
+        >
+          <span>{"\u2190"} Back to Nurses</span>
+        </button>
+
+        <NurseFormPage
+          key={editing?.id ?? "new"}
+          nurse={editing}
+          onSubmit={submit}
+          onCancel={() => { setFormMode("list"); setEditing(null); }}
+        />
+
+        <ToastViewport toasts={toasts} onDismiss={dismissToast} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -147,7 +184,7 @@ export function NurseModule() {
               <FiRefreshCcw className="w-4 h-4" />
             </button>
             <button
-              onClick={() => { setEditing(null); setFormOpen(true); }}
+              onClick={() => { setEditing(null); setFormMode("form"); }}
               className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all duration-200 active:scale-[0.98]"
               style={{ background: "var(--primary)" }}
             >
@@ -190,7 +227,7 @@ export function NurseModule() {
                     </td>
                     <td className="px-4 py-3 border-b border-[var(--border)]">
                       <button
-                        onClick={() => { setEditing(n); setFormOpen(true); }}
+                        onClick={() => { setEditing(n); setFormMode("form"); }}
                         className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--primary-dark)] hover:border-[var(--primary)] transition-colors"
                         title="Edit nurse"
                       >
@@ -220,28 +257,19 @@ export function NurseModule() {
         </div>
       </div>
 
-      {formOpen && (
-        <NurseFormModal
-          key={editing?.id ?? "new"}
-          nurse={editing}
-          onSubmit={submit}
-          onClose={() => { setFormOpen(false); setEditing(null); }}
-        />
-      )}
-
       <ToastViewport toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }
 
-function NurseFormModal({
+function NurseFormPage({
   nurse,
   onSubmit,
-  onClose,
+  onCancel,
 }: {
   nurse: NurseRecord | null;
   onSubmit: (input: CreateNurseInput) => Promise<void>;
-  onClose: () => void;
+  onCancel: () => void;
 }) {
   const editing = !!nurse;
   const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
@@ -253,6 +281,8 @@ function NurseFormModal({
   const [registrationNo, setRegistrationNo] = useState(nurse?.registrationNo ?? "");
   const [phone, setPhone] = useState(nurse?.phone ?? "");
   const [email, setEmail] = useState(nurse?.email ?? "");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [status, setStatus] = useState<ActiveStatus>(nurse?.status ?? "active");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -294,6 +324,21 @@ function NurseFormModal({
       addError(next, "shiftTypeId", checkOptionalId(shiftTypeId, "shift"));
       addError(next, "qualification", checkText(qualification, SHORT_TEXT_MAX, "Qualification"));
       addError(next, "registrationNo", checkText(registrationNo, REGISTRATION_NO_MAX, "Registration number"));
+      if (!editing) {
+        if (!password.trim()) {
+          addError(next, "password", "Password is required to create a login account");
+        } else {
+          if (password.length < 8) {
+            addError(next, "password", "Password must be at least 8 characters");
+          }
+          if (confirmPassword !== password) {
+            addError(next, "confirmPassword", "Passwords do not match");
+          }
+        }
+        if (!email.trim()) {
+          addError(next, "email", "Email is required to create a login account");
+        }
+      }
       setFieldErrors(next);
       return Object.keys(next).length === 0;
     };
@@ -313,6 +358,9 @@ function NurseFormModal({
         registrationNo: registrationNo.trim() || null,
         phone: phone.trim() || null,
         email: email.trim() || null,
+        ...(!editing
+          ? { password: password.trim(), confirmPassword: confirmPassword.trim() || password.trim() }
+          : {}),
         status,
       });
     } catch (err) {
@@ -339,13 +387,8 @@ function NurseFormModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4" onClick={() => !saving && onClose()}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" />
-      <form onSubmit={handleSubmit} onClick={(e) => e.stopPropagation()}
-        className="relative bg-[var(--card)] border border-[var(--border)] rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 animate-[scaleIn_0.25s_ease-out]">
-        <button type="button" onClick={onClose} disabled={saving} className="absolute top-4 right-4 p-1.5 rounded-xl text-[var(--muted)] hover:bg-[var(--bg)] hover:text-[var(--text)] transition-colors disabled:opacity-50" aria-label="Close">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-        </button>
+    <form onSubmit={handleSubmit}
+      className="bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-sm w-full p-6 sm:p-8">
         <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">Nursing</span>
         <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">{editing ? "Edit Nurse" : "Add Nurse"}</h3>
 
@@ -383,14 +426,31 @@ function NurseFormModal({
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Phone</label>
-            <input value={phone} onChange={(e) => setPhone(setField("phone", e.target.value))} className={INPUT_CLS} />
+              <input value={phone} inputMode="tel" onChange={(e) => setPhone(setField("phone", sanitizePhone(e.target.value)))} className={INPUT_CLS} />
             {fieldError("phone")}
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Email</label>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">{editing ? "Email" : "Email *"}</label>
             <input type="email" value={email} onChange={(e) => setEmail(setField("email", e.target.value))} className={INPUT_CLS} />
             {fieldError("email")}
           </div>
+          {!editing && (
+            <>
+              <div>
+                <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Password * (creates login)</label>
+                <input type="password" autoComplete="new-password" value={password}
+                  onChange={(e) => setPassword(setField("password", e.target.value))} className={INPUT_CLS} />
+                <p className="text-[10px] text-[var(--muted)] mt-1">A login account is created for every nurse.</p>
+                {fieldError("password")}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Confirm Password *</label>
+                <input type="password" autoComplete="new-password" value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(setField("confirmPassword", e.target.value))} className={INPUT_CLS} />
+                {fieldError("confirmPassword")}
+              </div>
+            </>
+          )}
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Status</label>
             <select value={status} onChange={(e) => setStatus(e.target.value as ActiveStatus)} className={INPUT_CLS}>
@@ -409,12 +469,11 @@ function NurseFormModal({
             style={{ background: "var(--primary)" }}>
             {saving ? "Saving..." : editing ? "Save Changes" : "Create Nurse"}
           </button>
-          <button type="button" onClick={onClose} disabled={saving}
+          <button type="button" onClick={onCancel} disabled={saving}
             className="px-4 py-3 rounded-xl text-sm font-bold text-[var(--muted)] hover:text-[var(--text)] border border-[var(--border)] disabled:opacity-60 disabled:cursor-not-allowed transition-colors">
             Cancel
           </button>
         </div>
       </form>
-    </div>
   );
 }

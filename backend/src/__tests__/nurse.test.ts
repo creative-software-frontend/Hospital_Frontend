@@ -5,6 +5,7 @@ vi.mock("../lib/prisma", () => {
     findFirst: vi.fn(),
     findUnique: vi.fn(),
     create: vi.fn(),
+    createMany: vi.fn(),
     findMany: vi.fn(),
     count: vi.fn(),
     update: vi.fn(),
@@ -17,6 +18,9 @@ vi.mock("../lib/prisma", () => {
     branch: makeModel(),
     department: makeModel(),
     shiftType: makeModel(),
+    role: makeModel(),
+    user: makeModel(),
+    userRole: makeModel(),
     codeSequence: makeModel(),
     $transaction: vi.fn(async (arg: unknown) => {
       if (typeof arg === "function") {
@@ -40,6 +44,10 @@ vi.mock("../utils/audit", () => ({
   writeAuditLog: vi.fn(async () => {}),
 }));
 
+vi.mock("../modules/auth/auth.service", () => ({
+  assertPasswordAcceptable: vi.fn(() => Promise.resolve()),
+}));
+
 const mockPrisma = (await import("../lib/prisma")).prisma as unknown as {
   nurse: {
     findFirst: ReturnType<typeof vi.fn>;
@@ -51,6 +59,9 @@ const mockPrisma = (await import("../lib/prisma")).prisma as unknown as {
   branch: { findUnique: ReturnType<typeof vi.fn> };
   department: { findUnique: ReturnType<typeof vi.fn> };
   shiftType: { findUnique: ReturnType<typeof vi.fn>; findMany: ReturnType<typeof vi.fn> };
+  role: { findUnique: ReturnType<typeof vi.fn> };
+  user: { findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
+  userRole: { createMany: ReturnType<typeof vi.fn> };
   codeSequence: { upsert: ReturnType<typeof vi.fn> };
   $transaction: ReturnType<typeof vi.fn>;
 };
@@ -112,6 +123,8 @@ const VALID_INPUT = {
   registrationNo: "RN-7788",
   phone: "+8801811000000",
   email: "sadia.rahman@clinic.test",
+  password: "Str0ng!pass",
+  confirmPassword: "Str0ng!pass",
 };
 
 // `nurse.findFirst` is used for two different things: the access probe, which
@@ -138,6 +151,12 @@ beforeEach(() => {
   mockPrisma.department.findUnique.mockResolvedValue({ id: 7 });
   mockPrisma.shiftType.findUnique.mockResolvedValue({ id: 2 });
   mockPrisma.shiftType.findMany.mockResolvedValue([]);
+  // Account creation is mandatory now, so every createNurse call goes through
+  // the role lookup, email conflict check, username derivation and user write.
+  mockPrisma.role.findUnique.mockResolvedValue({ id: 20, seederKey: "NURSE" });
+  mockPrisma.user.findUnique.mockResolvedValue(null);
+  mockPrisma.user.create.mockResolvedValue({ id: 88 });
+  mockPrisma.userRole.createMany.mockResolvedValue({ count: 1 });
   mockPrisma.codeSequence.upsert.mockResolvedValue({ nextNumber: 1 });
   mockPrisma.nurse.create.mockResolvedValue(SAMPLE_NURSE);
   mockPrisma.nurse.count.mockResolvedValue(0);
@@ -177,17 +196,27 @@ describe("createNurse", () => {
   });
 
   it("applies defaults for the optional fields", async () => {
-    await nurseService.createNurse(nurseUser, { name: "Nurse Minimal" });
+    await nurseService.createNurse(nurseUser, {
+      name: "Nurse Minimal",
+      email: "nurse.minimal@clinic.test",
+      password: "Str0ng!pass",
+      confirmPassword: "Str0ng!pass",
+    });
 
     const call = mockPrisma.nurse.create.mock.calls[0][0];
     expect(call.data.status).toBe("active");
     expect(call.data.departmentId).toBeNull();
     expect(call.data.shiftTypeId).toBeNull();
-    expect(call.data.email).toBeUndefined();
   });
 
   it("stores a supplied status instead of the default", async () => {
-    await nurseService.createNurse(nurseUser, { name: "Nurse On Leave", status: "inactive" });
+    await nurseService.createNurse(nurseUser, {
+      name: "Nurse On Leave",
+      email: "leave@clinic.test",
+      password: "Str0ng!pass",
+      confirmPassword: "Str0ng!pass",
+      status: "inactive",
+    });
 
     expect(mockPrisma.nurse.create.mock.calls[0][0].data.status).toBe("inactive");
   });
@@ -203,7 +232,13 @@ describe("createNurse", () => {
     mockPrisma.department.findUnique.mockResolvedValue(null);
 
     await expect(
-      nurseService.createNurse(nurseUser, { name: "Nurse", departmentId: 4242 }),
+      nurseService.createNurse(nurseUser, {
+        name: "Nurse",
+        departmentId: 4242,
+        email: "dept@clinic.test",
+        password: "Str0ng!pass",
+        confirmPassword: "Str0ng!pass",
+      }),
     ).rejects.toThrow(/Department not found/i);
     expect(mockPrisma.nurse.create).not.toHaveBeenCalled();
   });
@@ -212,16 +247,39 @@ describe("createNurse", () => {
     mockPrisma.shiftType.findUnique.mockResolvedValue(null);
 
     await expect(
-      nurseService.createNurse(nurseUser, { name: "Nurse", shiftTypeId: 999 }),
+      nurseService.createNurse(nurseUser, {
+        name: "Nurse",
+        shiftTypeId: 999,
+        email: "shift@clinic.test",
+        password: "Str0ng!pass",
+        confirmPassword: "Str0ng!pass",
+      }),
     ).rejects.toThrow(/Shift type not found/i);
     expect(mockPrisma.nurse.create).not.toHaveBeenCalled();
   });
 
   it("skips the reference lookups when both are omitted", async () => {
-    await nurseService.createNurse(nurseUser, { name: "Nurse Bare" });
+    await nurseService.createNurse(nurseUser, {
+      name: "Nurse Bare",
+      email: "bare@clinic.test",
+      password: "Str0ng!pass",
+      confirmPassword: "Str0ng!pass",
+    });
 
     expect(mockPrisma.department.findUnique).not.toHaveBeenCalled();
     expect(mockPrisma.shiftType.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("rejects creation without a password", async () => {
+    await expect(
+      nurseService.createNurse(nurseUser, {
+        name: "Nurse No Login",
+        email: "nologin@clinic.test",
+        departmentId: null,
+        shiftTypeId: null,
+      }),
+    ).rejects.toThrow(/Password is required/i);
+    expect(mockPrisma.nurse.create).not.toHaveBeenCalled();
   });
 
   it("does not create the nurse when code generation fails inside the transaction", async () => {
@@ -411,41 +469,44 @@ describe("listShiftTypes", () => {
 });
 
 describe("createNurseSchema", () => {
+  const SCHEMA_BASE = {
+    name: "Nurse Schema",
+    email: "schema.nurse@clinic.test",
+    password: "Str0ng!pass",
+    confirmPassword: "Str0ng!pass",
+  };
+
   it("requires a name", () => {
     expect(createNurseSchema.safeParse({}).success).toBe(false);
-    expect(createNurseSchema.safeParse({ name: "   " }).success).toBe(false);
+    expect(createNurseSchema.safeParse({ ...SCHEMA_BASE, name: "   " }).success).toBe(false);
   });
 
-  it("accepts a name on its own, since everything else is optional", () => {
-    const parsed = createNurseSchema.parse({ name: "Nurse Only Name" });
-    expect(parsed.name).toBe("Nurse Only Name");
-    expect(parsed.email).toBeUndefined();
+  it("requires an email and a password on create, since a login account is mandatory", () => {
+    expect(createNurseSchema.safeParse({ name: "Nurse Only Name" }).success).toBe(false);
+    expect(createNurseSchema.safeParse({ ...SCHEMA_BASE, email: undefined }).success).toBe(false);
+    expect(createNurseSchema.safeParse({ ...SCHEMA_BASE, password: undefined }).success).toBe(false);
   });
 
   it("rejects a name longer than 255 characters", () => {
-    expect(createNurseSchema.safeParse({ name: "x".repeat(256) }).success).toBe(false);
-    expect(createNurseSchema.safeParse({ name: "x".repeat(255) }).success).toBe(true);
+    expect(createNurseSchema.safeParse({ ...SCHEMA_BASE, name: "x".repeat(256) }).success).toBe(false);
+    expect(createNurseSchema.safeParse({ ...SCHEMA_BASE, name: "x".repeat(255) }).success).toBe(true);
   });
 
   it("lowercases the email and rejects a malformed one", () => {
-    expect(createNurseSchema.parse({ name: "A", email: "Sadia@Clinic.TEST" }).email).toBe(
+    expect(createNurseSchema.parse({ ...SCHEMA_BASE, email: "Sadia@Clinic.TEST" }).email).toBe(
       "sadia@clinic.test",
     );
-    expect(createNurseSchema.safeParse({ name: "A", email: "not-an-email" }).success).toBe(false);
+    expect(createNurseSchema.safeParse({ ...SCHEMA_BASE, email: "not-an-email" }).success).toBe(false);
   });
 
   it("rejects phone numbers with letters", () => {
-    expect(createNurseSchema.safeParse({ name: "A", phone: "01811abc000" }).success).toBe(false);
-    expect(createNurseSchema.safeParse({ name: "A", phone: "+880 1811-000000" }).success).toBe(true);
+    expect(createNurseSchema.safeParse({ ...SCHEMA_BASE, phone: "01811abc000" }).success).toBe(false);
+    expect(createNurseSchema.safeParse({ ...SCHEMA_BASE, phone: "+880 1811-000000" }).success).toBe(true);
   });
 
   it("rejects a registration number longer than 64 characters", () => {
-    expect(createNurseSchema.safeParse({ name: "A", registrationNo: "x".repeat(65) }).success).toBe(false);
-    expect(createNurseSchema.safeParse({ name: "A", registrationNo: "x".repeat(64) }).success).toBe(true);
-  });
-
-  it("normalizes a blank string to 'no value' for email", () => {
-    expect(createNurseSchema.parse({ name: "A", email: "" }).email).toBeUndefined();
+    expect(createNurseSchema.safeParse({ ...SCHEMA_BASE, registrationNo: "x".repeat(65) }).success).toBe(false);
+    expect(createNurseSchema.safeParse({ ...SCHEMA_BASE, registrationNo: "x".repeat(64) }).success).toBe(true);
   });
 
   it("keeps a blank string for phone and free-text fields, which currently accept it", () => {
@@ -453,7 +514,7 @@ describe("createNurseSchema", () => {
     // max-length string accepts "", so the `.or(empty -> undefined)` fallback is
     // never reached and an empty string is stored instead of NULL.
     const parsed = createNurseSchema.parse({
-      name: "A",
+      ...SCHEMA_BASE,
       phone: "",
       qualification: "",
       registrationNo: "",
@@ -464,21 +525,135 @@ describe("createNurseSchema", () => {
   });
 
   it("rejects an unknown status", () => {
-    expect(createNurseSchema.safeParse({ name: "A", status: "resigned" }).success).toBe(false);
-    expect(createNurseSchema.safeParse({ name: "A", status: "active" }).success).toBe(true);
+    expect(createNurseSchema.safeParse({ ...SCHEMA_BASE, status: "resigned" }).success).toBe(false);
+    expect(createNurseSchema.safeParse({ ...SCHEMA_BASE, status: "active" }).success).toBe(true);
   });
 
   it("coerces department and shift ids and rejects non-positive or fractional ones", () => {
-    expect(createNurseSchema.parse({ name: "A", departmentId: "7", shiftTypeId: "2" })).toMatchObject({
+    expect(createNurseSchema.parse({ ...SCHEMA_BASE, departmentId: "7", shiftTypeId: "2" })).toMatchObject({
       departmentId: 7,
       shiftTypeId: 2,
     });
-    expect(createNurseSchema.safeParse({ name: "A", departmentId: 0 }).success).toBe(false);
-    expect(createNurseSchema.safeParse({ name: "A", shiftTypeId: 1.5 }).success).toBe(false);
+    expect(createNurseSchema.safeParse({ ...SCHEMA_BASE, departmentId: 0 }).success).toBe(false);
+    expect(createNurseSchema.safeParse({ ...SCHEMA_BASE, shiftTypeId: 1.5 }).success).toBe(false);
   });
 
   it("strips an injected branchId so it can never reach the database", () => {
-    expect(createNurseSchema.parse({ name: "A", branchId: 999 } as never)).not.toHaveProperty("branchId");
+    expect(createNurseSchema.parse({ ...SCHEMA_BASE, branchId: 999 } as never)).not.toHaveProperty("branchId");
+  });
+});
+
+describe("createNurseAccount", () => {
+  beforeEach(() => {
+    mockPrisma.role.findUnique.mockResolvedValue({ id: 20, seederKey: "NURSE" });
+    mockPrisma.user.findUnique
+      .mockResolvedValueOnce(null) // no email conflict
+      .mockResolvedValueOnce(null); // username candidate is free
+    mockPrisma.user.create.mockResolvedValue({ id: 88 });
+    mockPrisma.userRole.createMany.mockResolvedValue({ count: 1 });
+    mockPrisma.nurse.create.mockResolvedValue({ ...SAMPLE_NURSE, userId: 88 });
+  });
+
+  it("creates a linked login account with a derived username and a hashed password", async () => {
+    const row = await nurseService.createNurse(nurseUser, VALID_INPUT);
+
+    const userArgs = mockPrisma.user.create.mock.calls[0][0];
+    expect(userArgs.data.username).toBe("sadia.rahman");
+    expect(userArgs.data.email).toBe("sadia.rahman@clinic.test");
+    expect(userArgs.data.password).not.toBe("Str0ng!pass");
+    expect(userArgs.data.branchId).toBe(1);
+    expect(userArgs.data.status).toBe("ACTIVE");
+    expect(userArgs.data.passwordHistory).toEqual([userArgs.data.password]);
+
+    expect(mockPrisma.userRole.createMany.mock.calls[0][0].data).toEqual([{ userId: 88, roleId: 20 }]);
+
+    const nurseArgs = mockPrisma.nurse.create.mock.calls[0][0];
+    expect(nurseArgs.data.userId).toBe(88);
+    expect(row.userId).toBe(88);
+  });
+
+  it("derives a unique username when the local part collides", async () => {
+    mockPrisma.user.findUnique
+      .mockReset()
+      .mockResolvedValueOnce(null) // email conflict check passes
+      .mockResolvedValueOnce({ id: 99 }) // first username candidate is taken
+      .mockResolvedValueOnce(null); // suffixed candidate is free
+
+    await nurseService.createNurse(nurseUser, VALID_INPUT);
+
+    expect(mockPrisma.user.create.mock.calls[0][0].data.username).toBe("sadia.rahman_2");
+  });
+
+  it("rejects when the email already belongs to another user", async () => {
+    mockPrisma.user.findUnique.mockReset().mockResolvedValueOnce({ id: 5 });
+
+    await expect(nurseService.createNurse(nurseUser, VALID_INPUT)).rejects.toThrow(
+      /already exists/i,
+    );
+    expect(mockPrisma.nurse.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects account creation without an email", async () => {
+    mockPrisma.user.findUnique.mockReset().mockResolvedValue(null);
+
+    await expect(
+      nurseService.createNurse(nurseUser, {
+        name: "Nurse No Email",
+        password: "Str0ng!pass",
+        confirmPassword: "Str0ng!pass",
+      }),
+    ).rejects.toThrow(/Email is required/i);
+    expect(mockPrisma.nurse.create).not.toHaveBeenCalled();
+  });
+
+  it("audits the account creation", async () => {
+    await nurseService.createNurse(nurseUser, VALID_INPUT);
+
+    expect(auditMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module: "nurse",
+        action: "create",
+        newValues: expect.objectContaining({ accountCreated: true, username: "sadia.rahman" }),
+      }),
+    );
+  });
+});
+
+describe("createNurseSchema passwords", () => {
+  it("rejects mismatched passwords", () => {
+    const parsed = createNurseSchema.safeParse({
+      name: "Nurse X",
+      email: "nurse.x@clinic.test",
+      password: "Str0ng!pass",
+      confirmPassword: "Different2",
+    });
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(
+        parsed.error.issues.some((i) => i.path.includes("confirmPassword") && /match/i.test(i.message)),
+      ).toBe(true);
+    }
+  });
+
+  it("rejects a password shorter than 8 characters", () => {
+    expect(
+      createNurseSchema.safeParse({
+        name: "Nurse X",
+        email: "nurse.x@clinic.test",
+        password: "short",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("requires an email and a password on create", () => {
+    expect(createNurseSchema.safeParse({ name: "Nurse X" }).success).toBe(false);
+    expect(
+      createNurseSchema.safeParse({ name: "Nurse X", email: "n.x@clinic.test" }).success,
+    ).toBe(false);
+  });
+
+  it("does not require passwords on update", () => {
+    expect(updateNurseSchema.safeParse({ name: "Nurse X", email: "n.x@clinic.test" }).success).toBe(true);
   });
 });
 

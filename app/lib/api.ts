@@ -2123,6 +2123,8 @@ export interface CreateNurseInput {
   registrationNo?: string | null;
   phone?: string | null;
   email?: string | null;
+  password?: string;
+  confirmPassword?: string;
   status?: ActiveStatus;
 }
 

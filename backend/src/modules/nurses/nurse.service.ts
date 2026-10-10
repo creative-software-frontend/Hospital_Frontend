@@ -1,7 +1,15 @@
 import { Prisma } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import { prisma } from "../../lib/prisma";
-import { AuthorizationError, NotFoundError } from "../../errors/ApiError";
+import { config } from "../../config";
+import {
+  AuthorizationError,
+  BusinessRuleError,
+  ConflictError,
+  NotFoundError,
+} from "../../errors/ApiError";
 import { writeAuditLog } from "../../utils/audit";
+import { assertPasswordAcceptable } from "../auth/auth.service";
 import { CODE_ENTITIES, generateBusinessCode } from "../../utils/codeGenerator";
 import { parsePagination, buildPaginationMeta, type SortableField } from "../../utils/pagination";
 import type { AuthUser } from "../../types/auth";
@@ -45,6 +53,26 @@ async function ensureRefs(
       throw new NotFoundError("Shift type not found");
     }
   }
+}
+
+function usernameSeed(email: string): string {
+  const local = email.split("@")[0].toLowerCase().replace(/[^a-z0-9_.-]/g, "");
+  return local.length >= 3 ? local : `nurse_${local}`;
+}
+
+// Derive a stable username from the nurse email, disambiguating with a
+// numeric suffix if a collision exists. The DB unique constraint is the final
+// backstop against the tiny race between check and insert.
+async function deriveUniqueUsername(email: string): Promise<string> {
+  const base = usernameSeed(email);
+  let candidate = base;
+  let n = 2;
+  while (await prisma.user.findUnique({ where: { username: candidate }, select: { id: true } })) {
+    const suffix = `_${n}`;
+    candidate = `${base.slice(0, 63 - suffix.length)}${suffix}`;
+    n += 1;
+  }
+  return candidate;
 }
 
 async function getAccessibleNurse(actor: AuthUser, id: number) {
@@ -138,14 +166,54 @@ export async function createNurse(actor: AuthUser, input: CreateNurseInput) {
   await ensureBranch(actor.branchId);
   await ensureRefs(input.departmentId, input.shiftTypeId);
 
+  // A nurse always ships with its linked login account, so a password is
+  // mandatory. All plain-text handling and the fallible lookups below live
+  // outside the write transaction so the code claim stays a single atomic unit.
+  const password = input.password ?? "";
+  if (!password) {
+    throw new BusinessRuleError("Password is required to create a nurse account");
+  }
+  await assertPasswordAcceptable(password);
+  if (!input.email) {
+    throw new BusinessRuleError("Email is required to create a login account");
+  }
+  const email = input.email;
+  const role = await prisma.role.findUnique({ where: { seederKey: "NURSE" } });
+  if (!role) {
+    throw new BusinessRuleError("Nurse role is not configured");
+  }
+  if (await prisma.user.findUnique({ where: { email }, select: { id: true } })) {
+    throw new ConflictError("A user with this email already exists");
+  }
+  const username = await deriveUniqueUsername(email);
+  const passwordHash = await bcrypt.hash(password, config.bcryptSaltRounds);
+
   // Claim the next branch-scoped nurse code and create the record in one
   // transaction: if creation fails the sequence increment rolls back too.
   const row = await prisma.$transaction(async (tx) => {
     const nurseCode = await generateBusinessCode(tx, CODE_ENTITIES.NURSE, actor.branchId);
+    const user = await tx.user.create({
+      data: {
+        name: input.name,
+        email,
+        username,
+        password: passwordHash,
+        phone: input.phone,
+        branchId: actor.branchId,
+        status: "ACTIVE",
+        // A brand-new account must not be treated as "password never changed".
+        passwordChangedAt: new Date(),
+        passwordHistory: [passwordHash],
+      },
+    });
+    await tx.userRole.createMany({
+      data: [{ userId: user.id, roleId: role.id }],
+    });
     return tx.nurse.create({
       data: {
         branchId: actor.branchId,
         nurseCode,
+        userId: user.id,
         name: input.name,
         departmentId: input.departmentId ?? null,
         shiftTypeId: input.shiftTypeId ?? null,
@@ -163,7 +231,13 @@ export async function createNurse(actor: AuthUser, input: CreateNurseInput) {
     action: "create",
     tableName: "Nurse",
     recordId: String(row.id),
-    newValues: { name: row.name, nurseCode: row.nurseCode, branchId: actor.branchId },
+    newValues: {
+      name: row.name,
+      nurseCode: row.nurseCode,
+      branchId: actor.branchId,
+      accountCreated: true,
+      username,
+    },
     user: actor,
     branchId: actor.branchId,
   });

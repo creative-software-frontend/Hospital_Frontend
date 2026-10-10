@@ -42,7 +42,7 @@ export const listNursesQuerySchema = z.object({
   sortOrder: z.enum(["asc", "desc"]).optional(),
 });
 
-export const createNurseSchema = z.object({
+const nurseFieldsSchema = z.object({
   name: z.string().trim().min(1, "name is required").max(255),
   departmentId: z.coerce.number().int().positive().optional().nullable(),
   shiftTypeId: z.coerce.number().int().positive().optional().nullable(),
@@ -53,7 +53,26 @@ export const createNurseSchema = z.object({
   status: z.enum(NURSE_STATUS_VALUES).optional(),
 });
 
-export const updateNurseSchema = createNurseSchema.partial();
+// Every nurse is created together with a linked login account, so the email
+// (the account identifier) and the password are mandatory on create. The
+// refines keep field-level messages instead of a single opaque banner.
+export const createNurseSchema = nurseFieldsSchema
+  .extend({
+    email: z.string().trim().toLowerCase().email("Invalid email").max(255),
+    password: z.string().trim().min(8, "Password must be at least 8 characters").max(255),
+    confirmPassword: optionalString(255),
+  })
+  .superRefine((data, ctx) => {
+    if (data.confirmPassword !== data.password) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["confirmPassword"],
+        message: "Passwords do not match",
+      });
+    }
+  });
+
+export const updateNurseSchema = nurseFieldsSchema.partial();
 
 export type ListNursesQuery = z.infer<typeof listNursesQuerySchema>;
 export type CreateNurseInput = z.infer<typeof createNurseSchema>;
