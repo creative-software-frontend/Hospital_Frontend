@@ -5,6 +5,7 @@ vi.mock("../lib/prisma", () => {
     findFirst: vi.fn(),
     findUnique: vi.fn(),
     create: vi.fn(),
+    createMany: vi.fn(),
     findMany: vi.fn(),
     count: vi.fn(),
     update: vi.fn(),
@@ -17,6 +18,9 @@ vi.mock("../lib/prisma", () => {
     branch: makeModel(),
     department: makeModel(),
     codeSequence: makeModel(),
+    role: makeModel(),
+    user: makeModel(),
+    userRole: makeModel(),
     $transaction: vi.fn(async (arg: unknown) => {
       if (typeof arg === "function") {
         // interactive transaction — tx is just the client mock itself
@@ -39,6 +43,10 @@ vi.mock("../utils/audit", () => ({
   writeAuditLog: vi.fn(async () => {}),
 }));
 
+vi.mock("../modules/auth/auth.service", () => ({
+  assertPasswordAcceptable: vi.fn(() => Promise.resolve()),
+}));
+
 const mockPrisma = (await import("../lib/prisma")).prisma as unknown as {
   doctor: {
     findFirst: ReturnType<typeof vi.fn>;
@@ -50,6 +58,9 @@ const mockPrisma = (await import("../lib/prisma")).prisma as unknown as {
     branch: { findUnique: ReturnType<typeof vi.fn> };
     department: { findUnique: ReturnType<typeof vi.fn> };
     codeSequence: { upsert: ReturnType<typeof vi.fn> };
+    role: { findUnique: ReturnType<typeof vi.fn> };
+    user: { findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
+    userRole: { createMany: ReturnType<typeof vi.fn> };
   $transaction: ReturnType<typeof vi.fn>;
 };
 
@@ -120,6 +131,8 @@ const VALID_INPUT = {
   emergencyFee: "1200.00",
   commissionType: "PERCENT" as const,
   commissionValue: "10.00",
+  password: "Str0ng!pass",
+  confirmPassword: "Str0ng!pass",
 };
 
 beforeEach(() => {
@@ -131,6 +144,12 @@ beforeEach(() => {
   mockPrisma.codeSequence.upsert.mockResolvedValue({ nextNumber: 1 });
   mockPrisma.doctor.create.mockResolvedValue(SAMPLE_DOCTOR);
   mockPrisma.doctor.count.mockResolvedValue(0);
+  // Account creation is mandatory now, so every createDoctor call goes through
+  // the role lookup, email conflict check, username derivation and user write.
+  mockPrisma.role.findUnique.mockResolvedValue({ id: 10, seederKey: "DOCTOR" });
+  mockPrisma.user.findUnique.mockResolvedValue(null);
+  mockPrisma.user.create.mockResolvedValue({ id: 77 });
+  mockPrisma.userRole.createMany.mockResolvedValue({ count: 1 });
   mockPrisma.doctor.findMany.mockResolvedValue([]);
   mockPrisma.doctor.update.mockResolvedValue(SAMPLE_DOCTOR);
 });
@@ -178,26 +197,54 @@ describe("createDoctor", () => {
     });
 
     it("skips the department lookup when no department is submitted", async () => {
-      await doctorService.createDoctor(branchUser, { name: "Dr. Minimal", departmentId: null });
+      await doctorService.createDoctor(branchUser, {
+        name: "Dr. Minimal",
+        departmentId: null,
+        email: "min@clinic.test",
+        password: "Str0ng!pass",
+        confirmPassword: "Str0ng!pass",
+      });
 
       expect(mockPrisma.department.findUnique).not.toHaveBeenCalled();
     });
 
 
   it("applies defaults for the optional fields", async () => {
-    await doctorService.createDoctor(branchUser, { name: "Dr. Minimal" });
+    await doctorService.createDoctor(branchUser, {
+      name: "Dr. Minimal",
+      email: "min@clinic.test",
+      password: "Str0ng!pass",
+      confirmPassword: "Str0ng!pass",
+    });
 
     const call = mockPrisma.doctor.create.mock.calls[0][0];
     expect(call.data.status).toBe("active");
     expect(call.data.departmentId).toBeNull();
     expect(call.data.commissionType).toBeNull();
-    expect(call.data.email).toBeUndefined();
+    expect(call.data.email).toBe("min@clinic.test");
   });
 
   it("stores a supplied status instead of the default", async () => {
-    await doctorService.createDoctor(branchUser, { name: "Dr. On Leave", status: "inactive" });
+    await doctorService.createDoctor(branchUser, {
+      name: "Dr. On Leave",
+      email: "leave@clinic.test",
+      status: "inactive",
+      password: "Str0ng!pass",
+      confirmPassword: "Str0ng!pass",
+    });
 
     expect(mockPrisma.doctor.create.mock.calls[0][0].data.status).toBe("inactive");
+  });
+
+  it("always creates the linked login account, so a password is mandatory", async () => {
+    await expect(
+      doctorService.createDoctor(branchUser, {
+        name: "Dr. No Login",
+        email: "nologin@clinic.test",
+        departmentId: null,
+      }),
+    ).rejects.toThrow(/Password is required/i);
+    expect(mockPrisma.doctor.create).not.toHaveBeenCalled();
   });
 
   it("rejects creation when the actor's branch does not exist", async () => {
@@ -231,6 +278,140 @@ describe("createDoctor", () => {
         }),
       }),
     );
+  });
+});
+
+describe("createDoctorAccount", () => {
+  beforeEach(() => {
+    mockPrisma.role.findUnique.mockResolvedValue({ id: 10, seederKey: "DOCTOR" });
+    mockPrisma.user.findUnique
+      .mockResolvedValueOnce(null) // no email conflict
+      .mockResolvedValueOnce(null); // username candidate is free
+    mockPrisma.user.create.mockResolvedValue({ id: 77 });
+    mockPrisma.userRole.createMany.mockResolvedValue({ count: 1 });
+    mockPrisma.doctor.create.mockResolvedValue({ ...SAMPLE_DOCTOR, userId: 77 });
+  });
+
+  it("creates a linked login account with a derived username and a hashed password", async () => {
+    const row = await doctorService.createDoctor(branchUser, {
+      ...VALID_INPUT,
+      password: "Str0ng!pass",
+      confirmPassword: "Str0ng!pass",
+    });
+
+    const userArgs = mockPrisma.user.create.mock.calls[0][0];
+    expect(userArgs.data.username).toBe("sarah");
+    expect(userArgs.data.email).toBe("sarah@clinic.test");
+    expect(userArgs.data.password).not.toBe("Str0ng!pass");
+    expect(userArgs.data.branchId).toBe(1);
+    expect(userArgs.data.status).toBe("ACTIVE");
+    expect(userArgs.data.passwordHistory).toEqual([userArgs.data.password]);
+
+    expect(mockPrisma.userRole.createMany.mock.calls[0][0].data).toEqual([{ userId: 77, roleId: 10 }]);
+
+    const doctorArgs = mockPrisma.doctor.create.mock.calls[0][0];
+    expect(doctorArgs.data.userId).toBe(77);
+    expect(row.userId).toBe(77);
+  });
+
+  it("derives a unique username when the local part collides", async () => {
+    mockPrisma.user.findUnique
+      .mockReset()
+      .mockResolvedValueOnce(null) // email conflict check passes
+      .mockResolvedValueOnce({ id: 99 }) // first username candidate is taken
+      .mockResolvedValueOnce(null); // suffixed candidate is free
+
+    await doctorService.createDoctor(branchUser, {
+      ...VALID_INPUT,
+      password: "Str0ng!pass",
+      confirmPassword: "Str0ng!pass",
+    });
+
+    expect(mockPrisma.user.create.mock.calls[0][0].data.username).toBe("sarah_2");
+  });
+
+  it("rejects when the email already belongs to another user", async () => {
+    mockPrisma.user.findUnique.mockReset().mockResolvedValueOnce({ id: 5 });
+
+    await expect(
+      doctorService.createDoctor(branchUser, {
+        ...VALID_INPUT,
+        password: "Str0ng!pass",
+        confirmPassword: "Str0ng!pass",
+      }),
+    ).rejects.toThrow(/already exists/i);
+    expect(mockPrisma.doctor.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects account creation without an email", async () => {
+    mockPrisma.user.findUnique.mockReset().mockResolvedValue(null);
+
+    await expect(
+      doctorService.createDoctor(branchUser, {
+        name: "Dr. No Email",
+        password: "Str0ng!pass",
+        confirmPassword: "Str0ng!pass",
+      }),
+    ).rejects.toThrow(/Email is required/i);
+    expect(mockPrisma.doctor.create).not.toHaveBeenCalled();
+  });
+
+  it("audits the account creation", async () => {
+    await doctorService.createDoctor(branchUser, {
+      ...VALID_INPUT,
+      password: "Str0ng!pass",
+      confirmPassword: "Str0ng!pass",
+    });
+
+    expect(auditMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module: "doctor",
+        action: "create",
+        newValues: expect.objectContaining({ accountCreated: true, username: "sarah" }),
+      }),
+    );
+  });
+});
+
+describe("createDoctorSchema passwords", () => {
+  it("rejects mismatched passwords", () => {
+    const parsed = createDoctorSchema.safeParse({
+      name: "Dr. X",
+      email: "drx@clinic.test",
+      password: "Str0ng!pass",
+      confirmPassword: "different",
+    });
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues.some((i) => i.path[0] === "confirmPassword")).toBe(true);
+    }
+  });
+
+  it("rejects a doctor without a password or email", () => {
+    const missingPassword = createDoctorSchema.safeParse({ name: "Dr. X", email: "drx@clinic.test" });
+    expect(missingPassword.success).toBe(false);
+
+    const missingEmail = createDoctorSchema.safeParse({
+      name: "Dr. X",
+      password: "Str0ng!pass",
+      confirmPassword: "Str0ng!pass",
+    });
+    expect(missingEmail.success).toBe(false);
+  });
+
+  it("accepts a password with a matching confirmation", () => {
+    const parsed = createDoctorSchema.safeParse({
+      name: "Dr. X",
+      email: "drx@clinic.test",
+      password: "Str0ng!pass",
+      confirmPassword: "Str0ng!pass",
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("keeps password fields out of the update schema", () => {
+    expect(Object.keys(updateDoctorSchema.shape as Record<string, unknown>)).not.toContain("password");
+    expect(Object.keys(updateDoctorSchema.shape as Record<string, unknown>)).not.toContain("confirmPassword");
   });
 });
 
@@ -388,45 +569,50 @@ describe("listDoctors", () => {
   });
 });
 
+const SCHEMA_BASE = {
+  name: "Dr. Schema",
+  email: "schema@clinic.test",
+  password: "Str0ng!pass",
+  confirmPassword: "Str0ng!pass",
+};
+
 describe("createDoctorSchema", () => {
   it("requires a name", () => {
     expect(createDoctorSchema.safeParse({}).success).toBe(false);
-    expect(createDoctorSchema.safeParse({ name: "   " }).success).toBe(false);
+    expect(createDoctorSchema.safeParse({ ...SCHEMA_BASE, name: "   " }).success).toBe(false);
   });
 
-  it("accepts a name on its own, since everything else is optional", () => {
-    const parsed = createDoctorSchema.parse({ name: "Dr. Only Name" });
-    expect(parsed.name).toBe("Dr. Only Name");
-    expect(parsed.email).toBeUndefined();
+  it("requires an email and a password on create, since a login account is mandatory", () => {
+    expect(createDoctorSchema.safeParse({ name: "Dr. Only Name" }).success).toBe(false);
+    expect(createDoctorSchema.safeParse({ ...SCHEMA_BASE, email: undefined }).success).toBe(false);
+    expect(createDoctorSchema.safeParse({ ...SCHEMA_BASE, password: undefined }).success).toBe(false);
   });
 
   it("rejects a name longer than 255 characters", () => {
-    expect(createDoctorSchema.safeParse({ name: "x".repeat(256) }).success).toBe(false);
-    expect(createDoctorSchema.safeParse({ name: "x".repeat(255) }).success).toBe(true);
+    expect(createDoctorSchema.safeParse({ ...SCHEMA_BASE, name: "x".repeat(256) }).success).toBe(false);
+    expect(createDoctorSchema.safeParse({ ...SCHEMA_BASE, name: "x".repeat(255) }).success).toBe(true);
   });
 
   it("lowercases the email and rejects a malformed one", () => {
-    expect(createDoctorSchema.parse({ name: "A", email: "Sarah@Clinic.TEST" }).email).toBe(
+    expect(createDoctorSchema.parse({ ...SCHEMA_BASE, email: "Sarah@Clinic.TEST" }).email).toBe(
       "sarah@clinic.test",
     );
-    expect(createDoctorSchema.safeParse({ name: "A", email: "not-an-email" }).success).toBe(false);
+    expect(createDoctorSchema.safeParse({ ...SCHEMA_BASE, email: "not-an-email" }).success).toBe(false);
   });
 
   it("rejects phone numbers with letters", () => {
-    expect(createDoctorSchema.safeParse({ name: "A", phone: "01711abc000" }).success).toBe(false);
-    expect(createDoctorSchema.safeParse({ name: "A", phone: "+880 1711-000000" }).success).toBe(true);
+    expect(createDoctorSchema.safeParse({ ...SCHEMA_BASE, phone: "01711abc000" }).success).toBe(false);
+    expect(createDoctorSchema.safeParse({ ...SCHEMA_BASE, phone: "+880 1711-000000" }).success).toBe(true);
   });
 
-  it("normalizes a blank string to 'no value' for the fields whose validator rejects empty input", () => {
-    // email() and the fee regex both reject "", so the fallback branch wins and
-    // the field becomes undefined.
+  it("normalizes a blank optional amount to undefined, while a blank email is now invalid", () => {
     const parsed = createDoctorSchema.parse({
-      name: "A",
-      email: "",
+      ...SCHEMA_BASE,
       consultationFee: "",
     });
-    expect(parsed.email).toBeUndefined();
     expect(parsed.consultationFee).toBeUndefined();
+
+    expect(createDoctorSchema.safeParse({ ...SCHEMA_BASE, email: "" }).success).toBe(false);
   });
 
   it("keeps a blank string for phone and free-text fields, which currently accept it", () => {
@@ -436,7 +622,7 @@ describe("createDoctorSchema", () => {
     // empty string in the column instead of NULL. Harmless today, but it means
     // "cleared" and "never set" are stored differently across these fields.
     const parsed = createDoctorSchema.parse({
-      name: "A",
+      ...SCHEMA_BASE,
       phone: "",
       specialization: "",
       qualification: "",
@@ -449,28 +635,28 @@ describe("createDoctorSchema", () => {
   });
 
   it("accepts fees with up to two decimals and rejects anything else", () => {
-    expect(createDoctorSchema.safeParse({ name: "A", consultationFee: "800" }).success).toBe(true);
-    expect(createDoctorSchema.safeParse({ name: "A", consultationFee: "800.55" }).success).toBe(true);
-    expect(createDoctorSchema.safeParse({ name: "A", consultationFee: "800.555" }).success).toBe(false);
-    expect(createDoctorSchema.safeParse({ name: "A", consultationFee: "eight hundred" }).success).toBe(
+    expect(createDoctorSchema.safeParse({ ...SCHEMA_BASE, consultationFee: "800" }).success).toBe(true);
+    expect(createDoctorSchema.safeParse({ ...SCHEMA_BASE, consultationFee: "800.55" }).success).toBe(true);
+    expect(createDoctorSchema.safeParse({ ...SCHEMA_BASE, consultationFee: "800.555" }).success).toBe(false);
+    expect(createDoctorSchema.safeParse({ ...SCHEMA_BASE, consultationFee: "eight hundred" }).success).toBe(
       false,
     );
-    expect(createDoctorSchema.safeParse({ name: "A", consultationFee: "-50" }).success).toBe(false);
+    expect(createDoctorSchema.safeParse({ ...SCHEMA_BASE, consultationFee: "-50" }).success).toBe(false);
   });
 
   it("rejects an unknown status or commission type", () => {
-    expect(createDoctorSchema.safeParse({ name: "A", status: "retired" }).success).toBe(false);
-    expect(createDoctorSchema.safeParse({ name: "A", commissionType: "SPLIT" }).success).toBe(false);
+    expect(createDoctorSchema.safeParse({ ...SCHEMA_BASE, status: "retired" }).success).toBe(false);
+    expect(createDoctorSchema.safeParse({ ...SCHEMA_BASE, commissionType: "SPLIT" }).success).toBe(false);
   });
 
   it("coerces a department id and rejects a non-integer one", () => {
-    expect(createDoctorSchema.parse({ name: "A", departmentId: "3" }).departmentId).toBe(3);
-    expect(createDoctorSchema.safeParse({ name: "A", departmentId: 0 }).success).toBe(false);
-    expect(createDoctorSchema.safeParse({ name: "A", departmentId: 2.5 }).success).toBe(false);
+    expect(createDoctorSchema.parse({ ...SCHEMA_BASE, departmentId: "3" }).departmentId).toBe(3);
+    expect(createDoctorSchema.safeParse({ ...SCHEMA_BASE, departmentId: 0 }).success).toBe(false);
+    expect(createDoctorSchema.safeParse({ ...SCHEMA_BASE, departmentId: 2.5 }).success).toBe(false);
   });
 
   it("strips an injected branchId so it can never reach the database", () => {
-    const parsed = createDoctorSchema.parse({ name: "A", branchId: 999 } as never);
+    const parsed = createDoctorSchema.parse({ ...SCHEMA_BASE, branchId: 999 } as never);
     expect(parsed).not.toHaveProperty("branchId");
   });
 });

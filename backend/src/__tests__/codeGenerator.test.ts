@@ -98,6 +98,7 @@ vi.mock("../lib/prisma", () => {
     findFirst: vi.fn(),
     findUnique: vi.fn(),
     create: vi.fn(),
+    createMany: vi.fn(),
     findMany: vi.fn(),
     count: vi.fn(),
     update: vi.fn(),
@@ -111,6 +112,9 @@ vi.mock("../lib/prisma", () => {
     branch: makeModel(),
     doctor: makeModel(),
     service: makeModel(),
+    role: makeModel(),
+    user: makeModel(),
+    userRole: makeModel(),
     codeSequence: makeModel(),
     $transaction: vi.fn(async (arg: unknown) => {
       if (typeof arg === "function") {
@@ -124,6 +128,10 @@ vi.mock("../lib/prisma", () => {
 
 vi.mock("../utils/audit", () => ({
   writeAuditLog: vi.fn(async () => {}),
+}));
+
+vi.mock("../modules/auth/auth.service", () => ({
+  assertPasswordAcceptable: vi.fn(() => Promise.resolve()),
 }));
 
 const mockPrisma = (await import("../lib/prisma")).prisma as unknown as {
@@ -140,6 +148,9 @@ const mockPrisma = (await import("../lib/prisma")).prisma as unknown as {
     create: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
   };
+  role: { findUnique: ReturnType<typeof vi.fn> };
+  user: { findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
+  userRole: { createMany: ReturnType<typeof vi.fn> };
   codeSequence: { upsert: ReturnType<typeof vi.fn> };
   $transaction: ReturnType<typeof vi.fn>;
 };
@@ -160,6 +171,14 @@ const actor = {
 describe("createDoctor — automatic code", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // A doctor is always created with its linked login account.
+    (mockPrisma.role.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 10,
+      seederKey: "DOCTOR",
+    });
+    (mockPrisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (mockPrisma.user.create as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 99 });
+    (mockPrisma.userRole.createMany as ReturnType<typeof vi.fn>).mockResolvedValue({ count: 1 });
   });
 
   it("generates a branch-scoped DOC- code for the actor's branch", async () => {
@@ -173,7 +192,12 @@ describe("createDoctor — automatic code", () => {
     });
 
     const actorLocal = { ...actor, roles: [{ id: 2, seederKey: "ADMIN", name: "Admin" }] };
-    const result = await createDoctor(actorLocal, { name: "Dr. Rahim" });
+    const result = await createDoctor(actorLocal, {
+      name: "Dr. Rahim",
+      email: "rahim@clinic.test",
+      password: "Str0ng!pass",
+      confirmPassword: "Str0ng!pass",
+    });
 
     expect(mockPrisma.codeSequence.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -198,7 +222,13 @@ describe("createDoctor — automatic code", () => {
       name: "Evil",
     });
 
-    await createDoctor(actorLocal(), { name: "Evil", doctorCode: "SKIP-ME" } as never);
+    await createDoctor(actorLocal(), {
+      name: "Evil",
+      email: "evil@clinic.test",
+      password: "Str0ng!pass",
+      confirmPassword: "Str0ng!pass",
+      doctorCode: "SKIP-ME",
+    } as never);
 
     const createCall = (mockPrisma.doctor.create as ReturnType<typeof vi.fn>).mock.calls[0][0];
     expect(createCall.data.doctorCode).toBe("DOC-000004");

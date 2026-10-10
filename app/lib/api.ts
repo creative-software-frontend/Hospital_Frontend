@@ -2075,6 +2075,9 @@ export interface CreateDoctorInput {
   commissionType?: "PERCENT" | "FIXED" | null;
   commissionValue?: string | null;
   status?: ActiveStatus;
+  /** Supplying a password opts the doctor into a linked login account. */
+  password?: string;
+  confirmPassword?: string;
 }
 
 export type UpdateDoctorInput = Partial<CreateDoctorInput>;

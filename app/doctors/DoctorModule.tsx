@@ -62,7 +62,7 @@ export function DoctorModule() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [reloadKey, setReloadKey] = useState(0);
-  const [formOpen, setFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState<"list" | "form">("list");
   const [editing, setEditing] = useState<DoctorRecord | null>(null);
   const [viewing, setViewing] = useState<DoctorRecord | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -119,7 +119,8 @@ export function DoctorModule() {
       setSearchTerm("");
       setSearchInput("");
     }
-    setFormOpen(false);
+    setFormMode("list");
+    setEditing(null);
     setReloadKey((k) => k + 1);
   };
 
@@ -133,6 +134,38 @@ export function DoctorModule() {
       notify("error", errorMessage(err));
     }
   };
+
+  if (formMode === "form") {
+    return (
+      <div className="space-y-6">
+        <div className="card p-5 rounded-2xl border border-[var(--border)] shadow-sm">
+          <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">
+            Doctor Management
+          </span>
+          <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">{editing ? "Edit Doctor" : "Add Doctor"}</h3>
+          <p className="text-xs text-[var(--muted)] mt-1.5 leading-relaxed max-w-3xl">
+            {editing
+              ? "Update the doctor profile, consultation fees and commission setup."
+              : "Register a new doctor and set consultation, follow-up, emergency and commission details."}
+          </p>
+        </div>
+
+        <button
+          onClick={() => { setFormMode("list"); setEditing(null); }}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] hover:text-[var(--primary-dark)] transition-colors cursor-pointer"
+        >
+          <span>{"\u2190"} Back to Doctors</span>
+        </button>
+
+        <DoctorFormPage
+          key={editing?.id ?? "new"}
+          doctor={editing}
+          onSubmit={submit}
+          onCancel={() => { setFormMode("list"); setEditing(null); }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -172,7 +205,7 @@ export function DoctorModule() {
               <FiRefreshCcw className="w-4 h-4" />
             </button>
             <button
-              onClick={() => { setEditing(null); setFormOpen(true); }}
+              onClick={() => { setEditing(null); setFormMode("form"); }}
               className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all duration-200 active:scale-[0.98]"
               style={{ background: "var(--primary)" }}
             >
@@ -222,7 +255,7 @@ export function DoctorModule() {
                           <FiEye className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => { setEditing(d); setFormOpen(true); }}
+                          onClick={() => { setEditing(d); setFormMode("form"); }}
                           className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--primary-dark)] hover:border-[var(--primary)] transition-colors"
                           title="Edit doctor"
                         >
@@ -264,15 +297,6 @@ export function DoctorModule() {
         </div>
       </div>
 
-      {formOpen && (
-        <DoctorFormModal
-          key={editing?.id ?? "new"}
-          doctor={editing}
-          onSubmit={submit}
-          onClose={() => { setFormOpen(false); setEditing(null); }}
-        />
-      )}
-
       {viewing && (
         <DoctorProfileModal
           doctor={viewing}
@@ -285,14 +309,14 @@ export function DoctorModule() {
   );
 }
 
-function DoctorFormModal({
+function DoctorFormPage({
   doctor,
   onSubmit,
-  onClose,
+  onCancel,
 }: {
   doctor: DoctorRecord | null;
   onSubmit: (input: CreateDoctorInput) => Promise<void>;
-  onClose: () => void;
+  onCancel: () => void;
 }) {
   const editing = !!doctor;
   const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
@@ -303,6 +327,8 @@ function DoctorFormModal({
   const [registrationNo, setRegistrationNo] = useState(doctor?.registrationNo ?? "");
   const [phone, setPhone] = useState(doctor?.phone ?? "");
   const [email, setEmail] = useState(doctor?.email ?? "");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [consultationFee, setConsultationFee] = useState(doctor?.consultationFee ?? "");
   const [followupFee, setFollowupFee] = useState(doctor?.followupFee ?? "");
   const [emergencyFee, setEmergencyFee] = useState(doctor?.emergencyFee ?? "");
@@ -345,6 +371,21 @@ function DoctorFormModal({
       addError(next, "specialization", checkText(specialization, SHORT_TEXT_MAX, "Specialization"));
       addError(next, "qualification", checkText(qualification, SHORT_TEXT_MAX, "Qualification"));
       addError(next, "registrationNo", checkText(registrationNo, REGISTRATION_NO_MAX, "Registration number"));
+      if (!editing) {
+        if (!password.trim()) {
+          addError(next, "password", "Password is required to create a login account");
+        } else {
+          if (password.length < 8) {
+            addError(next, "password", "Password must be at least 8 characters");
+          }
+          if (confirmPassword !== password) {
+            addError(next, "confirmPassword", "Passwords do not match");
+          }
+        }
+        if (!email.trim()) {
+          addError(next, "email", "Email is required to create a login account");
+        }
+      }
       for (const [key, label] of [
         ["consultationFee", "Consultation fee"],
         ["followupFee", "Follow-up fee"],
@@ -381,6 +422,9 @@ function DoctorFormModal({
         commissionType: commissionType || null,
         commissionValue: commissionValue.trim() || null,
         status,
+        ...(!editing
+          ? { password: password.trim(), confirmPassword: confirmPassword.trim() || password.trim() }
+          : {}),
       });
     } catch (err) {
       // Per-field messages from the server are shown next to the input that
@@ -402,17 +446,17 @@ function DoctorFormModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4" onClick={() => !saving && onClose()}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" />
-      <form onSubmit={handleSubmit} onClick={(e) => e.stopPropagation()}
-        className="relative bg-[var(--card)] border border-[var(--border)] rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 animate-[scaleIn_0.25s_ease-out]">
-        <button type="button" onClick={onClose} disabled={saving} className="absolute top-4 right-4 p-1.5 rounded-xl text-[var(--muted)] hover:bg-[var(--bg)] hover:text-[var(--text)] transition-colors disabled:opacity-50" aria-label="Close">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-        </button>
+    <form onSubmit={handleSubmit}
+      className="bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-sm w-full p-6 sm:p-8">
         <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">Doctors</span>
         <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">{editing ? "Edit Doctor" : "Add Doctor"}</h3>
 
         <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Registration No.</label>
+            <input value={registrationNo} onChange={(e) => setRegistrationNo(setField("registrationNo", e.target.value))} className={INPUT_CLS} />
+            {fieldError("registrationNo")}
+          </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Name *</label>
             <input value={name} onChange={(e) => setName(setField("name", e.target.value))} className={INPUT_CLS} />
@@ -437,20 +481,32 @@ function DoctorFormModal({
             {fieldError("qualification")}
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Registration No.</label>
-            <input value={registrationNo} onChange={(e) => setRegistrationNo(setField("registrationNo", e.target.value))} className={INPUT_CLS} />
-            {fieldError("registrationNo")}
-          </div>
-          <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Phone</label>
             <input value={phone} inputMode="tel" onChange={(e) => setPhone(setField("phone", sanitizePhone(e.target.value)))} className={INPUT_CLS} />
             {fieldError("phone")}
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Email</label>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Email *</label>
             <input type="email" value={email} onChange={(e) => setEmail(setField("email", e.target.value))} className={INPUT_CLS} />
             {fieldError("email")}
           </div>
+          {!editing && (
+            <>
+              <div>
+                <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Password * (creates login)</label>
+                <input type="password" autoComplete="new-password" value={password}
+                  onChange={(e) => setPassword(setField("password", e.target.value))} className={INPUT_CLS} />
+                <p className="text-[10px] text-[var(--muted)] mt-1">A login account is created for every doctor.</p>
+                {fieldError("password")}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Confirm Password *</label>
+                <input type="password" autoComplete="new-password" value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(setField("confirmPassword", e.target.value))} className={INPUT_CLS} />
+                {fieldError("confirmPassword")}
+              </div>
+            </>
+          )}
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Consultation Fee</label>
             <input value={consultationFee} inputMode="decimal" onChange={(e) => setConsultationFee(setField("consultationFee", sanitizeMoney(e.target.value)))} className={INPUT_CLS} />
@@ -504,13 +560,12 @@ function DoctorFormModal({
             style={{ background: "var(--primary)" }}>
             {saving ? "Saving..." : editing ? "Save Changes" : "Create Doctor"}
           </button>
-          <button type="button" onClick={onClose} disabled={saving}
+          <button type="button" onClick={onCancel} disabled={saving}
             className="px-4 py-3 rounded-xl text-sm font-bold text-[var(--muted)] hover:text-[var(--text)] border border-[var(--border)] disabled:opacity-60 disabled:cursor-not-allowed transition-colors">
             Cancel
           </button>
         </div>
       </form>
-    </div>
   );
 }
 

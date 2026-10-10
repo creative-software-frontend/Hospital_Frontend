@@ -50,7 +50,7 @@ export const listDoctorsQuerySchema = z.object({
   sortOrder: z.enum(["asc", "desc"]).optional(),
 });
 
-export const createDoctorSchema = z.object({
+const doctorFieldsSchema = z.object({
   name: z.string().trim().min(1, "name is required").max(255),
   departmentId: z.coerce.number().int().positive().optional().nullable(),
   specialization: optionalString(255),
@@ -66,7 +66,26 @@ export const createDoctorSchema = z.object({
   status: z.enum(DOCTOR_STATUS_VALUES).optional(),
 });
 
-export const updateDoctorSchema = createDoctorSchema.partial();
+// Every doctor is created together with a linked login account, so the email
+// (the account identifier) and the password are mandatory on create. The
+// refines keep field-level messages instead of a single opaque banner.
+export const createDoctorSchema = doctorFieldsSchema
+  .extend({
+    email: z.string().trim().toLowerCase().email("Invalid email").max(255),
+    password: z.string().trim().min(8, "Password must be at least 8 characters").max(255),
+    confirmPassword: optionalString(255),
+  })
+  .superRefine((data, ctx) => {
+    if (data.confirmPassword !== data.password) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["confirmPassword"],
+        message: "Passwords do not match",
+      });
+    }
+  });
+
+export const updateDoctorSchema = doctorFieldsSchema.partial();
 
 export type ListDoctorsQuery = z.infer<typeof listDoctorsQuerySchema>;
 export type CreateDoctorInput = z.infer<typeof createDoctorSchema>;
