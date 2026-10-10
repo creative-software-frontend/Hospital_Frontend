@@ -36,6 +36,17 @@ import { formatCurrency } from "@/app/lib/currency";
 
 const PAGE_SIZE = 10;
 
+const sanitizePhone = (v: string) => v.replace(/[^0-9+\-\s()]/g, "");
+const sanitizeMoney = (v: string) => {
+  let s = v.replace(/[^0-9.]/g, "");
+  const dot = s.indexOf(".");
+  if (dot !== -1) {
+    s = s.slice(0, dot + 1) + s.slice(dot + 1).replace(/\./g, "");
+    s = s.slice(0, dot + 3);
+  }
+  return s;
+};
+
 const STATUS_STYLES: Record<ActiveStatus, string> = {
   active: "bg-emerald-50 text-emerald-600 border-emerald-200",
   inactive: "bg-slate-100 text-slate-500 border-slate-200",
@@ -385,7 +396,7 @@ function DoctorFormModal({
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Phone</label>
-            <input value={phone} onChange={(e) => setPhone(setField("phone", e.target.value))} className={INPUT_CLS} />
+            <input value={phone} inputMode="tel" onChange={(e) => setPhone(setField("phone", sanitizePhone(e.target.value)))} className={INPUT_CLS} />
             {fieldError("phone")}
           </div>
           <div>
@@ -395,17 +406,17 @@ function DoctorFormModal({
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Consultation Fee</label>
-            <input value={consultationFee} onChange={(e) => setConsultationFee(setField("consultationFee", e.target.value))} className={INPUT_CLS} />
+            <input value={consultationFee} inputMode="decimal" onChange={(e) => setConsultationFee(setField("consultationFee", sanitizeMoney(e.target.value)))} className={INPUT_CLS} />
             {fieldError("consultationFee")}
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Follow-up Fee</label>
-            <input value={followupFee} onChange={(e) => setFollowupFee(setField("followupFee", e.target.value))} className={INPUT_CLS} />
+            <input value={followupFee} inputMode="decimal" onChange={(e) => setFollowupFee(setField("followupFee", sanitizeMoney(e.target.value)))} className={INPUT_CLS} />
             {fieldError("followupFee")}
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Emergency Fee</label>
-            <input value={emergencyFee} onChange={(e) => setEmergencyFee(setField("emergencyFee", e.target.value))} className={INPUT_CLS} />
+            <input value={emergencyFee} inputMode="decimal" onChange={(e) => setEmergencyFee(setField("emergencyFee", sanitizeMoney(e.target.value)))} className={INPUT_CLS} />
             {fieldError("emergencyFee")}
           </div>
           <div>
