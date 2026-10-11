@@ -8,6 +8,7 @@ import { config } from "./config";
 import apiRoutes from "./routes";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware";
 import { requireMaintenanceAccess } from "./middleware/maintenance.middleware";
+import { UPLOAD_ROOT } from "./modules/uploads/upload.paths";
 
 export function createApp(): Express {
   const app = express();
@@ -53,6 +54,10 @@ export function createApp(): Express {
 
   // Maintenance mode check (runs on all routes, allows health/auth public paths)
   app.use(requireMaintenanceAccess);
+
+  // Serve uploaded files (photos, signatures, CVs). Mounted under /api so the
+  // Next.js proxy, which only forwards /api/*, can reach them.
+  app.use("/api/uploads", express.static(UPLOAD_ROOT, { index: false, maxAge: "1d" }));
 
   // API routes
   app.use("/api", apiRoutes);

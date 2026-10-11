@@ -16,6 +16,7 @@ import auditRoutes from "../modules/audit/audit.routes";
 import opdRoutes from "../modules/opd/opd.routes";
 import ipdRoutes from "../modules/ipd/ipd.routes";
 import pharmacyRoutes from "../modules/pharmacy/pharmacy.routes";
+import uploadRoutes from "../modules/uploads/upload.routes";
 
 const router = Router();
 
@@ -37,5 +38,6 @@ router.use("/audit", auditRoutes);
 router.use("/opd", opdRoutes);
 router.use("/ipd", ipdRoutes);
 router.use("/pharmacy", pharmacyRoutes);
+router.use("/uploads", uploadRoutes);
 
 export default router;

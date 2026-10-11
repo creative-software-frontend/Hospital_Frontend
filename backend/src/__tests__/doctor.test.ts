@@ -236,6 +236,30 @@ describe("createDoctor", () => {
     expect(mockPrisma.doctor.create.mock.calls[0][0].data.status).toBe("inactive");
   });
 
+  it("persists the profile fields (dates, enums, attachments) on create", async () => {
+    await doctorService.createDoctor(branchUser, {
+      ...VALID_INPUT,
+      joiningDate: new Date("2024-05-01"),
+      gender: "FEMALE",
+      dateOfBirth: new Date("1990-02-03"),
+      maritalStatus: "MARRIED",
+      bloodGroup: "O_POS",
+      photo: "/api/uploads/photos/a.png",
+      signature: "/api/uploads/signatures/b.png",
+      cv: "/api/uploads/cvs/c.pdf",
+    });
+
+    const data = mockPrisma.doctor.create.mock.calls[0][0].data;
+    expect(data.gender).toBe("FEMALE");
+    expect(data.bloodGroup).toBe("O_POS");
+    expect(data.maritalStatus).toBe("MARRIED");
+    expect(data.joiningDate).toEqual(new Date("2024-05-01"));
+    expect(data.dateOfBirth).toEqual(new Date("1990-02-03"));
+    expect(data.photo).toBe("/api/uploads/photos/a.png");
+    expect(data.signature).toBe("/api/uploads/signatures/b.png");
+    expect(data.cv).toBe("/api/uploads/cvs/c.pdf");
+  });
+
   it("always creates the linked login account, so a password is mandatory", async () => {
     await expect(
       doctorService.createDoctor(branchUser, {
@@ -671,6 +695,41 @@ describe("updateDoctorSchema", () => {
   it("still validates the fields that are present", () => {
     expect(updateDoctorSchema.safeParse({ name: "" }).success).toBe(false);
     expect(updateDoctorSchema.safeParse({ email: "bad" }).success).toBe(false);
+  });
+});
+
+describe("doctor profile fields (gender, blood group, dates, attachments)", () => {
+  it("accepts enum values, ISO dates and attachment urls", () => {
+    const parsed = createDoctorSchema.parse({
+      ...SCHEMA_BASE,
+      joiningDate: "2024-05-01",
+      gender: "FEMALE",
+      dateOfBirth: "1990-02-03",
+      maritalStatus: "MARRIED",
+      bloodGroup: "O_POS",
+      photo: "/api/uploads/photos/a.png",
+      signature: "/api/uploads/signatures/b.png",
+      cv: "/api/uploads/cvs/c.pdf",
+    });
+    expect(parsed.gender).toBe("FEMALE");
+    expect(parsed.bloodGroup).toBe("O_POS");
+    expect(parsed.maritalStatus).toBe("MARRIED");
+    expect(parsed.joiningDate).toEqual(new Date("2024-05-01"));
+    expect(parsed.dateOfBirth).toEqual(new Date("1990-02-03"));
+    expect(parsed.photo).toBe("/api/uploads/photos/a.png");
+    expect(parsed.cv).toBe("/api/uploads/cvs/c.pdf");
+  });
+
+  it("rejects an unknown enum value and a future date", () => {
+    expect(createDoctorSchema.safeParse({ ...SCHEMA_BASE, gender: "M" }).success).toBe(false);
+    expect(createDoctorSchema.safeParse({ ...SCHEMA_BASE, bloodGroup: "O" }).success).toBe(false);
+    expect(createDoctorSchema.safeParse({ ...SCHEMA_BASE, dateOfBirth: "2999-01-01" }).success).toBe(false);
+  });
+
+  it("accepts null for cleared optional fields, as the form sends null", () => {
+    expect(
+      updateDoctorSchema.safeParse({ specialization: null, gender: null, dateOfBirth: null }).success,
+    ).toBe(true);
   });
 });
 

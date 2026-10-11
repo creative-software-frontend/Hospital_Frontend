@@ -73,6 +73,14 @@ export function checkDateOfBirth(value: string): string {
   return "";
 }
 
+export function checkDateNotFuture(value: string, label: string): string {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return `Enter a valid ${label}.`;
+  if (d.getTime() > Date.now()) return `${label} cannot be in the future.`;
+  return "";
+}
+
 export function addError(errors: Record<string, string>, key: string, message: string) {
   if (message && !errors[key]) errors[key] = message;
 }

@@ -11,16 +11,23 @@ import {
   departmentApi,
   doctorApi,
   type ActiveStatus,
+  type BloodGroup,
   type CreateDoctorInput,
   type DepartmentRecord,
   type DoctorRecord,
+  type Gender,
+  type MaritalStatus,
   type   PaginationMeta,
   errorMessage,
   NotFoundError,
+  formatDate,
+  toDateInput,
   ValidationError,
 } from "@/app/lib/api";
 import {
   addError,
+  checkDateNotFuture,
+  checkDateOfBirth,
   checkEmail,
   checkMoney,
   checkName,
@@ -31,6 +38,9 @@ import {
   SHORT_TEXT_MAX,
 } from "@/app/lib/formValidation";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
+import { GENDER_OPTIONS, BLOOD_GROUP_OPTIONS, MARITAL_STATUS_OPTIONS } from "@/app/patients/constants";
+import { useMasterDataOptions } from "@/app/lib/useMasterData";
+import { FileUploadField } from "@/app/components/FileUploadField";
 import { useCurrency } from "@/app/hooks/useCurrency";
 import { formatCurrency } from "@/app/lib/currency";
 
@@ -325,6 +335,14 @@ function DoctorFormPage({
   const [specialization, setSpecialization] = useState(doctor?.specialization ?? "");
   const [qualification, setQualification] = useState(doctor?.qualification ?? "");
   const [bmdcRegistrationNo, setBmdcRegistrationNo] = useState(doctor?.bmdcRegistrationNo ?? "");
+  const [joiningDate, setJoiningDate] = useState(doctor?.joiningDate ? toDateInput(doctor.joiningDate) : "");
+  const [gender, setGender] = useState<string>(doctor?.gender ?? "");
+  const [dateOfBirth, setDateOfBirth] = useState(doctor?.dateOfBirth ? toDateInput(doctor.dateOfBirth) : "");
+  const [maritalStatus, setMaritalStatus] = useState<string>(doctor?.maritalStatus ?? "");
+  const [bloodGroup, setBloodGroup] = useState<string>(doctor?.bloodGroup ?? "");
+  const [photo, setPhoto] = useState(doctor?.photo ?? "");
+  const [signature, setSignature] = useState(doctor?.signature ?? "");
+  const [cv, setCv] = useState(doctor?.cv ?? "");
   const [phone, setPhone] = useState(doctor?.phone ?? "");
   const [email, setEmail] = useState(doctor?.email ?? "");
   const [password, setPassword] = useState("");
@@ -360,6 +378,8 @@ function DoctorFormPage({
     return () => { active = false; };
   }, []);
 
+  const { options: bloodGroups } = useMasterDataOptions("blood_groups", BLOOD_GROUP_OPTIONS);
+
   // Mirrors the backend Zod rules so an obviously bad value is caught before a
   // round trip; the server still has the final say.
   const validate = (): boolean => {
@@ -371,6 +391,8 @@ function DoctorFormPage({
       addError(next, "specialization", checkText(specialization, SHORT_TEXT_MAX, "Specialization"));
       addError(next, "qualification", checkText(qualification, SHORT_TEXT_MAX, "Qualification"));
       addError(next, "bmdcRegistrationNo", checkText(bmdcRegistrationNo, REGISTRATION_NO_MAX, "BMDC registration number"));
+      addError(next, "joiningDate", checkDateNotFuture(joiningDate, "Joining date"));
+      addError(next, "dateOfBirth", checkDateOfBirth(dateOfBirth));
       if (!editing) {
         if (!password.trim()) {
           addError(next, "password", "Password is required to create a login account");
@@ -414,6 +436,14 @@ function DoctorFormPage({
         specialization: specialization.trim() || null,
         qualification: qualification.trim() || null,
         bmdcRegistrationNo: bmdcRegistrationNo.trim() || null,
+        joiningDate: joiningDate || null,
+        gender: gender ? (gender as Gender) : null,
+        dateOfBirth: dateOfBirth || null,
+        maritalStatus: maritalStatus ? (maritalStatus as MaritalStatus) : null,
+        bloodGroup: bloodGroup ? (bloodGroup as BloodGroup) : null,
+        photo: photo || null,
+        signature: signature || null,
+        cv: cv || null,
         phone: phone.trim() || null,
         email: email.trim() || null,
         consultationFee: consultationFee.trim() || null,
@@ -492,14 +522,14 @@ function DoctorFormPage({
           </div>
           {!editing && (
             <>
-              <div>
+              <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Password * (creates login)</label>
                 <input type="password" autoComplete="new-password" value={password}
                   onChange={(e) => setPassword(setField("password", e.target.value))} className={INPUT_CLS} />
                 <p className="text-[10px] text-[var(--muted)] mt-1">A login account is created for every doctor.</p>
                 {fieldError("password")}
               </div>
-              <div>
+              <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Confirm Password *</label>
                 <input type="password" autoComplete="new-password" value={confirmPassword}
                   onChange={(e) => setConfirmPassword(setField("confirmPassword", e.target.value))} className={INPUT_CLS} />
@@ -550,6 +580,48 @@ function DoctorFormPage({
             </select>
             {fieldError("status")}
           </div>
+
+          <div className="sm:col-span-2 mt-1 border-t border-[var(--border)] pt-4">
+            <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">Personal details</span>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Joining Date</label>
+            <input type="date" value={joiningDate} onChange={(e) => setJoiningDate(setField("joiningDate", e.target.value))} className={INPUT_CLS} />
+            {fieldError("joiningDate")}
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Gender</label>
+            <select value={gender} onChange={(e) => setGender(e.target.value)} className={INPUT_CLS}>
+              <option value="">— None —</option>
+              {GENDER_OPTIONS.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Date of Birth</label>
+            <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(setField("dateOfBirth", e.target.value))} className={INPUT_CLS} />
+            {fieldError("dateOfBirth")}
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Marital Status</label>
+            <select value={maritalStatus} onChange={(e) => setMaritalStatus(e.target.value)} className={INPUT_CLS}>
+              <option value="">— None —</option>
+              {MARITAL_STATUS_OPTIONS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Blood Group</label>
+            <select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} className={INPUT_CLS}>
+              <option value="">— None —</option>
+              {bloodGroups.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
+            </select>
+          </div>
+
+          <div className="sm:col-span-2 mt-1 border-t border-[var(--border)] pt-4">
+            <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">Attachments</span>
+          </div>
+          <FileUploadField label="Picture" kind="photo" value={photo} onChange={setPhoto} preview="image" hint="JPG, PNG or WebP up to 5 MB." />
+          <FileUploadField label="Signature" kind="signature" value={signature} onChange={setSignature} preview="image" hint="JPG, PNG or WebP up to 5 MB." />
+          <FileUploadField label="CV / Résumé" kind="cv" value={cv} onChange={setCv} preview="file" hint="PDF, DOC or DOCX up to 10 MB." />
         </div>
 
         {error && <p className="mt-4 text-sm text-red-200 bg-red-500/20 border border-red-400/40 rounded-lg px-3 py-2">{error}</p>}
@@ -598,6 +670,11 @@ function DoctorProfileModal({
     ["Specialization", data?.specialization],
     ["Qualification", data?.qualification],
     ["BMDC Registration No.", data?.bmdcRegistrationNo],
+    ["Joining Date", data?.joiningDate ? formatDate(data.joiningDate) : "—"],
+    ["Gender", data?.gender],
+    ["Date of Birth", data?.dateOfBirth ? formatDate(data.dateOfBirth) : "—"],
+    ["Marital Status", data?.maritalStatus],
+    ["Blood Group", data?.bloodGroup ? data.bloodGroup.replace("_", " ") : "—"],
     ["Phone", data?.phone],
     ["Email", data?.email],
     ["Consultation Fee", fee(data?.consultationFee)],
@@ -645,6 +722,32 @@ function DoctorProfileModal({
             </div>
           ))}
         </div>
+
+        {(data?.photo || data?.signature || data?.cv) && (
+          <div className="mt-6 border-t border-[var(--border)] pt-4">
+            <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">Attachments</span>
+            <div className="mt-3 flex flex-wrap gap-5">
+              {data?.photo && (
+                <div>
+                  <p className="text-[11px] font-bold text-[var(--muted)] mb-1">Picture</p>
+                  <img src={data.photo} alt="Doctor" className="h-24 w-24 object-cover rounded-xl border border-[var(--border)] bg-[var(--bg)]" />
+                </div>
+              )}
+              {data?.signature && (
+                <div>
+                  <p className="text-[11px] font-bold text-[var(--muted)] mb-1">Signature</p>
+                  <img src={data.signature} alt="Signature" className="h-24 w-40 object-contain rounded-xl border border-[var(--border)] bg-[var(--bg)]" />
+                </div>
+              )}
+              {data?.cv && (
+                <div>
+                  <p className="text-[11px] font-bold text-[var(--muted)] mb-1">CV / Résumé</p>
+                  <a href={data.cv} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[var(--primary)] hover:text-[var(--primary-dark)]">View file</a>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

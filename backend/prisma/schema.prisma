@@ -526,6 +526,14 @@ model Doctor {
   specialization  String?
   qualification   String?
   bmdcRegistrationNo String?
+  joiningDate     DateTime?
+  gender          Gender?
+  dateOfBirth     DateTime?
+  maritalStatus   MaritalStatus?
+  bloodGroup      BloodGroupCode?
+  photo           String?
+  signature       String?
+  cv              String?
   phone           String?
   email           String?
   consultationFee Decimal?  @db.Decimal(12, 2)
@@ -571,6 +579,14 @@ model Nurse {
   name           String
   qualification  String?
   registrationNo String?
+  joiningDate    DateTime?
+  gender         Gender?
+  dateOfBirth    DateTime?
+  maritalStatus  MaritalStatus?
+  bloodGroup     BloodGroupCode?
+  photo          String?
+  signature      String?
+  cv             String?
   phone          String?
   email          String?
   status         String    @default("active")

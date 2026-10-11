@@ -406,12 +406,14 @@ interface ErrorBody {
 
 async function rawRequest<TBody>(path: string, init?: RequestInit): Promise<TBody> {
   let res: Response;
+  const isFormData = typeof FormData !== "undefined" && init?.body instanceof FormData;
   try {
     res = await fetch(`${API_BASE}${path}`, {
       credentials: "include",
-      headers: init?.body
-        ? { "Content-Type": "application/json", ...(init.headers ?? {}) }
-        : init?.headers,
+      headers:
+        init?.body && !isFormData
+          ? { "Content-Type": "application/json", ...(init.headers ?? {}) }
+          : init?.headers,
       ...init,
     });
   } catch {
@@ -2035,6 +2037,14 @@ export interface DoctorRecord {
   specialization: string | null;
   qualification: string | null;
   bmdcRegistrationNo: string | null;
+  joiningDate: string | null;
+  gender: Gender | null;
+  dateOfBirth: string | null;
+  maritalStatus: MaritalStatus | null;
+  bloodGroup: BloodGroup | null;
+  photo: string | null;
+  signature: string | null;
+  cv: string | null;
   phone: string | null;
   email: string | null;
   consultationFee: string | null;
@@ -2067,6 +2077,14 @@ export interface CreateDoctorInput {
   specialization?: string | null;
   qualification?: string | null;
   bmdcRegistrationNo?: string | null;
+  joiningDate?: string | null;
+  gender?: Gender | null;
+  dateOfBirth?: string | null;
+  maritalStatus?: MaritalStatus | null;
+  bloodGroup?: BloodGroup | null;
+  photo?: string | null;
+  signature?: string | null;
+  cv?: string | null;
   phone?: string | null;
   email?: string | null;
   consultationFee?: string | null;
@@ -2092,6 +2110,14 @@ export interface NurseRecord {
   name: string;
   qualification: string | null;
   registrationNo: string | null;
+  joiningDate: string | null;
+  gender: Gender | null;
+  dateOfBirth: string | null;
+  maritalStatus: MaritalStatus | null;
+  bloodGroup: BloodGroup | null;
+  photo: string | null;
+  signature: string | null;
+  cv: string | null;
   phone: string | null;
   email: string | null;
   status: ActiveStatus;
@@ -2121,6 +2147,14 @@ export interface CreateNurseInput {
   shiftTypeId?: number | null;
   qualification?: string | null;
   registrationNo?: string | null;
+  joiningDate?: string | null;
+  gender?: Gender | null;
+  dateOfBirth?: string | null;
+  maritalStatus?: MaritalStatus | null;
+  bloodGroup?: BloodGroup | null;
+  photo?: string | null;
+  signature?: string | null;
+  cv?: string | null;
   phone?: string | null;
   email?: string | null;
   password?: string;
@@ -2243,6 +2277,30 @@ export const nurseApi = {
       method: "PATCH",
       body: JSON.stringify(input),
     }),
+};
+
+export type UploadKind = "photo" | "signature" | "cv";
+
+export interface UploadedFile {
+  url: string;
+  kind: UploadKind;
+  originalName: string;
+  size: number;
+  mimeType: string;
+}
+
+/**
+ * Uploads a single attachment (photo, signature or CV). Sent as multipart so the
+ * browser sets the boundary itself; the backend stores it under /api/uploads and
+ * returns the public URL to persist on the record.
+ */
+export const uploadApi = {
+  file: (file: File, kind: UploadKind) => {
+    const form = new FormData();
+    form.append("kind", kind);
+    form.append("file", file);
+    return request<UploadedFile>("/uploads", { method: "POST", body: form });
+  },
 };
 
 export const serviceApi = {

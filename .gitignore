@@ -49,3 +49,6 @@ backend/sql/*.sql
 # database dumps produced by Settings -> Backup must never be committed
 backend/backups/
 backend/storage/
+
+# user-uploaded attachments (doctor/nurse photos, signatures, CVs)
+backend/public/uploads/

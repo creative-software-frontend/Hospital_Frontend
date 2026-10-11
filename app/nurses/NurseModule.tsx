@@ -12,17 +12,23 @@ import {
   departmentApi,
   nurseApi,
   type ActiveStatus,
+  type BloodGroup,
   type CreateNurseInput,
   type DepartmentRecord,
+  type Gender,
+  type MaritalStatus,
   type NurseRecord,
   type PaginationMeta,
   type ShiftTypeRecord,
   errorMessage,
   NotFoundError,
+  toDateInput,
   ValidationError,
 } from "@/app/lib/api";
 import {
   addError,
+  checkDateNotFuture,
+  checkDateOfBirth,
   checkEmail,
   checkName,
   checkOptionalId,
@@ -32,6 +38,9 @@ import {
   SHORT_TEXT_MAX,
 } from "@/app/lib/formValidation";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
+import { GENDER_OPTIONS, BLOOD_GROUP_OPTIONS, MARITAL_STATUS_OPTIONS } from "@/app/patients/constants";
+import { useMasterDataOptions } from "@/app/lib/useMasterData";
+import { FileUploadField } from "@/app/components/FileUploadField";
 
 const PAGE_SIZE = 10;
 
@@ -279,6 +288,14 @@ function NurseFormPage({
   const [shiftTypeId, setShiftTypeId] = useState<string>(nurse?.shiftTypeId ? String(nurse.shiftTypeId) : "");
   const [qualification, setQualification] = useState(nurse?.qualification ?? "");
   const [registrationNo, setRegistrationNo] = useState(nurse?.registrationNo ?? "");
+  const [joiningDate, setJoiningDate] = useState(nurse?.joiningDate ? toDateInput(nurse.joiningDate) : "");
+  const [gender, setGender] = useState<string>(nurse?.gender ?? "");
+  const [dateOfBirth, setDateOfBirth] = useState(nurse?.dateOfBirth ? toDateInput(nurse.dateOfBirth) : "");
+  const [maritalStatus, setMaritalStatus] = useState<string>(nurse?.maritalStatus ?? "");
+  const [bloodGroup, setBloodGroup] = useState<string>(nurse?.bloodGroup ?? "");
+  const [photo, setPhoto] = useState(nurse?.photo ?? "");
+  const [signature, setSignature] = useState(nurse?.signature ?? "");
+  const [cv, setCv] = useState(nurse?.cv ?? "");
   const [phone, setPhone] = useState(nurse?.phone ?? "");
   const [email, setEmail] = useState(nurse?.email ?? "");
   const [password, setPassword] = useState("");
@@ -313,6 +330,8 @@ function NurseFormPage({
     return () => { active = false; };
   }, []);
 
+  const { options: bloodGroups } = useMasterDataOptions("blood_groups", BLOOD_GROUP_OPTIONS);
+
   // Mirrors the backend Zod rules so an obviously bad value is caught before a
   // round trip; the server still has the final say.
   const validate = (): boolean => {
@@ -324,6 +343,8 @@ function NurseFormPage({
       addError(next, "shiftTypeId", checkOptionalId(shiftTypeId, "shift"));
       addError(next, "qualification", checkText(qualification, SHORT_TEXT_MAX, "Qualification"));
       addError(next, "registrationNo", checkText(registrationNo, REGISTRATION_NO_MAX, "Registration number"));
+      addError(next, "joiningDate", checkDateNotFuture(joiningDate, "Joining date"));
+      addError(next, "dateOfBirth", checkDateOfBirth(dateOfBirth));
       if (!editing) {
         if (!password.trim()) {
           addError(next, "password", "Password is required to create a login account");
@@ -356,6 +377,14 @@ function NurseFormPage({
         shiftTypeId: shiftTypeId ? Number(shiftTypeId) : null,
         qualification: qualification.trim() || null,
         registrationNo: registrationNo.trim() || null,
+        joiningDate: joiningDate || null,
+        gender: gender ? (gender as Gender) : null,
+        dateOfBirth: dateOfBirth || null,
+        maritalStatus: maritalStatus ? (maritalStatus as MaritalStatus) : null,
+        bloodGroup: bloodGroup ? (bloodGroup as BloodGroup) : null,
+        photo: photo || null,
+        signature: signature || null,
+        cv: cv || null,
         phone: phone.trim() || null,
         email: email.trim() || null,
         ...(!editing
@@ -436,14 +465,14 @@ function NurseFormPage({
           </div>
           {!editing && (
             <>
-              <div>
+              <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Password * (creates login)</label>
                 <input type="password" autoComplete="new-password" value={password}
                   onChange={(e) => setPassword(setField("password", e.target.value))} className={INPUT_CLS} />
                 <p className="text-[10px] text-[var(--muted)] mt-1">A login account is created for every nurse.</p>
                 {fieldError("password")}
               </div>
-              <div>
+              <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Confirm Password *</label>
                 <input type="password" autoComplete="new-password" value={confirmPassword}
                   onChange={(e) => setConfirmPassword(setField("confirmPassword", e.target.value))} className={INPUT_CLS} />
@@ -459,6 +488,48 @@ function NurseFormPage({
             </select>
             {fieldError("status")}
           </div>
+
+          <div className="sm:col-span-2 mt-1 border-t border-[var(--border)] pt-4">
+            <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">Personal details</span>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Joining Date</label>
+            <input type="date" value={joiningDate} onChange={(e) => setJoiningDate(setField("joiningDate", e.target.value))} className={INPUT_CLS} />
+            {fieldError("joiningDate")}
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Gender</label>
+            <select value={gender} onChange={(e) => setGender(e.target.value)} className={INPUT_CLS}>
+              <option value="">— None —</option>
+              {GENDER_OPTIONS.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Date of Birth</label>
+            <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(setField("dateOfBirth", e.target.value))} className={INPUT_CLS} />
+            {fieldError("dateOfBirth")}
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Marital Status</label>
+            <select value={maritalStatus} onChange={(e) => setMaritalStatus(e.target.value)} className={INPUT_CLS}>
+              <option value="">— None —</option>
+              {MARITAL_STATUS_OPTIONS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Blood Group</label>
+            <select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} className={INPUT_CLS}>
+              <option value="">— None —</option>
+              {bloodGroups.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
+            </select>
+          </div>
+
+          <div className="sm:col-span-2 mt-1 border-t border-[var(--border)] pt-4">
+            <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">Attachments</span>
+          </div>
+          <FileUploadField label="Picture" kind="photo" value={photo} onChange={setPhoto} preview="image" hint="JPG, PNG or WebP up to 5 MB." />
+          <FileUploadField label="Signature" kind="signature" value={signature} onChange={setSignature} preview="image" hint="JPG, PNG or WebP up to 5 MB." />
+          <FileUploadField label="CV / Résumé" kind="cv" value={cv} onChange={setCv} preview="file" hint="PDF, DOC or DOCX up to 10 MB." />
         </div>
 
         {error && <p className="mt-4 text-sm text-red-200 bg-red-500/20 border border-red-400/40 rounded-lg px-3 py-2">{error}</p>}

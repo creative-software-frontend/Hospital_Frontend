@@ -209,6 +209,30 @@ describe("createNurse", () => {
     expect(call.data.shiftTypeId).toBeNull();
   });
 
+  it("persists the profile fields (dates, enums, attachments) on create", async () => {
+    await nurseService.createNurse(nurseUser, {
+      ...VALID_INPUT,
+      joiningDate: new Date("2024-06-01"),
+      gender: "FEMALE",
+      dateOfBirth: new Date("1992-03-04"),
+      maritalStatus: "SINGLE",
+      bloodGroup: "A_POS",
+      photo: "/api/uploads/photos/n.png",
+      signature: "/api/uploads/signatures/n.png",
+      cv: "/api/uploads/cvs/n.pdf",
+    });
+
+    const data = mockPrisma.nurse.create.mock.calls[0][0].data;
+    expect(data.gender).toBe("FEMALE");
+    expect(data.bloodGroup).toBe("A_POS");
+    expect(data.maritalStatus).toBe("SINGLE");
+    expect(data.joiningDate).toEqual(new Date("2024-06-01"));
+    expect(data.dateOfBirth).toEqual(new Date("1992-03-04"));
+    expect(data.photo).toBe("/api/uploads/photos/n.png");
+    expect(data.signature).toBe("/api/uploads/signatures/n.png");
+    expect(data.cv).toBe("/api/uploads/cvs/n.pdf");
+  });
+
   it("stores a supplied status instead of the default", async () => {
     await nurseService.createNurse(nurseUser, {
       name: "Nurse On Leave",
@@ -540,6 +564,46 @@ describe("createNurseSchema", () => {
 
   it("strips an injected branchId so it can never reach the database", () => {
     expect(createNurseSchema.parse({ ...SCHEMA_BASE, branchId: 999 } as never)).not.toHaveProperty("branchId");
+  });
+});
+
+describe("nurse profile fields (gender, blood group, dates, attachments)", () => {
+  const PROFILE_BASE = {
+    name: "Nurse Schema",
+    email: "profile@clinic.test",
+    password: "Str0ng!pass",
+    confirmPassword: "Str0ng!pass",
+  };
+
+  it("accepts enum values, ISO dates and attachment urls", () => {
+    const parsed = createNurseSchema.parse({
+      ...PROFILE_BASE,
+      joiningDate: "2024-06-01",
+      gender: "FEMALE",
+      dateOfBirth: "1992-03-04",
+      maritalStatus: "SINGLE",
+      bloodGroup: "A_POS",
+      photo: "/api/uploads/photos/n.png",
+      signature: "/api/uploads/signatures/n.png",
+      cv: "/api/uploads/cvs/n.pdf",
+    });
+    expect(parsed.gender).toBe("FEMALE");
+    expect(parsed.bloodGroup).toBe("A_POS");
+    expect(parsed.maritalStatus).toBe("SINGLE");
+    expect(parsed.joiningDate).toEqual(new Date("2024-06-01"));
+    expect(parsed.cv).toBe("/api/uploads/cvs/n.pdf");
+  });
+
+  it("rejects an unknown enum value and a future date", () => {
+    expect(createNurseSchema.safeParse({ ...PROFILE_BASE, gender: "F" }).success).toBe(false);
+    expect(createNurseSchema.safeParse({ ...PROFILE_BASE, maritalStatus: "SINGLE " }).success).toBe(false);
+    expect(createNurseSchema.safeParse({ ...PROFILE_BASE, joiningDate: "2999-01-01" }).success).toBe(false);
+  });
+
+  it("accepts null for cleared optional fields, as the form sends null", () => {
+    expect(
+      updateNurseSchema.safeParse({ qualification: null, bloodGroup: null, photo: null }).success,
+    ).toBe(true);
   });
 });
 
