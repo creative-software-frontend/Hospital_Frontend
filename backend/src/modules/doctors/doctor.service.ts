@@ -87,7 +87,7 @@ const DOCTOR_SELECT: Prisma.DoctorSelect = {
   name: true,
   specialization: true,
   qualification: true,
-  registrationNo: true,
+  bmdcRegistrationNo: true,
   phone: true,
   email: true,
   consultationFee: true,
@@ -115,7 +115,7 @@ export async function listDoctors(actor: AuthUser, query: ListDoctorsQuery) {
       { name: { contains: search } },
       { doctorCode: { contains: search } },
       { specialization: { contains: search } },
-      { registrationNo: { contains: search } },
+      { bmdcRegistrationNo: { contains: search } },
     ];
   }
 
@@ -194,7 +194,7 @@ export async function createDoctor(actor: AuthUser, input: CreateDoctorInput) {
         departmentId: input.departmentId ?? null,
         specialization: input.specialization,
         qualification: input.qualification,
-        registrationNo: input.registrationNo,
+        bmdcRegistrationNo: input.bmdcRegistrationNo,
         phone: input.phone,
         email: input.email,
         consultationFee: input.consultationFee,

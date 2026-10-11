@@ -324,7 +324,7 @@ function DoctorFormPage({
   const [departmentId, setDepartmentId] = useState<string>(doctor?.departmentId ? String(doctor.departmentId) : "");
   const [specialization, setSpecialization] = useState(doctor?.specialization ?? "");
   const [qualification, setQualification] = useState(doctor?.qualification ?? "");
-  const [registrationNo, setRegistrationNo] = useState(doctor?.registrationNo ?? "");
+  const [bmdcRegistrationNo, setBmdcRegistrationNo] = useState(doctor?.bmdcRegistrationNo ?? "");
   const [phone, setPhone] = useState(doctor?.phone ?? "");
   const [email, setEmail] = useState(doctor?.email ?? "");
   const [password, setPassword] = useState("");
@@ -370,7 +370,7 @@ function DoctorFormPage({
       addError(next, "departmentId", checkOptionalId(departmentId, "department"));
       addError(next, "specialization", checkText(specialization, SHORT_TEXT_MAX, "Specialization"));
       addError(next, "qualification", checkText(qualification, SHORT_TEXT_MAX, "Qualification"));
-      addError(next, "registrationNo", checkText(registrationNo, REGISTRATION_NO_MAX, "Registration number"));
+      addError(next, "bmdcRegistrationNo", checkText(bmdcRegistrationNo, REGISTRATION_NO_MAX, "BMDC registration number"));
       if (!editing) {
         if (!password.trim()) {
           addError(next, "password", "Password is required to create a login account");
@@ -413,7 +413,7 @@ function DoctorFormPage({
         departmentId: departmentId ? Number(departmentId) : null,
         specialization: specialization.trim() || null,
         qualification: qualification.trim() || null,
-        registrationNo: registrationNo.trim() || null,
+        bmdcRegistrationNo: bmdcRegistrationNo.trim() || null,
         phone: phone.trim() || null,
         email: email.trim() || null,
         consultationFee: consultationFee.trim() || null,
@@ -453,9 +453,9 @@ function DoctorFormPage({
 
         <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Registration No.</label>
-            <input value={registrationNo} onChange={(e) => setRegistrationNo(setField("registrationNo", e.target.value))} className={INPUT_CLS} />
-            {fieldError("registrationNo")}
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">BMDC Registration No.</label>
+            <input value={bmdcRegistrationNo} onChange={(e) => setBmdcRegistrationNo(setField("bmdcRegistrationNo", e.target.value))} className={INPUT_CLS} />
+            {fieldError("bmdcRegistrationNo")}
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Name *</label>
@@ -597,7 +597,7 @@ function DoctorProfileModal({
     ["Department", data?.department?.name ?? "—"],
     ["Specialization", data?.specialization],
     ["Qualification", data?.qualification],
-    ["Registration No.", data?.registrationNo],
+    ["BMDC Registration No.", data?.bmdcRegistrationNo],
     ["Phone", data?.phone],
     ["Email", data?.email],
     ["Consultation Fee", fee(data?.consultationFee)],

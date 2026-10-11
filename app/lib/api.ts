@@ -2034,7 +2034,7 @@ export interface DoctorRecord {
   name: string;
   specialization: string | null;
   qualification: string | null;
-  registrationNo: string | null;
+  bmdcRegistrationNo: string | null;
   phone: string | null;
   email: string | null;
   consultationFee: string | null;
@@ -2066,7 +2066,7 @@ export interface CreateDoctorInput {
   departmentId?: number | null;
   specialization?: string | null;
   qualification?: string | null;
-  registrationNo?: string | null;
+  bmdcRegistrationNo?: string | null;
   phone?: string | null;
   email?: string | null;
   consultationFee?: string | null;
@@ -2075,7 +2075,7 @@ export interface CreateDoctorInput {
   commissionType?: "PERCENT" | "FIXED" | null;
   commissionValue?: string | null;
   status?: ActiveStatus;
-  /** Supplying a password opts the doctor into a linked login account. */
+  /** A login account is always created; password is required on create. */
   password?: string;
   confirmPassword?: string;
 }

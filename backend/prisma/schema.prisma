@@ -525,7 +525,7 @@ model Doctor {
   name            String
   specialization  String?
   qualification   String?
-  registrationNo  String?
+  bmdcRegistrationNo String?
   phone           String?
   email           String?
   consultationFee Decimal?  @db.Decimal(12, 2)
@@ -553,7 +553,7 @@ model Doctor {
 
   @@unique([branchId, doctorCode])
   @@index([branchId])
-  @@index([registrationNo])
+  @@index([bmdcRegistrationNo])
   @@index([deletedAt])
   @@index([departmentId])
 }

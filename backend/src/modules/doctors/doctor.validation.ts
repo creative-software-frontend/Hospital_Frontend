@@ -55,7 +55,7 @@ const doctorFieldsSchema = z.object({
   departmentId: z.coerce.number().int().positive().optional().nullable(),
   specialization: optionalString(255),
   qualification: optionalString(255),
-  registrationNo: optionalString(64),
+  bmdcRegistrationNo: optionalString(64),
   phone: phoneSchema,
   email: emailSchema,
   consultationFee: optionalDecimal(16),

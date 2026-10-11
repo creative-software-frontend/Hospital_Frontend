@@ -105,7 +105,7 @@ const SAMPLE_DOCTOR = {
   name: "Dr. Sarah Ahmed",
   specialization: "Cardiology",
   qualification: "MBBS, FCPS",
-  registrationNo: "REG-8891",
+  bmdcRegistrationNo: "REG-8891",
   phone: "+8801711000000",
   email: "sarah@clinic.test",
   consultationFee: "800.00",
@@ -123,7 +123,7 @@ const VALID_INPUT = {
   departmentId: 3,
   specialization: "Cardiology",
   qualification: "MBBS, FCPS",
-  registrationNo: "REG-8891",
+  bmdcRegistrationNo: "REG-8891",
   phone: "+8801711000000",
   email: "sarah@clinic.test",
   consultationFee: "800.00",
@@ -529,7 +529,7 @@ describe("listDoctors", () => {
       { name: { contains: "cardio" } },
       { doctorCode: { contains: "cardio" } },
       { specialization: { contains: "cardio" } },
-      { registrationNo: { contains: "cardio" } },
+      { bmdcRegistrationNo: { contains: "cardio" } },
     ]);
   });
 
@@ -626,12 +626,12 @@ describe("createDoctorSchema", () => {
       phone: "",
       specialization: "",
       qualification: "",
-      registrationNo: "",
+      bmdcRegistrationNo: "",
     });
     expect(parsed.phone).toBe("");
     expect(parsed.specialization).toBe("");
     expect(parsed.qualification).toBe("");
-    expect(parsed.registrationNo).toBe("");
+    expect(parsed.bmdcRegistrationNo).toBe("");
   });
 
   it("accepts fees with up to two decimals and rejects anything else", () => {
