@@ -57,6 +57,18 @@ export const keyFeatures: Feature[] = [
         ]
     },
     {
+        id: 13,
+        englishTitle: "Nursing Management",
+        icon: FiUserCheck,
+        subFeatures: [
+            { label: "Nurse Assignment", icon: FiUsers },
+            { label: "Nursing Notes", icon: FiEdit },
+            { label: "Patient Monitoring", icon: FiThermometer },
+            { label: "Medication Tracking", icon: FiBriefcase },
+            { label: "Shift Management", icon: FiClock },
+        ]
+    },
+    {
         id: 3,
         englishTitle: "Appointment Management",
         icon: FiCalendar,
@@ -194,18 +206,6 @@ export const keyFeatures: Feature[] = [
             { label: "Blood Stock Monitoring", icon: FiActivity },
             { label: "Blood Group Tracking", icon: FiTag },
             { label: "Blood Expiry Alert", icon: FiAlertTriangle },
-        ]
-    },
-    {
-        id: 13,
-        englishTitle: "Nursing Management",
-        icon: FiUserCheck,
-        subFeatures: [
-            { label: "Nurse Assignment", icon: FiUsers },
-            { label: "Nursing Notes", icon: FiEdit },
-            { label: "Patient Monitoring", icon: FiThermometer },
-            { label: "Medication Tracking", icon: FiBriefcase },
-            { label: "Shift Management", icon: FiClock },
         ]
     },
     {
