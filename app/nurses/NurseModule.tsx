@@ -26,6 +26,7 @@ import {
   ValidationError,
 } from "@/app/lib/api";
 import {
+  ADDRESS_MAX,
   addError,
   checkDateNotFuture,
   checkDateOfBirth,
@@ -34,7 +35,6 @@ import {
   checkOptionalId,
   checkPhone,
   checkText,
-  REGISTRATION_NO_MAX,
   SHORT_TEXT_MAX,
 } from "@/app/lib/formValidation";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
@@ -163,7 +163,7 @@ export function NurseModule() {
         </span>
         <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">Nurses</h3>
         <p className="text-xs text-[var(--muted)] mt-1.5 leading-relaxed max-w-3xl">
-          Live from the backend: nurse profiles, registration numbers, department and shift.
+          Live from the backend: nurse profiles, department and shift.
         </p>
       </div>
 
@@ -181,7 +181,7 @@ export function NurseModule() {
               <input
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Search name, ID, registration…"
+                placeholder="Search name, ID, qualification…"
                 className="pl-9 bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15 w-64 max-w-full"
               />
             </div>
@@ -211,23 +211,22 @@ export function NurseModule() {
           <table className="min-w-[900px] w-full">
             <thead>
               <tr className="bg-[var(--bg)]">
-                {["ID", "Name", "Qualification", "Registration No.", "Department", "Shift", "Phone", "Status", "Actions"].map((col) => (
+                {["ID", "Name", "Qualification", "Department", "Shift", "Phone", "Status", "Actions"].map((col) => (
                   <th key={col} className="text-left text-[11px] font-bold text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">{col}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="px-4 py-10 text-center"><div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--primary)]" /></td></tr>
+                <tr><td colSpan={8} className="px-4 py-10 text-center"><div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--primary)]" /></td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-10 text-center text-xs text-[var(--muted)]">No nurses found.</td></tr>
+                <tr><td colSpan={8} className="px-4 py-10 text-center text-xs text-[var(--muted)]">No nurses found.</td></tr>
               ) : (
                 rows.map((n) => (
                   <tr key={n.id} className="hover:bg-[var(--primary-soft)]/10 transition-colors">
                     <td className="text-[12px] font-bold text-[var(--primary-dark)] px-4 py-3 border-b border-[var(--border)]">{n.nurseCode}</td>
                     <td className="text-[12px] font-bold text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">{n.name}</td>
                     <td className="text-[12px] text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">{n.qualification ?? "—"}</td>
-                    <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">{n.registrationNo ?? "—"}</td>
                     <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">{n.department?.name ?? "—"}</td>
                     <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">{n.shiftType?.name ?? "—"}</td>
                     <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">{n.phone ?? "—"}</td>
@@ -287,7 +286,6 @@ function NurseFormPage({
   const [departmentId, setDepartmentId] = useState<string>(nurse?.departmentId ? String(nurse.departmentId) : "");
   const [shiftTypeId, setShiftTypeId] = useState<string>(nurse?.shiftTypeId ? String(nurse.shiftTypeId) : "");
   const [qualification, setQualification] = useState(nurse?.qualification ?? "");
-  const [registrationNo, setRegistrationNo] = useState(nurse?.registrationNo ?? "");
   const [joiningDate, setJoiningDate] = useState(nurse?.joiningDate ? toDateInput(nurse.joiningDate) : "");
   const [gender, setGender] = useState<string>(nurse?.gender ?? "");
   const [dateOfBirth, setDateOfBirth] = useState(nurse?.dateOfBirth ? toDateInput(nurse.dateOfBirth) : "");
@@ -297,6 +295,8 @@ function NurseFormPage({
   const [signature, setSignature] = useState(nurse?.signature ?? "");
   const [cv, setCv] = useState(nurse?.cv ?? "");
   const [phone, setPhone] = useState(nurse?.phone ?? "");
+  const [permanentAddress, setPermanentAddress] = useState(nurse?.permanentAddress ?? "");
+  const [presentAddress, setPresentAddress] = useState(nurse?.presentAddress ?? "");
   const [email, setEmail] = useState(nurse?.email ?? "");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -339,10 +339,11 @@ function NurseFormPage({
       addError(next, "name", checkName(name));
       addError(next, "email", checkEmail(email));
       addError(next, "phone", checkPhone(phone));
+      addError(next, "permanentAddress", checkText(permanentAddress, ADDRESS_MAX, "Permanent address"));
+      addError(next, "presentAddress", checkText(presentAddress, ADDRESS_MAX, "Present address"));
       addError(next, "departmentId", checkOptionalId(departmentId, "department"));
       addError(next, "shiftTypeId", checkOptionalId(shiftTypeId, "shift"));
       addError(next, "qualification", checkText(qualification, SHORT_TEXT_MAX, "Qualification"));
-      addError(next, "registrationNo", checkText(registrationNo, REGISTRATION_NO_MAX, "Registration number"));
       addError(next, "joiningDate", checkDateNotFuture(joiningDate, "Joining date"));
       addError(next, "dateOfBirth", checkDateOfBirth(dateOfBirth));
       if (!editing) {
@@ -376,7 +377,6 @@ function NurseFormPage({
         departmentId: departmentId ? Number(departmentId) : null,
         shiftTypeId: shiftTypeId ? Number(shiftTypeId) : null,
         qualification: qualification.trim() || null,
-        registrationNo: registrationNo.trim() || null,
         joiningDate: joiningDate || null,
         gender: gender ? (gender as Gender) : null,
         dateOfBirth: dateOfBirth || null,
@@ -386,6 +386,8 @@ function NurseFormPage({
         signature: signature || null,
         cv: cv || null,
         phone: phone.trim() || null,
+        permanentAddress: permanentAddress.trim() || null,
+        presentAddress: presentAddress.trim() || null,
         email: email.trim() || null,
         ...(!editing
           ? { password: password.trim(), confirmPassword: confirmPassword.trim() || password.trim() }
@@ -423,19 +425,14 @@ function NurseFormPage({
 
         <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Joining Date</label>
+            <input type="date" value={joiningDate} onChange={(e) => setJoiningDate(setField("joiningDate", e.target.value))} className={INPUT_CLS} />
+            {fieldError("joiningDate")}
+          </div>
+          <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Name *</label>
             <input value={name} onChange={(e) => setName(setField("name", e.target.value))} className={INPUT_CLS} />
             {fieldError("name")}
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Registration No.</label>
-            <input value={registrationNo} onChange={(e) => setRegistrationNo(setField("registrationNo", e.target.value))} className={INPUT_CLS} />
-            {fieldError("registrationNo")}
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Qualification</label>
-            <input value={qualification} onChange={(e) => setQualification(setField("qualification", e.target.value))} className={INPUT_CLS} />
-            {fieldError("qualification")}
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Department</label>
@@ -454,48 +451,9 @@ function NurseFormPage({
             {fieldError("shiftTypeId")}
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Phone</label>
-              <input value={phone} inputMode="tel" onChange={(e) => setPhone(setField("phone", sanitizePhone(e.target.value)))} className={INPUT_CLS} />
-            {fieldError("phone")}
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">{editing ? "Email" : "Email *"}</label>
-            <input type="email" value={email} onChange={(e) => setEmail(setField("email", e.target.value))} className={INPUT_CLS} />
-            {fieldError("email")}
-          </div>
-          {!editing && (
-            <>
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Password * (creates login)</label>
-                <input type="password" autoComplete="new-password" value={password}
-                  onChange={(e) => setPassword(setField("password", e.target.value))} className={INPUT_CLS} />
-                <p className="text-[10px] text-[var(--muted)] mt-1">A login account is created for every nurse.</p>
-                {fieldError("password")}
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Confirm Password *</label>
-                <input type="password" autoComplete="new-password" value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(setField("confirmPassword", e.target.value))} className={INPUT_CLS} />
-                {fieldError("confirmPassword")}
-              </div>
-            </>
-          )}
-          <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Status</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value as ActiveStatus)} className={INPUT_CLS}>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-            {fieldError("status")}
-          </div>
-
-          <div className="sm:col-span-2 mt-1 border-t border-[var(--border)] pt-4">
-            <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">Personal details</span>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Joining Date</label>
-            <input type="date" value={joiningDate} onChange={(e) => setJoiningDate(setField("joiningDate", e.target.value))} className={INPUT_CLS} />
-            {fieldError("joiningDate")}
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Qualification</label>
+            <input value={qualification} onChange={(e) => setQualification(setField("qualification", e.target.value))} className={INPUT_CLS} />
+            {fieldError("qualification")}
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Gender</label>
@@ -503,6 +461,26 @@ function NurseFormPage({
               <option value="">— None —</option>
               {GENDER_OPTIONS.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
             </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Email *</label>
+            <input type="email" value={email} onChange={(e) => setEmail(setField("email", e.target.value))} className={INPUT_CLS} />
+            {fieldError("email")}
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Phone</label>
+            <input value={phone} inputMode="tel" onChange={(e) => setPhone(setField("phone", sanitizePhone(e.target.value)))} className={INPUT_CLS} />
+            {fieldError("phone")}
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Permanent Address</label>
+            <input value={permanentAddress} onChange={(e) => setPermanentAddress(setField("permanentAddress", e.target.value))} className={INPUT_CLS} />
+            {fieldError("permanentAddress")}
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Present Address</label>
+            <input value={presentAddress} onChange={(e) => setPresentAddress(setField("presentAddress", e.target.value))} className={INPUT_CLS} />
+            {fieldError("presentAddress")}
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Date of Birth</label>
@@ -523,6 +501,31 @@ function NurseFormPage({
               {bloodGroups.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
             </select>
           </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Status</label>
+            <select value={status} onChange={(e) => setStatus(e.target.value as ActiveStatus)} className={INPUT_CLS}>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            {fieldError("status")}
+          </div>
+          {!editing && (
+            <>
+              <div>
+                <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Password * (creates login)</label>
+                <input type="password" autoComplete="new-password" value={password}
+                  onChange={(e) => setPassword(setField("password", e.target.value))} className={INPUT_CLS} />
+                <p className="text-[10px] text-[var(--muted)] mt-1">A login account is created for every nurse.</p>
+                {fieldError("password")}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Confirm Password *</label>
+                <input type="password" autoComplete="new-password" value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(setField("confirmPassword", e.target.value))} className={INPUT_CLS} />
+                {fieldError("confirmPassword")}
+              </div>
+            </>
+          )}
 
           <div className="sm:col-span-2 mt-1 border-t border-[var(--border)] pt-4">
             <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">Attachments</span>

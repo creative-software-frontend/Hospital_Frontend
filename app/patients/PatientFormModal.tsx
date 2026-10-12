@@ -16,7 +16,6 @@ import {
   type PatientDetail,
   type PatientListRecord,
   type PatientRegistrationConfig,
-  type PatientType,
   ValidationError,
   BusinessRuleError,
   ConflictError,
@@ -27,7 +26,6 @@ import {
   BLOOD_GROUP_OPTIONS,
   MARITAL_STATUS_OPTIONS,
   OCCUPATION_OPTIONS,
-  PATIENT_TYPE_OPTIONS,
 } from "@/app/patients/constants";
 import { useMasterDataOptions } from "@/app/lib/useMasterData";
 import { useAddressCascade } from "@/app/lib/useAddressCascade";
@@ -71,7 +69,6 @@ interface FormState {
   occupation: string;
   photo: string;
   patientCode: string;
-  patientType: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -92,7 +89,6 @@ const EMPTY_FORM: FormState = {
   occupation: "",
   photo: "",
   patientCode: "",
-  patientType: "",
 };
 
 function prefillFromPatient(p: PatientDetail | PatientListRecord | null): FormState {
@@ -116,7 +112,6 @@ function prefillFromPatient(p: PatientDetail | PatientListRecord | null): FormSt
     photo: (p as PatientDetail).photo ?? "",
     // The code is immutable, so the edit form never shows or sends it.
     patientCode: "",
-    patientType: p.patientType ?? "",
   };
 }
 
@@ -349,9 +344,6 @@ export function PatientFormModal({
       // branch issues IDs by hand. Sending one while autoGenerateId is on is
       // rejected by the server rather than ignored.
       patientCode: mode === "create" && !autoGenerateId ? opt(form.patientCode) : undefined,
-      patientType: PATIENT_TYPE_OPTIONS.some((o) => o.value === form.patientType)
-        ? (form.patientType as PatientType)
-        : undefined,
       overrideDuplicate:
         mode === "create" && overrideDuplicate ? true : undefined,
     };
@@ -581,26 +573,10 @@ export function PatientFormModal({
                   </select>
                   {fieldError("gender")}
                 </div>
-                <div>
-                  <label className={labelCls}>Patient Type</label>
-                  <select className={selectCls} value={form.patientType} onChange={set("patientType")} disabled={submitting}>
-                    <option value="">
-                      {config
-                        ? `Default (${PATIENT_TYPE_OPTIONS.find((o) => o.value === config.defaultPatientType)?.label ?? config.defaultPatientType})`
-                        : "Select type"}
-                    </option>
-                    {PATIENT_TYPE_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
-                  {fieldError("patientType")}
-                </div>
               </div>
             </div>
 
-            {/* Medical */}
             <div>
-              <h4 className="text-xs font-extrabold text-[var(--text)] mb-3 uppercase tracking-wider">Medical</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className={labelCls}>Blood Group</label>

@@ -92,6 +92,8 @@ const doctorFieldsSchema = z.object({
   cv: optionalString(500),
   phone: phoneSchema,
   email: emailSchema,
+  permanentAddress: optionalString(500),
+  presentAddress: optionalString(500),
   consultationFee: optionalDecimal(16),
   followupFee: optionalDecimal(16),
   emergencyFee: optionalDecimal(16),

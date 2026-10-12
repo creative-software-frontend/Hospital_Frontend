@@ -107,7 +107,6 @@ const SAMPLE_NURSE = {
   nurseCode: "NUR-000001",
   name: "Sadia Rahman",
   qualification: "BSC in Nursing",
-  registrationNo: "RN-7788",
   phone: "+8801811000000",
   email: "sadia.rahman@clinic.test",
   status: "active",
@@ -120,7 +119,6 @@ const VALID_INPUT = {
   departmentId: 7,
   shiftTypeId: 2,
   qualification: "BSC in Nursing",
-  registrationNo: "RN-7788",
   phone: "+8801811000000",
   email: "sadia.rahman@clinic.test",
   password: "Str0ng!pass",
@@ -431,14 +429,13 @@ describe("listNurses", () => {
     );
   });
 
-  it("searches name, code, qualification and registration number together", async () => {
+  it("searches name, code and qualification together", async () => {
     await nurseService.listNurses(nurseUser, { search: "sadia" });
 
     expect(mockPrisma.nurse.findMany.mock.calls[0][0].where.OR).toEqual([
       { name: { contains: "sadia" } },
       { nurseCode: { contains: "sadia" } },
       { qualification: { contains: "sadia" } },
-      { registrationNo: { contains: "sadia" } },
     ]);
   });
 
@@ -528,11 +525,6 @@ describe("createNurseSchema", () => {
     expect(createNurseSchema.safeParse({ ...SCHEMA_BASE, phone: "+880 1811-000000" }).success).toBe(true);
   });
 
-  it("rejects a registration number longer than 64 characters", () => {
-    expect(createNurseSchema.safeParse({ ...SCHEMA_BASE, registrationNo: "x".repeat(65) }).success).toBe(false);
-    expect(createNurseSchema.safeParse({ ...SCHEMA_BASE, registrationNo: "x".repeat(64) }).success).toBe(true);
-  });
-
   it("keeps a blank string for phone and free-text fields, which currently accept it", () => {
     // Same quirk as the doctor schema: the phone regex uses `*` and the plain
     // max-length string accepts "", so the `.or(empty -> undefined)` fallback is
@@ -541,11 +533,9 @@ describe("createNurseSchema", () => {
       ...SCHEMA_BASE,
       phone: "",
       qualification: "",
-      registrationNo: "",
     });
     expect(parsed.phone).toBe("");
     expect(parsed.qualification).toBe("");
-    expect(parsed.registrationNo).toBe("");
   });
 
   it("rejects an unknown status", () => {

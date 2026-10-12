@@ -98,7 +98,6 @@ const NURSE_SELECT: Prisma.NurseSelect = {
   nurseCode: true,
   name: true,
   qualification: true,
-  registrationNo: true,
   joiningDate: true,
   gender: true,
   dateOfBirth: true,
@@ -109,6 +108,8 @@ const NURSE_SELECT: Prisma.NurseSelect = {
   cv: true,
   phone: true,
   email: true,
+  permanentAddress: true,
+  presentAddress: true,
   status: true,
   createdAt: true,
   updatedAt: true,
@@ -147,7 +148,6 @@ export async function listNurses(actor: AuthUser, query: ListNursesQuery) {
       { name: { contains: search } },
       { nurseCode: { contains: search } },
       { qualification: { contains: search } },
-      { registrationNo: { contains: search } },
     ];
   }
 
@@ -226,7 +226,6 @@ export async function createNurse(actor: AuthUser, input: CreateNurseInput) {
         departmentId: input.departmentId ?? null,
         shiftTypeId: input.shiftTypeId ?? null,
         qualification: input.qualification,
-        registrationNo: input.registrationNo,
         joiningDate: input.joiningDate,
         gender: input.gender ?? null,
         dateOfBirth: input.dateOfBirth,
@@ -237,6 +236,8 @@ export async function createNurse(actor: AuthUser, input: CreateNurseInput) {
         cv: input.cv,
         phone: input.phone,
         email: input.email,
+        permanentAddress: input.permanentAddress,
+        presentAddress: input.presentAddress,
         status: input.status ?? "active",
       },
     });

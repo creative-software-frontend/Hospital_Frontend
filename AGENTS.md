@@ -4,6 +4,22 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+## Memory: Patient form — Patient Type field + Medical heading removed
+- Removed the **Patient Type** select from `app/patients/PatientFormModal.tsx` (form-scoped; modal serves create + edit). Dropped the `patientType` field from `FormState`/`EMPTY_FORM`/`prefillFromPatient`/`buildInput`, the `PATIENT_TYPE_OPTIONS` + `PatientType` imports, and the `<select>`. The form no longer sends `patientType`, so the backend applies `PatientSetting.defaultPatientType` (settings "Default Patient Type" + backend `patient.policy.ts`/`Patient.patientType` column unchanged, still supported).
+- Removed the "Medical" `<h4>` heading (kept the wrapper `<div>` + grid). tsc/eslint/build green (1 pre-existing react-hooks warning at ~L276 accepted).
+
+## Memory: Doctor & Nurse permanent/present address fields
+- Added `permanentAddress String? @db.VarChar(500)` + `presentAddress String? @db.VarChar(500)` to BOTH Doctor and Nurse. Migration `20261012130000_doctor_nurse_addresses` (`ALTER TABLE ... ADD COLUMN ... AFTER email` x2 per table) applied via `prisma migrate deploy`; regenerate AFTER stopping the tsx-watch tree (EPERM). Use explicit `@db.VarChar(500)` because plain `String?` maps to VARCHAR(191) while validation allows 500.
+- Backend: doctor/nurse `.validation.ts` (`optionalString(500)` x2), `.service.ts` (NURSE_SELECT/DOCTOR_SELECT + create data). FULL backend suite: 429 pass; tsc clean.
+- Frontend: `app/lib/api.ts` record + input types; `DoctorModule.tsx` + `NurseModule.tsx` add **Permanent Address** and **Present Address** inputs side by side (one grid column each) right after Phone, validated with `checkText(_, ADDRESS_MAX, ...)` (`ADDRESS_MAX=500` imported from `formValidation`). Doctor profile modal shows both rows. tsc/eslint/build green.
+- Live verified: create doctor+nurse with addresses → 200 and GET returns both fields; test rows (doctor id 11/user 18, nurse id 3/user 19) deleted via temp tsx script (`UserSession`/`UserRole` then `User`).
+
+## Memory: Nurse registrationNo removed + form design parity
+- Removed `registrationNo` COMPLETELY from Nurse (DB column + index dropped; doctor keeps `bmdcRegistrationNo`). Migration `20261012120000_nurse_drop_registration_no` (`DROP INDEX Nurse_registrationNo_idx` then `DROP COLUMN registrationNo`), applied via `prisma migrate deploy`; regenerate client AFTER stopping the server (EPERM on query_engine dll otherwise). Detect the backend tsx-watch tree via `Get-CimInstance Win32_Process -Filter "Name='node.exe'"`; kill the `tsx watch src/server.ts` parent `/T /F`, regenerate, then restart with `Start-Process cmd.exe /c "npm run dev" -WorkingDirectory backend`.
+- Backend: `nurse.validation.ts` (dropped field), `nurse.service.ts` (removed from NURSE_SELECT, list search OR, create data — update uses `{...input}` so nothing else), `nurse.test.ts` (dropped from SAMPLE/VALID_INPUT/search OR; removed the ">64 chars" schema test; trimmed blank-string test). FULL backend suite: 429 pass; tsc clean.
+- Frontend: `app/lib/api.ts` (NurseRecord/CreateNurseInput), `NurseModule.tsx` (table column + cell, colSpan 9→8, state, validation, payload, form field, and copy "…registration numbers…"→"…department and shift.", search placeholder "…registration…"→"…qualification…"). tsc/eslint/build green. Live GET /nurses returns no registrationNo prop.
+- Nurse form now mirrors the Doctor design: Joining Date → Name → Department → Shift → Qualification → Gender → Email → Phone → Date of Birth → Marital Status → Blood Group → Status → Password/Confirm → Attachments (no "Personal details" heading). Status defaults to Active on both forms.
+
 ## Memory: Doctor & Nurse profile fields + file uploads
 - Added the SAME 8 profile fields to BOTH Doctor and Nurse: `joiningDate DateTime?`, `gender Gender?`, `dateOfBirth DateTime?`, `maritalStatus MaritalStatus?`, `bloodGroup BloodGroupCode?`, `photo String?`, `signature String?`, `cv String?`. Migration `20261011130000_doctor_nurse_profile_fields` (applied via `prisma migrate deploy`; generate AFTER stopping server — EPERM on query_engine dll otherwise).
 - Tests: doctor.test.ts 50→51, nurse.test.ts 52→56 (nurse uses LOCAL `PROFILE_BASE`, `SCHEMA_BASE` is out of scope). FULL backend suite: 430 pass; tsc clean.

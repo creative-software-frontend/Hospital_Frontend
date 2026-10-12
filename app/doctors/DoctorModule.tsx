@@ -25,6 +25,7 @@ import {
   ValidationError,
 } from "@/app/lib/api";
 import {
+  ADDRESS_MAX,
   addError,
   checkDateNotFuture,
   checkDateOfBirth,
@@ -344,6 +345,8 @@ function DoctorFormPage({
   const [signature, setSignature] = useState(doctor?.signature ?? "");
   const [cv, setCv] = useState(doctor?.cv ?? "");
   const [phone, setPhone] = useState(doctor?.phone ?? "");
+  const [permanentAddress, setPermanentAddress] = useState(doctor?.permanentAddress ?? "");
+  const [presentAddress, setPresentAddress] = useState(doctor?.presentAddress ?? "");
   const [email, setEmail] = useState(doctor?.email ?? "");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -387,6 +390,8 @@ function DoctorFormPage({
       addError(next, "name", checkName(name));
       addError(next, "email", checkEmail(email));
       addError(next, "phone", checkPhone(phone));
+      addError(next, "permanentAddress", checkText(permanentAddress, ADDRESS_MAX, "Permanent address"));
+      addError(next, "presentAddress", checkText(presentAddress, ADDRESS_MAX, "Present address"));
       addError(next, "departmentId", checkOptionalId(departmentId, "department"));
       addError(next, "specialization", checkText(specialization, SHORT_TEXT_MAX, "Specialization"));
       addError(next, "qualification", checkText(qualification, SHORT_TEXT_MAX, "Qualification"));
@@ -445,6 +450,8 @@ function DoctorFormPage({
         signature: signature || null,
         cv: cv || null,
         phone: phone.trim() || null,
+        permanentAddress: permanentAddress.trim() || null,
+        presentAddress: presentAddress.trim() || null,
         email: email.trim() || null,
         consultationFee: consultationFee.trim() || null,
         followupFee: followupFee.trim() || null,
@@ -483,9 +490,9 @@ function DoctorFormPage({
 
         <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">BMDC Registration No.</label>
-            <input value={bmdcRegistrationNo} onChange={(e) => setBmdcRegistrationNo(setField("bmdcRegistrationNo", e.target.value))} className={INPUT_CLS} />
-            {fieldError("bmdcRegistrationNo")}
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Joining Date</label>
+            <input type="date" value={joiningDate} onChange={(e) => setJoiningDate(setField("joiningDate", e.target.value))} className={INPUT_CLS} />
+            {fieldError("joiningDate")}
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Name *</label>
@@ -511,32 +518,57 @@ function DoctorFormPage({
             {fieldError("qualification")}
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Phone</label>
-            <input value={phone} inputMode="tel" onChange={(e) => setPhone(setField("phone", sanitizePhone(e.target.value)))} className={INPUT_CLS} />
-            {fieldError("phone")}
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Gender</label>
+            <select value={gender} onChange={(e) => setGender(e.target.value)} className={INPUT_CLS}>
+              <option value="">— None —</option>
+              {GENDER_OPTIONS.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
+            </select>
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Email *</label>
             <input type="email" value={email} onChange={(e) => setEmail(setField("email", e.target.value))} className={INPUT_CLS} />
             {fieldError("email")}
           </div>
-          {!editing && (
-            <>
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Password * (creates login)</label>
-                <input type="password" autoComplete="new-password" value={password}
-                  onChange={(e) => setPassword(setField("password", e.target.value))} className={INPUT_CLS} />
-                <p className="text-[10px] text-[var(--muted)] mt-1">A login account is created for every doctor.</p>
-                {fieldError("password")}
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Confirm Password *</label>
-                <input type="password" autoComplete="new-password" value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(setField("confirmPassword", e.target.value))} className={INPUT_CLS} />
-                {fieldError("confirmPassword")}
-              </div>
-            </>
-          )}
+
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Phone</label>
+            <input value={phone} inputMode="tel" onChange={(e) => setPhone(setField("phone", sanitizePhone(e.target.value)))} className={INPUT_CLS} />
+            {fieldError("phone")}
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Permanent Address</label>
+            <input value={permanentAddress} onChange={(e) => setPermanentAddress(setField("permanentAddress", e.target.value))} className={INPUT_CLS} />
+            {fieldError("permanentAddress")}
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Present Address</label>
+            <input value={presentAddress} onChange={(e) => setPresentAddress(setField("presentAddress", e.target.value))} className={INPUT_CLS} />
+            {fieldError("presentAddress")}
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Date of Birth</label>
+            <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(setField("dateOfBirth", e.target.value))} className={INPUT_CLS} />
+            {fieldError("dateOfBirth")}
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Marital Status</label>
+            <select value={maritalStatus} onChange={(e) => setMaritalStatus(e.target.value)} className={INPUT_CLS}>
+              <option value="">— None —</option>
+              {MARITAL_STATUS_OPTIONS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Blood Group</label>
+            <select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} className={INPUT_CLS}>
+              <option value="">— None —</option>
+              {bloodGroups.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">BMDC Registration No.</label>
+            <input value={bmdcRegistrationNo} onChange={(e) => setBmdcRegistrationNo(setField("bmdcRegistrationNo", e.target.value))} className={INPUT_CLS} />
+            {fieldError("bmdcRegistrationNo")}
+          </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Consultation Fee</label>
             <input value={consultationFee} inputMode="decimal" onChange={(e) => setConsultationFee(setField("consultationFee", sanitizeMoney(e.target.value)))} className={INPUT_CLS} />
@@ -580,41 +612,23 @@ function DoctorFormPage({
             </select>
             {fieldError("status")}
           </div>
-
-          <div className="sm:col-span-2 mt-1 border-t border-[var(--border)] pt-4">
-            <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">Personal details</span>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Joining Date</label>
-            <input type="date" value={joiningDate} onChange={(e) => setJoiningDate(setField("joiningDate", e.target.value))} className={INPUT_CLS} />
-            {fieldError("joiningDate")}
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Gender</label>
-            <select value={gender} onChange={(e) => setGender(e.target.value)} className={INPUT_CLS}>
-              <option value="">— None —</option>
-              {GENDER_OPTIONS.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Date of Birth</label>
-            <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(setField("dateOfBirth", e.target.value))} className={INPUT_CLS} />
-            {fieldError("dateOfBirth")}
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Marital Status</label>
-            <select value={maritalStatus} onChange={(e) => setMaritalStatus(e.target.value)} className={INPUT_CLS}>
-              <option value="">— None —</option>
-              {MARITAL_STATUS_OPTIONS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Blood Group</label>
-            <select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} className={INPUT_CLS}>
-              <option value="">— None —</option>
-              {bloodGroups.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
-            </select>
-          </div>
+          {!editing && (
+            <>
+              <div>
+                <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Password * (creates login)</label>
+                <input type="password" autoComplete="new-password" value={password}
+                  onChange={(e) => setPassword(setField("password", e.target.value))} className={INPUT_CLS} />
+                <p className="text-[10px] text-[var(--muted)] mt-1">A login account is created for every doctor.</p>
+                {fieldError("password")}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Confirm Password *</label>
+                <input type="password" autoComplete="new-password" value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(setField("confirmPassword", e.target.value))} className={INPUT_CLS} />
+                {fieldError("confirmPassword")}
+              </div>
+            </>
+          )}
 
           <div className="sm:col-span-2 mt-1 border-t border-[var(--border)] pt-4">
             <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">Attachments</span>
@@ -676,6 +690,8 @@ function DoctorProfileModal({
     ["Marital Status", data?.maritalStatus],
     ["Blood Group", data?.bloodGroup ? data.bloodGroup.replace("_", " ") : "—"],
     ["Phone", data?.phone],
+    ["Permanent Address", data?.permanentAddress],
+    ["Present Address", data?.presentAddress],
     ["Email", data?.email],
     ["Consultation Fee", fee(data?.consultationFee)],
     ["Follow-up Fee", fee(data?.followupFee)],

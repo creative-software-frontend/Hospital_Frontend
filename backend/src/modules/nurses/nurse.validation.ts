@@ -69,7 +69,6 @@ const nurseFieldsSchema = z.object({
   departmentId: z.coerce.number().int().positive().optional().nullable(),
   shiftTypeId: z.coerce.number().int().positive().optional().nullable(),
   qualification: optionalString(255),
-  registrationNo: optionalString(64),
   joiningDate: optionalDate,
   gender: optionalEnum(GENDER_VALUES),
   dateOfBirth: optionalDate,
@@ -80,6 +79,8 @@ const nurseFieldsSchema = z.object({
   cv: optionalString(500),
   phone: phoneSchema,
   email: emailSchema,
+  permanentAddress: optionalString(500),
+  presentAddress: optionalString(500),
   status: z.enum(NURSE_STATUS_VALUES).optional(),
 });
 

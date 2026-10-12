@@ -536,6 +536,8 @@ model Doctor {
   cv              String?
   phone           String?
   email           String?
+  permanentAddress String?  @db.VarChar(500)
+  presentAddress   String?  @db.VarChar(500)
   consultationFee Decimal?  @db.Decimal(12, 2)
   followupFee     Decimal?  @db.Decimal(12, 2)
   emergencyFee    Decimal?  @db.Decimal(12, 2)
@@ -578,7 +580,6 @@ model Nurse {
   nurseCode      String
   name           String
   qualification  String?
-  registrationNo String?
   joiningDate    DateTime?
   gender         Gender?
   dateOfBirth    DateTime?
@@ -589,6 +590,8 @@ model Nurse {
   cv             String?
   phone          String?
   email          String?
+  permanentAddress String? @db.VarChar(500)
+  presentAddress   String? @db.VarChar(500)
   status         String    @default("active")
   deletedAt      DateTime?
   createdById    Int?
@@ -603,7 +606,6 @@ model Nurse {
 
   @@unique([branchId, nurseCode])
   @@index([branchId])
-  @@index([registrationNo])
   @@index([deletedAt])
   @@index([departmentId])
 }

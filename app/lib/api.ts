@@ -2047,6 +2047,8 @@ export interface DoctorRecord {
   cv: string | null;
   phone: string | null;
   email: string | null;
+  permanentAddress: string | null;
+  presentAddress: string | null;
   consultationFee: string | null;
   followupFee: string | null;
   emergencyFee: string | null;
@@ -2087,6 +2089,8 @@ export interface CreateDoctorInput {
   cv?: string | null;
   phone?: string | null;
   email?: string | null;
+  permanentAddress?: string | null;
+  presentAddress?: string | null;
   consultationFee?: string | null;
   followupFee?: string | null;
   emergencyFee?: string | null;
@@ -2109,7 +2113,6 @@ export interface NurseRecord {
   nurseCode: string;
   name: string;
   qualification: string | null;
-  registrationNo: string | null;
   joiningDate: string | null;
   gender: Gender | null;
   dateOfBirth: string | null;
@@ -2120,6 +2123,8 @@ export interface NurseRecord {
   cv: string | null;
   phone: string | null;
   email: string | null;
+  permanentAddress: string | null;
+  presentAddress: string | null;
   status: ActiveStatus;
   createdAt: string;
   updatedAt: string;
@@ -2146,7 +2151,6 @@ export interface CreateNurseInput {
   departmentId?: number | null;
   shiftTypeId?: number | null;
   qualification?: string | null;
-  registrationNo?: string | null;
   joiningDate?: string | null;
   gender?: Gender | null;
   dateOfBirth?: string | null;
@@ -2157,6 +2161,8 @@ export interface CreateNurseInput {
   cv?: string | null;
   phone?: string | null;
   email?: string | null;
+  permanentAddress?: string | null;
+  presentAddress?: string | null;
   password?: string;
   confirmPassword?: string;
   status?: ActiveStatus;
