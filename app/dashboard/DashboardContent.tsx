@@ -32,6 +32,7 @@ import { SettingsPageView } from "@/app/dashboard/settings/SettingsPageView";
 import { PatientModule } from "@/app/patients/PatientModule";
 import { NurseModule } from "@/app/nurses/NurseModule";
 import { DoctorModule } from "@/app/doctors/DoctorModule";
+import { BedWardModule } from "@/app/bedward/BedWardModule";
 import { SuperAdminOverviewStats } from "@/app/dashboard/superadmin/SuperAdminOverviewStats";
 import { RolePermissionEditorModal } from "@/app/dashboard/role-permissions/RolePermissionEditorModal";
 import { useCurrency } from "@/app/hooks/useCurrency";
@@ -542,6 +543,8 @@ ${tbody}
               <DoctorModule />
             ) : selectedFeature.id === 13 ? (
               <NurseModule />
+            ) : selectedFeature.id === 7 ? (
+              <BedWardModule role={permissions?.role ?? null} />
             ) : (
             <div className="grid grid-cols-1 gap-6">
               <div className="card p-6 rounded-2xl shadow-sm space-y-6 w-full">

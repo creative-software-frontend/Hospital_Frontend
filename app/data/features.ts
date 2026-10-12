@@ -69,6 +69,19 @@ export const keyFeatures: Feature[] = [
         ]
     },
     {
+        id: 7,
+        englishTitle: "Bed & Ward Management",
+        icon: FiLayers,
+        subFeatures: [
+            { label: "Bed Allocation", icon: FiLayers },
+            { label: "Bed Transfer", icon: FiRepeat },
+            { label: "Cabin Management", icon: FiHome },
+            { label: "Ward Status Monitoring", icon: FiActivity },
+            { label: "Occupancy Report", icon: FiBarChart2 },
+            { label: "Available Bed Report", icon: FiFileText },
+        ]
+    },
+    {
         id: 3,
         englishTitle: "Appointment Management",
         icon: FiCalendar,
@@ -123,19 +136,6 @@ export const keyFeatures: Feature[] = [
             { label: "Emergency Doctor Assignment", icon: FiActivity },
             { label: "Emergency Billing", icon: FiDollarSign },
             { label: "Critical Patient Monitoring", icon: FiThermometer },
-        ]
-    },
-    {
-        id: 7,
-        englishTitle: "Bed & Ward Management",
-        icon: FiLayers,
-        subFeatures: [
-            { label: "Bed Allocation", icon: FiLayers },
-            { label: "Bed Transfer", icon: FiRepeat },
-            { label: "Cabin Management", icon: FiHome },
-            { label: "Ward Status Monitoring", icon: FiActivity },
-            { label: "Occupancy Report", icon: FiBarChart2 },
-            { label: "Available Bed Report", icon: FiFileText },
         ]
     },
     {

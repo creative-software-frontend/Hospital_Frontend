@@ -17,6 +17,7 @@ import opdRoutes from "../modules/opd/opd.routes";
 import ipdRoutes from "../modules/ipd/ipd.routes";
 import pharmacyRoutes from "../modules/pharmacy/pharmacy.routes";
 import uploadRoutes from "../modules/uploads/upload.routes";
+import bedWardRoutes from "../modules/bedward/bedWard.routes";
 
 const router = Router();
 
@@ -39,5 +40,6 @@ router.use("/opd", opdRoutes);
 router.use("/ipd", ipdRoutes);
 router.use("/pharmacy", pharmacyRoutes);
 router.use("/uploads", uploadRoutes);
+router.use("/bed-ward", bedWardRoutes);
 
 export default router;

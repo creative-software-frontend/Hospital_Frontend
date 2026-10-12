@@ -2330,6 +2330,62 @@ export const serviceApi = {
 };
 
 /* ---------------------------------------------------------------------------
+ * Bed & Ward setup lists (SUPER_ADMIN only, branch-scoped)
+ * ------------------------------------------------------------------------- */
+
+export type BedWardKind = "floors" | "bed-types" | "bed-groups" | "bed-statuses";
+
+export interface BedWardItem {
+  id: number;
+  branchId: number;
+  name: string;
+  code: string;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BedWardListResult {
+  data: BedWardItem[];
+  pagination: PaginationMeta;
+}
+
+export interface BedWardListQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  branchId?: number;
+}
+
+export interface CreateBedWardInput {
+  branchId: number;
+  name: string;
+  code: string;
+  description?: string | null;
+}
+
+export type UpdateBedWardInput = Partial<Omit<CreateBedWardInput, "branchId" | "code">>;
+
+export const bedWardApi = {
+  list: (kind: BedWardKind, query: BedWardListQuery = {}) =>
+    rawRequest<BedWardListResult>(
+      `/bed-ward/${kind}${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+  get: (kind: BedWardKind, id: number) =>
+    request<{ item: BedWardItem }>(`/bed-ward/${kind}/${id}`),
+  create: (kind: BedWardKind, input: CreateBedWardInput) =>
+    request<{ item: BedWardItem }>(`/bed-ward/${kind}`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  update: (kind: BedWardKind, id: number, input: UpdateBedWardInput) =>
+    request<{ item: BedWardItem }>(`/bed-ward/${kind}/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+};
+
+/* ---------------------------------------------------------------------------
  * Shared error/date helpers
  * ------------------------------------------------------------------------- */
 
