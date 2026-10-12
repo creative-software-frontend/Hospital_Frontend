@@ -2333,14 +2333,32 @@ export const serviceApi = {
  * Bed & Ward setup lists (SUPER_ADMIN only, branch-scoped)
  * ------------------------------------------------------------------------- */
 
-export type BedWardKind = "floors" | "bed-types" | "bed-groups" | "bed-statuses";
+export type BedWardKind =
+  | "floors"
+  | "bed-types"
+  | "bed-groups"
+  | "bed-statuses"
+  | "beds";
+
+export interface BedWardRef {
+  id: number;
+  name: string;
+  floor?: BedWardRef | null;
+}
 
 export interface BedWardItem {
   id: number;
   branchId: number;
   name: string;
-  code: string;
-  description: string | null;
+  description?: string | null;
+  color?: string | null;
+  floorId?: number;
+  bedTypeId?: number;
+  bedGroupId?: number;
+  notAvailableForUse?: boolean;
+  floor?: BedWardRef | null;
+  bedType?: BedWardRef | null;
+  bedGroup?: BedWardRef | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -2355,16 +2373,22 @@ export interface BedWardListQuery {
   limit?: number;
   search?: string;
   branchId?: number;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 export interface CreateBedWardInput {
   branchId: number;
   name: string;
-  code: string;
   description?: string | null;
+  color?: string | null;
+  floorId?: number;
+  bedTypeId?: number;
+  bedGroupId?: number;
+  notAvailableForUse?: boolean;
 }
 
-export type UpdateBedWardInput = Partial<Omit<CreateBedWardInput, "branchId" | "code">>;
+export type UpdateBedWardInput = Partial<Omit<CreateBedWardInput, "branchId">>;
 
 export const bedWardApi = {
   list: (kind: BedWardKind, query: BedWardListQuery = {}) =>

@@ -14,6 +14,7 @@ vi.mock("../lib/prisma", () => {
     bedType: makeDelegate(),
     bedGroup: makeDelegate(),
     bedStatus: makeDelegate(),
+    bedDefinition: makeDelegate(),
     branch: { findUnique: vi.fn() },
     auditLog: { create: vi.fn() },
   };
@@ -55,7 +56,7 @@ describe("bedWard.service", () => {
       "SUPER_ADMIN role required",
     );
     await expect(
-      bedWardService.createBedWard(admin, "floors", { branchId: 1, name: "Ground", code: "GF" }),
+      bedWardService.createBedWard(admin, "floors", { branchId: 1, name: "Ground" }),
     ).rejects.toThrow("SUPER_ADMIN role required");
     await expect(bedWardService.getBedWard(admin, "floors", 1)).rejects.toThrow(
       "SUPER_ADMIN role required",
@@ -69,8 +70,8 @@ describe("bedWard.service", () => {
     const actor = makeActor("SUPER_ADMIN");
     asFn(mockPrisma.floor.count).mockResolvedValue(2);
     asFn(mockPrisma.floor.findMany).mockResolvedValue([
-      { id: 1, branchId: 3, name: "Ground", code: "GF" },
-      { id: 2, branchId: 3, name: "First", code: "1F" },
+      { id: 1, branchId: 3, name: "Ground" },
+      { id: 2, branchId: 3, name: "First" },
     ]);
 
     const result = await bedWardService.listBedWard(actor, "floors", {
@@ -86,7 +87,26 @@ describe("bedWard.service", () => {
       orderBy: Record<string, string>;
     };
     expect(args.where.branchId).toBe(3);
-    expect(args.where.OR).toBeDefined();
+    expect(args.where.OR).toEqual([
+      { name: { contains: "f" } },
+      { description: { contains: "f" } },
+    ]);
+  });
+
+  it("searches only the fields a kind actually has", async () => {
+    const actor = makeActor("SUPER_ADMIN");
+    asFn(mockPrisma.bedGroup.count).mockResolvedValue(0);
+    asFn(mockPrisma.bedGroup.findMany).mockResolvedValue([]);
+
+    await bedWardService.listBedWard(actor, "bed-groups", { search: "x" });
+
+    const args = asFn(mockPrisma.bedGroup.findMany).mock.calls[0][0] as {
+      where: Record<string, unknown>;
+    };
+    expect(args.where.OR).toEqual([
+      { name: { contains: "x" } },
+      { description: { contains: "x" } },
+    ]);
   });
 
   it("falls back to sorting by name for a non-existent sort field", async () => {
@@ -102,71 +122,111 @@ describe("bedWard.service", () => {
     expect(args.orderBy).toEqual({ name: "desc" });
   });
 
-  it("rejects a duplicate code within the same branch", async () => {
-    const actor = makeActor("SUPER_ADMIN");
-    asFn(mockPrisma.branch.findUnique).mockResolvedValue({ id: 1 });
-    asFn(mockPrisma.floor.findFirst).mockResolvedValue({ id: 9 });
-
-    await expect(
-      bedWardService.createBedWard(actor, "floors", { branchId: 1, name: "Ground", code: "GF" }),
-    ).rejects.toThrow('Floor code "GF" already exists in this branch');
-  });
-
   it("rejects create when the branch does not exist", async () => {
     const actor = makeActor("SUPER_ADMIN");
     asFn(mockPrisma.branch.findUnique).mockResolvedValue(null);
 
     await expect(
-      bedWardService.createBedWard(actor, "floors", { branchId: 99, name: "Ground", code: "GF" }),
+      bedWardService.createBedWard(actor, "floors", { branchId: 99, name: "Ground" }),
     ).rejects.toThrow("Branch not found");
   });
 
   it("creates an item", async () => {
     const actor = makeActor("SUPER_ADMIN");
     asFn(mockPrisma.branch.findUnique).mockResolvedValue({ id: 1 });
-    asFn(mockPrisma.floor.findFirst).mockResolvedValue(null);
     asFn(mockPrisma.floor.create).mockResolvedValue({
       id: 5,
       branchId: 1,
       name: "Ground",
-      code: "GF",
       description: null,
     });
 
     const row = await bedWardService.createBedWard(actor, "floors", {
       branchId: 1,
       name: "Ground",
-      code: "GF",
     });
 
     expect(row.id).toBe(5);
     const createArgs = asFn(mockPrisma.floor.create).mock.calls[0][0] as {
       data: Record<string, unknown>;
     };
-    expect(createArgs.data).toMatchObject({ branchId: 1, name: "Ground", code: "GF" });
+    expect(createArgs.data).toMatchObject({ branchId: 1, name: "Ground" });
   });
 
   it("routes each kind to its own model", async () => {
     const actor = makeActor("SUPER_ADMIN");
     asFn(mockPrisma.branch.findUnique).mockResolvedValue({ id: 1 });
-    asFn(mockPrisma.bedStatus.findFirst).mockResolvedValue(null);
     asFn(mockPrisma.bedStatus.create).mockResolvedValue({
       id: 7,
       branchId: 1,
       name: "Available",
-      code: "AVAILABLE",
-      description: null,
-      status: "active",
     });
 
     await bedWardService.createBedWard(actor, "bed-statuses", {
       branchId: 1,
       name: "Available",
-      code: "AVAILABLE",
     });
 
     expect(mockPrisma.bedStatus.create).toHaveBeenCalledTimes(1);
     expect(mockPrisma.floor.create).not.toHaveBeenCalled();
+  });
+
+  it("requires a floor when creating a bed group", async () => {
+    const actor = makeActor("SUPER_ADMIN");
+    asFn(mockPrisma.branch.findUnique).mockResolvedValue({ id: 1 });
+    asFn(mockPrisma.floor.findUnique).mockResolvedValue(null);
+
+    await expect(
+      bedWardService.createBedWard(actor, "bed-groups", {
+        branchId: 1,
+        name: "Ward A",
+        floorId: 42,
+      }),
+    ).rejects.toThrow("Floor not found");
+    expect(mockPrisma.bedGroup.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects a relation pointing at another branch", async () => {
+    const actor = makeActor("SUPER_ADMIN");
+    asFn(mockPrisma.branch.findUnique).mockResolvedValue({ id: 1 });
+    asFn(mockPrisma.floor.findUnique).mockResolvedValue({ id: 42, branchId: 2 });
+
+    await expect(
+      bedWardService.createBedWard(actor, "bed-groups", {
+        branchId: 1,
+        name: "Ward A",
+        floorId: 42,
+      }),
+    ).rejects.toThrow("Floor does not belong to this branch");
+  });
+
+  it("creates a bed with its type and group", async () => {
+    const actor = makeActor("SUPER_ADMIN");
+    asFn(mockPrisma.branch.findUnique).mockResolvedValue({ id: 1 });
+    asFn(mockPrisma.bedType.findUnique).mockResolvedValue({ id: 3, branchId: 1 });
+    asFn(mockPrisma.bedGroup.findUnique).mockResolvedValue({ id: 4, branchId: 1 });
+    asFn(mockPrisma.bedDefinition.create).mockResolvedValue({
+      id: 8,
+      branchId: 1,
+      name: "B-101",
+      bedTypeId: 3,
+      bedGroupId: 4,
+      notAvailableForUse: false,
+    });
+
+    const row = await bedWardService.createBedWard(actor, "beds", {
+      branchId: 1,
+      name: "B-101",
+      bedTypeId: 3,
+      bedGroupId: 4,
+    });
+
+    expect(row.id).toBe(8);
+    expect(mockPrisma.bedDefinition.create).toHaveBeenCalledTimes(1);
+    const createArgs = asFn(mockPrisma.bedDefinition.create).mock.calls[0][0] as {
+      data: Record<string, unknown>;
+    };
+    expect(createArgs.data).toMatchObject({ bedTypeId: 3, bedGroupId: 4, name: "B-101" });
   });
 
   it("returns 404 for an unknown id on get and update", async () => {
@@ -187,13 +247,11 @@ describe("bedWard.service", () => {
       id: 1,
       branchId: 1,
       name: "Ground",
-      code: "GF",
     });
     asFn(mockPrisma.floor.update).mockResolvedValue({
       id: 1,
       branchId: 1,
       name: "Ground Floor",
-      code: "GF",
       description: null,
     });
 

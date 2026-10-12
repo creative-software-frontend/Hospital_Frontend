@@ -233,6 +233,7 @@ model Branch {
   bedTypes               BedType[]
   bedGroups              BedGroup[]
   bedStatuses            BedStatus[]
+  bedDefinitions         BedDefinition[]
 
   @@index([code])
 }
@@ -640,15 +641,14 @@ model Floor {
   id          Int      @id @default(autoincrement())
   branchId    Int
   name        String
-  code        String
   description String?  @db.VarChar(500)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  branch Branch? @relation(fields: [branchId], references: [id])
-  wards  Ward[]
+  branch    Branch?     @relation(fields: [branchId], references: [id])
+  wards     Ward[]
+  bedGroups BedGroup[]
 
-  @@unique([branchId, code])
   @@index([branchId])
 }
 
@@ -721,17 +721,15 @@ model Bed {
 
 /// Bed type, e.g. General / Semi-Private / Cabin / ICU.
 model BedType {
-  id          Int      @id @default(autoincrement())
-  branchId    Int
-  name        String
-  code        String
-  description String?  @db.VarChar(500)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  branchId  Int
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  branch Branch? @relation(fields: [branchId], references: [id])
+  branch         Branch?         @relation(fields: [branchId], references: [id])
+  bedDefinitions BedDefinition[]
 
-  @@unique([branchId, code])
   @@index([branchId])
 }
 
@@ -739,32 +737,52 @@ model BedType {
 model BedGroup {
   id          Int      @id @default(autoincrement())
   branchId    Int
+  floorId     Int
   name        String
-  code        String
+  color       String?  @db.VarChar(20)
   description String?  @db.VarChar(500)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  branch Branch? @relation(fields: [branchId], references: [id])
+  branch         Branch?         @relation(fields: [branchId], references: [id])
+  floor          Floor           @relation(fields: [floorId], references: [id])
+  bedDefinitions BedDefinition[]
 
-  @@unique([branchId, code])
   @@index([branchId])
+  @@index([floorId])
 }
 
 /// Configurable bed status label, e.g. Available / Occupied / Reserved / Cleaning.
 model BedStatus {
-  id          Int      @id @default(autoincrement())
-  branchId    Int
-  name        String
-  code        String
-  description String?  @db.VarChar(500)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  branchId  Int
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   branch Branch? @relation(fields: [branchId], references: [id])
 
-  @@unique([branchId, code])
   @@index([branchId])
+}
+
+/// Bed master created in Bed & Ward Setup: a named bed with a type and group.
+model BedDefinition {
+  id                 Int      @id @default(autoincrement())
+  branchId           Int
+  bedTypeId          Int
+  bedGroupId         Int
+  name               String
+  notAvailableForUse Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  branch   Branch   @relation(fields: [branchId], references: [id])
+  bedType  BedType  @relation(fields: [bedTypeId], references: [id])
+  bedGroup BedGroup @relation(fields: [bedGroupId], references: [id])
+
+  @@index([branchId])
+  @@index([bedTypeId])
+  @@index([bedGroupId])
 }
 
 // ============================================================

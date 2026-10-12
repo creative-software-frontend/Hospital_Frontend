@@ -1,7 +1,8 @@
 // app/bedward/BedWardModule.tsx
 // Live "Bed & Ward Management" module (feature id = 7 in the dashboard).
-// Super-admin only. Four branch-scoped setup lists — Floor, Bed Type, Bed Group
-// and Bed Status — each backed by GET/POST/PATCH /api/bed-ward/<kind>.
+// Super-admin only, branch-scoped. Setup tabs — Floor, Bed Type, Bed Group and
+// Bed — are backed by GET/POST/PATCH /api/bed-ward/<kind>; the Bed Status tab
+// is a read-only overview of the beds with their type, group, floor and status.
 
 "use client";
 
@@ -21,39 +22,80 @@ import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/To
 
 const PAGE_SIZE = 10;
 
-const TABS: { kind: BedWardKind; label: string; singular: string; hint: string; placeholder: string }[] = [
+interface TabConfig {
+  id: string;
+  /** API kind the tab reads from / writes to. */
+  kind: BedWardKind;
+  label: string;
+  singular: string;
+  hint: string;
+  placeholder: string;
+  columns: string[];
+  /** Read-only tabs (e.g. Bed Status) list rows but cannot add/edit them. */
+  readOnly?: boolean;
+}
+
+const TABS: TabConfig[] = [
   {
-    kind: "floors",
-    label: "Floor",
-    singular: "Floor",
-    hint: "Physical floors of the hospital building, e.g. Ground, First, Second.",
-    placeholder: "Search floor name or code…",
+    id: "bed-statuses",
+    kind: "beds",
+    label: "Bed Status",
+    singular: "Bed",
+    hint: "Every bed with its bed type, bed group, floor and availability status.",
+    placeholder: "Search bed name…",
+    columns: ["Name", "Bed Type", "Bed Group", "Floor", "Status"],
+    readOnly: true,
   },
   {
+    id: "beds",
+    kind: "beds",
+    label: "Bed",
+    singular: "Bed",
+    hint: "Individual beds, each assigned a bed type and a bed group.",
+    placeholder: "Search bed name…",
+    columns: ["Name", "Bed Type", "Bed Group", "Availability"],
+  },
+  {
+    id: "bed-types",
     kind: "bed-types",
     label: "Bed Type",
     singular: "Bed Type",
     hint: "Classification of beds, e.g. General, Semi-Private, Cabin, ICU.",
-    placeholder: "Search bed type name or code…",
+    placeholder: "Search bed type name…",
+    columns: ["Name"],
   },
   {
+    id: "bed-groups",
     kind: "bed-groups",
     label: "Bed Group",
     singular: "Bed Group",
     hint: "Grouping of beds for allocation, e.g. Male Ward, Female Ward, Pediatric.",
-    placeholder: "Search bed group name or code…",
+    placeholder: "Search bed group name…",
+    columns: ["Name", "Floor", "Color", "Description"],
   },
   {
-    kind: "bed-statuses",
-    label: "Bed Status",
-    singular: "Bed Status",
-    hint: "Configurable status labels, e.g. Available, Occupied, Reserved, Cleaning.",
-    placeholder: "Search bed status name or code…",
+    id: "floors",
+    kind: "floors",
+    label: "Floor",
+    singular: "Floor",
+    hint: "Physical floors of the hospital building, e.g. Ground, First, Second.",
+    placeholder: "Search floor name…",
+    columns: ["Name", "Description"],
   },
 ];
 
 const INPUT_CLS =
   "w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15 text-[var(--text)]";
+
+interface FormPayload {
+  name: string;
+  description?: string | null;
+  color?: string | null;
+  floorId?: number;
+  bedTypeId?: number;
+  bedGroupId?: number;
+  notAvailableForUse?: boolean;
+}
 
 export function BedWardModule({ role }: { role: string | null }) {
   if (role !== "super-admin") {
@@ -71,7 +113,7 @@ export function BedWardModule({ role }: { role: string | null }) {
 }
 
 function BedWardManager() {
-  const [activeKind, setActiveKind] = useState<BedWardKind>("floors");
+  const [activeTabId, setActiveTabId] = useState<string>("bed-statuses");
   const [branches, setBranches] = useState<BranchRecord[]>([]);
   const [branchId, setBranchId] = useState<number | null>(null);
   const [rows, setRows] = useState<BedWardItem[]>([]);
@@ -85,6 +127,9 @@ function BedWardManager() {
   const [editing, setEditing] = useState<BedWardItem | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  const tab = TABS.find((t) => t.id === activeTabId) ?? TABS[0];
+  const sourceKind = tab.kind;
 
   const notify = useCallback((kind: ToastKind, message: string) => {
     const id = Date.now() + Math.random();
@@ -110,6 +155,7 @@ function BedWardManager() {
   }, []);
 
   const load = useCallback(async () => {
+    const kind = (TABS.find((t) => t.id === activeTabId) ?? TABS[0]).kind;
     if (branchId == null) {
       setRows([]);
       setPagination(null);
@@ -117,7 +163,7 @@ function BedWardManager() {
       return;
     }
     try {
-      const result = await bedWardApi.list(activeKind, {
+      const result = await bedWardApi.list(kind, {
         page,
         limit: PAGE_SIZE,
         search: searchTerm || undefined,
@@ -131,7 +177,7 @@ function BedWardManager() {
     } finally {
       setLoading(false);
     }
-  }, [activeKind, branchId, page, searchTerm]);
+  }, [activeTabId, branchId, page, searchTerm]);
 
   useEffect(() => {
     const timer = setTimeout(() => load(), 0);
@@ -146,9 +192,9 @@ function BedWardManager() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  const tab = TABS.find((t) => t.kind === activeKind) ?? TABS[0];
   const totalPages = pagination?.totalPages ?? 1;
   const safePage = Math.min(page, Math.max(1, totalPages));
+  const colSpan = tab.columns.length + (tab.readOnly ? 0 : 1);
 
   const openCreate = () => {
     setEditing(null);
@@ -159,15 +205,15 @@ function BedWardManager() {
     setShowForm(true);
   };
 
-  const submit = async (input: CreateBedWardInput): Promise<void> => {
+  const submit = async (payload: FormPayload): Promise<void> => {
     if (editing) {
-      await bedWardApi.update(activeKind, editing.id, {
-        name: input.name,
-        description: input.description,
-      });
-      notify("success", `${tab.singular} "${input.name}" updated.`);
+      await bedWardApi.update(sourceKind, editing.id, payload);
+      notify("success", `${tab.singular} "${payload.name}" updated.`);
     } else {
-      const created = await bedWardApi.create(activeKind, input);
+      const created = await bedWardApi.create(sourceKind, {
+        branchId: branchId as number,
+        ...payload,
+      } as CreateBedWardInput);
       notify("success", `${tab.singular} "${created.item.name}" created.`);
       setPage(1);
       setSearchTerm("");
@@ -176,6 +222,74 @@ function BedWardManager() {
     setShowForm(false);
     setEditing(null);
     setReloadKey((k) => k + 1);
+  };
+
+  const renderCells = (item: BedWardItem): React.ReactNode[] => {
+    const bold = (v: React.ReactNode) => (
+      <span className="font-bold text-[var(--primary-dark)]">{v}</span>
+    );
+    const muted = (v: React.ReactNode) => <span className="text-[var(--muted)]">{v}</span>;
+
+    const availability = (notAvailable?: boolean) =>
+      notAvailable ? (
+        <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-500 border border-rose-400/30">
+          Not available
+        </span>
+      ) : (
+        <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 border border-emerald-400/30">
+          Available
+        </span>
+      );
+
+    let nodes: React.ReactNode[] = [];
+    switch (tab.id) {
+      case "floors":
+        nodes = [bold(item.name), muted(item.description ?? "—")];
+        break;
+      case "bed-types":
+        nodes = [bold(item.name)];
+        break;
+      case "bed-groups":
+        nodes = [
+          bold(item.name),
+          item.floor?.name ?? "—",
+          item.color ? (
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="w-3.5 h-3.5 rounded-full border border-[var(--border)]"
+                style={{ background: item.color }}
+              />
+              <span className="text-[var(--muted)]">{item.color}</span>
+            </span>
+          ) : (
+            "—"
+          ),
+          muted(item.description ?? "—"),
+        ];
+        break;
+      case "bed-statuses":
+        nodes = [
+          bold(item.name),
+          item.bedType?.name ?? "—",
+          item.bedGroup?.name ?? "—",
+          item.bedGroup?.floor?.name ?? "—",
+          availability(item.notAvailableForUse),
+        ];
+        break;
+      case "beds":
+        nodes = [
+          bold(item.name),
+          item.bedType?.name ?? "—",
+          item.bedGroup?.name ?? "—",
+          availability(item.notAvailableForUse),
+        ];
+        break;
+    }
+    return nodes.map((n, i) => (
+      <td key={i} className="text-[12px] text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">
+        {n}
+      </td>
+    ));
   };
 
   return (
@@ -193,12 +307,12 @@ function BedWardManager() {
       <div className="card p-5 rounded-2xl border border-[var(--border)] shadow-sm space-y-4">
         <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] pb-3">
           {TABS.map((t) => {
-            const active = t.kind === activeKind;
+            const active = t.id === activeTabId;
             return (
               <button
-                key={t.kind}
+                key={t.id}
                 onClick={() => {
-                  setActiveKind(t.kind);
+                  setActiveTabId(t.id);
                   setPage(1);
                 }}
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
@@ -253,15 +367,17 @@ function BedWardManager() {
             >
               <FiRefreshCcw className="w-4 h-4" />
             </button>
-            <button
-              onClick={openCreate}
-              disabled={branchId == null}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ background: "var(--primary)" }}
-            >
-              <FiPlus className="w-3.5 h-3.5" />
-              Add {tab.singular}
-            </button>
+            {!tab.readOnly && (
+              <button
+                onClick={openCreate}
+                disabled={branchId == null}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ background: "var(--primary)" }}
+              >
+                <FiPlus className="w-3.5 h-3.5" />
+                Add {tab.singular}
+              </button>
+            )}
           </div>
         </div>
 
@@ -277,7 +393,7 @@ function BedWardManager() {
           <table className="min-w-[640px] w-full">
             <thead>
               <tr className="bg-[var(--bg)]">
-                {["Code", "Name", "Description", "Actions"].map((col) => (
+                {[...tab.columns, ...(tab.readOnly ? [] : ["Actions"])].map((col) => (
                   <th
                     key={col}
                     className="text-left text-[11px] font-bold text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]"
@@ -290,37 +406,31 @@ function BedWardManager() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-10 text-center">
+                  <td colSpan={colSpan} className="px-4 py-10 text-center">
                     <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--primary)]" />
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-10 text-center text-xs text-[var(--muted)]">
+                  <td colSpan={colSpan} className="px-4 py-10 text-center text-xs text-[var(--muted)]">
                     No {tab.label.toLowerCase()} found.
                   </td>
                 </tr>
               ) : (
                 rows.map((item) => (
                   <tr key={item.id} className="hover:bg-[var(--primary-soft)]/10 transition-colors">
-                    <td className="text-[12px] font-bold text-[var(--primary-dark)] px-4 py-3 border-b border-[var(--border)]">
-                      {item.code}
-                    </td>
-                    <td className="text-[12px] font-bold text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">
-                      {item.name}
-                    </td>
-                    <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">
-                      {item.description ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 border-b border-[var(--border)]">
-                      <button
-                        onClick={() => openEdit(item)}
-                        className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--primary-dark)] hover:border-[var(--primary)] transition-colors"
-                        title={`Edit ${tab.singular}`}
-                      >
-                        <FiEdit2 className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
+                    {renderCells(item)}
+                    {!tab.readOnly && (
+                      <td className="px-4 py-3 border-b border-[var(--border)]">
+                        <button
+                          onClick={() => openEdit(item)}
+                          className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--primary-dark)] hover:border-[var(--primary)] transition-colors"
+                          title={`Edit ${tab.singular}`}
+                        >
+                          <FiEdit2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -364,7 +474,8 @@ function BedWardManager() {
 
       {showForm && branchId != null && (
         <BedWardFormModal
-          key={editing?.id ?? "new"}
+          key={`${activeTabId}-${editing?.id ?? "new"}`}
+          kind={sourceKind}
           singular={tab.singular}
           item={editing}
           branchId={branchId}
@@ -382,37 +493,91 @@ function BedWardManager() {
 }
 
 function BedWardFormModal({
+  kind,
   singular,
   item,
   branchId,
   onSubmit,
   onClose,
 }: {
+  kind: BedWardKind;
   singular: string;
   item: BedWardItem | null;
   branchId: number;
-  onSubmit: (input: CreateBedWardInput) => Promise<void>;
+  onSubmit: (payload: FormPayload) => Promise<void>;
   onClose: () => void;
 }) {
   const editing = !!item;
   const [name, setName] = useState(item?.name ?? "");
-  const [code, setCode] = useState(item?.code ?? "");
   const [description, setDescription] = useState(item?.description ?? "");
+  const [color, setColor] = useState(item?.color ?? "");
+  const [floorId, setFloorId] = useState<number | null>(item?.floorId ?? null);
+  const [bedTypeId, setBedTypeId] = useState<number | null>(item?.bedTypeId ?? null);
+  const [bedGroupId, setBedGroupId] = useState<number | null>(item?.bedGroupId ?? null);
+  const [notAvailableForUse, setNotAvailableForUse] = useState(item?.notAvailableForUse ?? false);
+  const [floors, setFloors] = useState<BedWardItem[]>([]);
+  const [bedTypes, setBedTypes] = useState<BedWardItem[]>([]);
+  const [bedGroups, setBedGroups] = useState<BedWardItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let active = true;
+    const run = async () => {
+      try {
+        if (kind === "bed-groups") {
+          const r = await bedWardApi.list("floors", { limit: 100, branchId });
+          if (active) setFloors(r.data);
+        } else if (kind === "beds") {
+          const t = await bedWardApi.list("bed-types", { limit: 100, branchId });
+          if (active) setBedTypes(t.data);
+          const g = await bedWardApi.list("bed-groups", { limit: 100, branchId });
+          if (active) setBedGroups(g.data);
+        }
+      } catch {
+        /* options are best-effort; a failed load just leaves the select empty */
+      }
+    };
+    run();
+    return () => {
+      active = false;
+    };
+  }, [kind, branchId]);
 
   const validate = (): boolean => {
     const next: Record<string, string> = {};
     if (!name.trim()) next.name = "Name is required";
     else if (name.trim().length > 255) next.name = "Must be at most 255 characters";
-    if (!editing) {
-      if (!code.trim()) next.code = "Code is required";
-      else if (code.trim().length > 32) next.code = "Must be at most 32 characters";
+    if (kind === "floors" || kind === "bed-groups") {
+      if (description.trim().length > 500) next.description = "Must be at most 500 characters";
     }
-    if (description.trim().length > 500) next.description = "Must be at most 500 characters";
+    if (kind === "bed-groups") {
+      if (floorId == null) next.floorId = "Floor is required";
+      if (color.trim().length > 20) next.color = "Must be at most 20 characters";
+    }
+    if (kind === "beds") {
+      if (bedTypeId == null) next.bedTypeId = "Bed Type is required";
+      if (bedGroupId == null) next.bedGroupId = "Bed Group is required";
+    }
     setFieldErrors(next);
     return Object.keys(next).length === 0;
+  };
+
+  const buildPayload = (): FormPayload => {
+    const payload: FormPayload = { name: name.trim() };
+    if (kind === "floors") {
+      payload.description = description.trim() || null;
+    } else if (kind === "bed-groups") {
+      payload.floorId = floorId ?? undefined;
+      payload.color = color.trim() || null;
+      payload.description = description.trim() || null;
+    } else if (kind === "beds") {
+      payload.bedTypeId = bedTypeId ?? undefined;
+      payload.bedGroupId = bedGroupId ?? undefined;
+      payload.notAvailableForUse = notAvailableForUse;
+    }
+    return payload;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -421,12 +586,7 @@ function BedWardFormModal({
     if (!validate()) return;
     setSaving(true);
     try {
-      await onSubmit({
-        branchId,
-        name: name.trim(),
-        code: code.trim(),
-        description: description.trim() || null,
-      });
+      await onSubmit(buildPayload());
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -438,6 +598,8 @@ function BedWardFormModal({
     fieldErrors[key] ? (
       <p className="text-[10px] font-bold text-rose-500 mt-1">{fieldErrors[key]}</p>
     ) : null;
+
+  const selectCls = `${INPUT_CLS} disabled:opacity-60`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -473,30 +635,115 @@ function BedWardFormModal({
             {fieldError("name")}
           </div>
 
-          <div>
-            <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">
-              Code {editing ? "(fixed)" : "*"}
-            </label>
-            <input
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              className={`${INPUT_CLS} ${editing ? "opacity-60 cursor-not-allowed" : ""}`}
-              placeholder="e.g. GF"
-              disabled={editing}
-            />
-            {fieldError("code")}
-          </div>
+          {kind === "bed-groups" && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">
+                  Floor *
+                </label>
+                <select
+                  value={floorId ?? ""}
+                  onChange={(e) => setFloorId(e.target.value ? Number(e.target.value) : null)}
+                  className={selectCls}
+                >
+                  <option value="">Select floor…</option>
+                  {floors.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+                {fieldError("floorId")}
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Color</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={color || "#4f46e5"}
+                    onChange={(e) => setColor(e.target.value)}
+                    className="h-9 w-10 shrink-0 rounded-lg border border-[var(--border)] bg-[var(--bg)] cursor-pointer"
+                    title="Pick a color"
+                  />
+                  <input
+                    value={color}
+                    onChange={(e) => setColor(e.target.value)}
+                    className={INPUT_CLS}
+                    placeholder="#4f46e5 (optional)"
+                  />
+                </div>
+                {fieldError("color")}
+              </div>
+            </div>
+          )}
 
-          <div>
-            <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className={`${INPUT_CLS} min-h-[72px]`}
-              placeholder="Optional notes"
-            />
-            {fieldError("description")}
-          </div>
+          {kind === "beds" && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">
+                  Bed Type *
+                </label>
+                <select
+                  value={bedTypeId ?? ""}
+                  onChange={(e) => setBedTypeId(e.target.value ? Number(e.target.value) : null)}
+                  className={selectCls}
+                >
+                  <option value="">Select bed type…</option>
+                  {bedTypes.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+                {fieldError("bedTypeId")}
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">
+                  Bed Group *
+                </label>
+                <select
+                  value={bedGroupId ?? ""}
+                  onChange={(e) => setBedGroupId(e.target.value ? Number(e.target.value) : null)}
+                  className={selectCls}
+                >
+                  <option value="">Select bed group…</option>
+                  {bedGroups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                    </option>
+                  ))}
+                </select>
+                {fieldError("bedGroupId")}
+              </div>
+            </div>
+          )}
+
+          {(kind === "floors" || kind === "bed-groups") && (
+            <div>
+              <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">
+                Description
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className={`${INPUT_CLS} min-h-[72px]`}
+                placeholder="Optional notes"
+              />
+              {fieldError("description")}
+            </div>
+          )}
+
+          {kind === "beds" && (
+            <label className="flex items-center gap-2 text-xs font-bold text-[var(--text)] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={notAvailableForUse}
+                onChange={(e) => setNotAvailableForUse(e.target.checked)}
+                className="w-4 h-4 rounded border-[var(--border)] accent-[var(--primary)]"
+              />
+              Not available for use
+            </label>
+          )}
 
           {error && (
             <p className="text-sm text-red-200 bg-red-500/20 border border-red-400/40 rounded-lg px-3 py-2">

@@ -355,7 +355,6 @@ function DoctorFormPage({
   const [emergencyFee, setEmergencyFee] = useState(doctor?.emergencyFee ?? "");
   const [commissionType, setCommissionType] = useState<"" | "PERCENT" | "FIXED">(doctor?.commissionType as "" | "PERCENT" | "FIXED" ?? "");
   const [commissionValue, setCommissionValue] = useState(doctor?.commissionValue ?? "");
-  const [status, setStatus] = useState<ActiveStatus>(doctor?.status ?? "active");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -458,7 +457,7 @@ function DoctorFormPage({
         emergencyFee: emergencyFee.trim() || null,
         commissionType: commissionType || null,
         commissionValue: commissionValue.trim() || null,
-        status,
+        status: "active",
         ...(!editing
           ? { password: password.trim(), confirmPassword: confirmPassword.trim() || password.trim() }
           : {}),
@@ -604,14 +603,6 @@ function DoctorFormPage({
             />
             {fieldError("commissionValue")}
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Status</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value as ActiveStatus)} className={INPUT_CLS}>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-            {fieldError("status")}
-          </div>
           {!editing && (
             <>
               <div>
@@ -640,9 +631,9 @@ function DoctorFormPage({
 
         {error && <p className="mt-4 text-sm text-red-200 bg-red-500/20 border border-red-400/40 rounded-lg px-3 py-2">{error}</p>}
 
-        <div className="flex flex-col sm:flex-row gap-3 pt-6">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-6">
           <button type="submit" disabled={saving}
-            className="flex-1 px-4 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 active:scale-[0.98]"
+            className="w-full sm:w-56 px-6 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 active:scale-[0.98]"
             style={{ background: "var(--primary)" }}>
             {saving ? "Saving..." : editing ? "Save Changes" : "Create Doctor"}
           </button>

@@ -1,17 +1,13 @@
 import { prisma } from "../../lib/prisma";
-import {
-  AuthorizationError,
-  ConflictError,
-  NotFoundError,
-} from "../../errors/ApiError";
+import { AuthorizationError, NotFoundError, ValidationError } from "../../errors/ApiError";
 import { writeAuditLog } from "../../utils/audit";
 import { parsePagination, buildPaginationMeta } from "../../utils/pagination";
 import type { AuthUser } from "../../types/auth";
 import {
   BED_WARD_DELEGATES,
-  BED_WARD_SELECT,
   BED_WARD_SPECS,
   type BedWardKind,
+  type BedWardSpec,
 } from "./bedWard.registry";
 import type {
   CreateBedWardInput,
@@ -19,8 +15,17 @@ import type {
   UpdateBedWardInput,
 } from "./bedWard.validation";
 
-/** Only these columns exist on all four lists, so only these may be sorted on. */
-const SORTABLE = new Set(["id", "name", "code", "branchId", "createdAt", "updatedAt"]);
+/** Columns present on every list (plus the FK columns used to sort "beds"). */
+const SORTABLE = new Set([
+  "id",
+  "name",
+  "branchId",
+  "floorId",
+  "bedTypeId",
+  "bedGroupId",
+  "createdAt",
+  "updatedAt",
+]);
 
 function assertSuperAdmin(actor: AuthUser): void {
   if (!actor.roles.some((r) => r.seederKey === "SUPER_ADMIN")) {
@@ -35,8 +40,32 @@ async function ensureBranch(id: number): Promise<void> {
   }
 }
 
+/** Verifies each FK on the input points at an existing row in the same branch. */
+async function ensureRelations(
+  spec: BedWardSpec,
+  input: Record<string, unknown>,
+  branchId: number,
+): Promise<void> {
+  for (const rel of spec.relations) {
+    const value = input[rel.field];
+    if (value === undefined || value === null) continue;
+    const target = BED_WARD_SPECS[rel.targetKind];
+    const found = await BED_WARD_DELEGATES[rel.targetKind].findUnique({
+      where: { id: Number(value) },
+      select: { id: true, branchId: true },
+    });
+    if (!found) {
+      throw new NotFoundError(`${target.label} not found`);
+    }
+    if (found.branchId !== branchId) {
+      throw new ValidationError(`${target.label} does not belong to this branch`);
+    }
+  }
+}
+
 export async function listBedWard(actor: AuthUser, kind: BedWardKind, query: ListBedWardQuery) {
   assertSuperAdmin(actor);
+  const spec = BED_WARD_SPECS[kind];
   const delegate = BED_WARD_DELEGATES[kind];
   const { page, limit, search, sortBy, sortOrder } = parsePagination(query as Record<string, unknown>);
   const orderField = typeof sortBy === "string" && SORTABLE.has(sortBy) ? sortBy : "name";
@@ -44,18 +73,14 @@ export async function listBedWard(actor: AuthUser, kind: BedWardKind, query: Lis
   const where: Record<string, unknown> = {};
   if (query.branchId) where.branchId = query.branchId;
   if (search) {
-    where.OR = [
-      { name: { contains: search } },
-      { code: { contains: search } },
-      { description: { contains: search } },
-    ];
+    where.OR = spec.searchFields.map((field) => ({ [field]: { contains: search } }));
   }
 
   const [total, rows] = await Promise.all([
     delegate.count({ where }),
     delegate.findMany({
       where,
-      select: BED_WARD_SELECT,
+      select: spec.select,
       orderBy: { [orderField]: sortOrder },
       skip: (page - 1) * limit,
       take: limit,
@@ -67,12 +92,13 @@ export async function listBedWard(actor: AuthUser, kind: BedWardKind, query: Lis
 
 export async function getBedWard(actor: AuthUser, kind: BedWardKind, id: number) {
   assertSuperAdmin(actor);
+  const spec = BED_WARD_SPECS[kind];
   const row = await BED_WARD_DELEGATES[kind].findUnique({
     where: { id },
-    select: BED_WARD_SELECT,
+    select: spec.select,
   });
   if (!row) {
-    throw new NotFoundError(`${BED_WARD_SPECS[kind].label} not found`);
+    throw new NotFoundError(`${spec.label} not found`);
   }
   return row;
 }
@@ -82,23 +108,11 @@ export async function createBedWard(actor: AuthUser, kind: BedWardKind, input: C
   const spec = BED_WARD_SPECS[kind];
   const delegate = BED_WARD_DELEGATES[kind];
   await ensureBranch(input.branchId);
-
-  const existing = await delegate.findFirst({
-    where: { branchId: input.branchId, code: input.code },
-    select: { id: true },
-  });
-  if (existing) {
-    throw new ConflictError(`${spec.label} code "${input.code}" already exists in this branch`);
-  }
+  await ensureRelations(spec, input as unknown as Record<string, unknown>, input.branchId);
 
   const row = await delegate.create({
-    data: {
-      branchId: input.branchId,
-      name: input.name,
-      code: input.code,
-      description: input.description,
-    },
-    select: BED_WARD_SELECT,
+    data: { ...input },
+    select: spec.select,
   });
 
   await writeAuditLog({
@@ -106,7 +120,7 @@ export async function createBedWard(actor: AuthUser, kind: BedWardKind, input: C
     action: "create",
     tableName: spec.tableName,
     recordId: String(row.id),
-    newValues: { name: row.name, code: row.code, branchId: input.branchId },
+    newValues: { ...input },
     user: actor,
     branchId: input.branchId,
   });
@@ -126,16 +140,18 @@ export async function updateBedWard(
 
   const current = await delegate.findUnique({
     where: { id },
-    select: { id: true, branchId: true, name: true, code: true },
+    select: { id: true, branchId: true, name: true },
   });
   if (!current) {
     throw new NotFoundError(`${spec.label} not found`);
   }
 
+  await ensureRelations(spec, input as unknown as Record<string, unknown>, current.branchId);
+
   const row = await delegate.update({
     where: { id },
     data: { ...input },
-    select: BED_WARD_SELECT,
+    select: spec.select,
   });
 
   await writeAuditLog({
@@ -143,7 +159,7 @@ export async function updateBedWard(
     action: "update",
     tableName: spec.tableName,
     recordId: String(id),
-    oldValues: { name: current.name, code: current.code },
+    oldValues: { name: current.name },
     newValues: { ...input },
     user: actor,
     branchId: current.branchId,
