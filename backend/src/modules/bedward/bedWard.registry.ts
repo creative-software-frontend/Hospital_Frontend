@@ -16,6 +16,10 @@ export const BED_WARD_KINDS = [
 
 export type BedWardKind = (typeof BED_WARD_KINDS)[number];
 
+/** Occupancy states of a bed, mirrored from the BedOccupancyStatus enum. */
+export const BED_OCCUPANCY_STATUSES = ["AVAILABLE", "OCCUPIED", "UNUSED"] as const;
+export type BedOccupancyStatus = (typeof BED_OCCUPANCY_STATUSES)[number];
+
 export interface BedWardRelation {
   /** FK field on this list's input, e.g. "floorId". */
   readonly field: string;
@@ -99,7 +103,7 @@ export const BED_WARD_SPECS: Record<BedWardKind, BedWardSpec> = {
       ...nameAndTimestamps,
       bedTypeId: true,
       bedGroupId: true,
-      notAvailableForUse: true,
+      status: true,
       bedType: { select: { id: true, name: true } },
       bedGroup: { select: { id: true, name: true, floor: { select: { id: true, name: true } } } },
     },

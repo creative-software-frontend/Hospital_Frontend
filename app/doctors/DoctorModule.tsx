@@ -227,7 +227,7 @@ export function DoctorModule() {
         </div>
 
         {error && (
-          <p className="text-sm text-red-200 bg-red-500/20 border border-red-400/40 rounded-lg px-3 py-2">{error}</p>
+          <p className="text-sm alert-error">{error}</p>
         )}
 
         <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
@@ -629,7 +629,7 @@ function DoctorFormPage({
           <FileUploadField label="CV / Résumé" kind="cv" value={cv} onChange={setCv} preview="file" hint="PDF, DOC or DOCX up to 10 MB." />
         </div>
 
-        {error && <p className="mt-4 text-sm text-red-200 bg-red-500/20 border border-red-400/40 rounded-lg px-3 py-2">{error}</p>}
+        {error && <p className="mt-4 text-sm alert-error">{error}</p>}
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-6">
           <button type="submit" disabled={saving}
@@ -719,7 +719,7 @@ function DoctorProfileModal({
           </span>
         </div>
 
-        {error && <p className="mt-4 text-sm text-red-200 bg-red-500/20 border border-red-400/40 rounded-lg px-3 py-2">{error}</p>}
+        {error && <p className="mt-4 text-sm alert-error">{error}</p>}
 
         <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
           {fields.map(([label, value]) => (

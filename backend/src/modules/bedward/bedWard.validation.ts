@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { BED_WARD_KINDS, type BedWardKind } from "./bedWard.registry";
+import {
+  BED_OCCUPANCY_STATUSES,
+  BED_WARD_KINDS,
+  type BedOccupancyStatus,
+  type BedWardKind,
+} from "./bedWard.registry";
 
 const optionalString = (max: number) =>
   z
@@ -60,7 +65,7 @@ const createSchemas = {
     name: nameField,
     bedTypeId: requiredRef("bedTypeId"),
     bedGroupId: requiredRef("bedGroupId"),
-    notAvailableForUse: z.boolean().optional(),
+    status: z.enum(BED_OCCUPANCY_STATUSES).optional(),
   }),
 } as const;
 
@@ -87,7 +92,7 @@ export interface CreateBedWardInput {
   floorId?: number;
   bedTypeId?: number;
   bedGroupId?: number;
-  notAvailableForUse?: boolean;
+  status?: BedOccupancyStatus;
 }
 
 export type UpdateBedWardInput = Partial<Omit<CreateBedWardInput, "branchId">>;

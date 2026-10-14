@@ -2340,6 +2340,9 @@ export type BedWardKind =
   | "bed-statuses"
   | "beds";
 
+/** Bed occupancy on the bed board, mirrors the backend BedOccupancyStatus enum. */
+export type BedOccupancyStatus = "AVAILABLE" | "OCCUPIED" | "UNUSED";
+
 export interface BedWardRef {
   id: number;
   name: string;
@@ -2355,7 +2358,7 @@ export interface BedWardItem {
   floorId?: number;
   bedTypeId?: number;
   bedGroupId?: number;
-  notAvailableForUse?: boolean;
+  status?: BedOccupancyStatus;
   floor?: BedWardRef | null;
   bedType?: BedWardRef | null;
   bedGroup?: BedWardRef | null;
@@ -2385,7 +2388,7 @@ export interface CreateBedWardInput {
   floorId?: number;
   bedTypeId?: number;
   bedGroupId?: number;
-  notAvailableForUse?: boolean;
+  status?: BedOccupancyStatus;
 }
 
 export type UpdateBedWardInput = Partial<Omit<CreateBedWardInput, "branchId">>;
@@ -2407,6 +2410,58 @@ export const bedWardApi = {
       method: "PATCH",
       body: JSON.stringify(input),
     }),
+};
+
+/* ---------------------------------------------------------------------------
+ * Bed board (read-only overview for the top-bar bed icon)
+ * ------------------------------------------------------------------------- */
+
+export interface BedBoardBed {
+  id: number;
+  name: string;
+  status: BedOccupancyStatus;
+  bedType: { id: number; name: string };
+}
+
+export interface BedBoardWard {
+  id: number;
+  name: string;
+  color: string | null;
+  total: number;
+  available: number;
+  occupied: number;
+  unused: number;
+  beds: BedBoardBed[];
+}
+
+export interface BedBoardFloor {
+  id: number;
+  name: string;
+  wardCount: number;
+  total: number;
+  available: number;
+  occupied: number;
+  unused: number;
+  wards: BedBoardWard[];
+}
+
+export interface BedBoardSummary {
+  total: number;
+  available: number;
+  occupied: number;
+  unused: number;
+  occupiedPercent: number;
+}
+
+export interface BedBoard {
+  branchId: number;
+  summary: BedBoardSummary;
+  floors: BedBoardFloor[];
+}
+
+export const bedBoardApi = {
+  get: (branchId?: number) =>
+    request<{ board: BedBoard }>(`/bed-board${qs(branchId ? { branchId } : {})}`),
 };
 
 /* ---------------------------------------------------------------------------

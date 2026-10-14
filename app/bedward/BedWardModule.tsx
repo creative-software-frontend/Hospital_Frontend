@@ -14,6 +14,7 @@ import {
   errorMessage,
   type BedWardItem,
   type BedWardKind,
+  type BedOccupancyStatus,
   type BranchRecord,
   type CreateBedWardInput,
   type PaginationMeta,
@@ -94,7 +95,7 @@ interface FormPayload {
   floorId?: number;
   bedTypeId?: number;
   bedGroupId?: number;
-  notAvailableForUse?: boolean;
+  status?: BedOccupancyStatus;
 }
 
 export function BedWardModule({ role }: { role: string | null }) {
@@ -230,16 +231,24 @@ function BedWardManager() {
     );
     const muted = (v: React.ReactNode) => <span className="text-[var(--muted)]">{v}</span>;
 
-    const availability = (notAvailable?: boolean) =>
-      notAvailable ? (
-        <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-500 border border-rose-400/30">
-          Not available
-        </span>
-      ) : (
-        <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 border border-emerald-400/30">
-          Available
+    const statusBadge = (status?: BedOccupancyStatus) => {
+      const styles: Record<BedOccupancyStatus, string> = {
+        AVAILABLE: "bg-emerald-500/15 text-emerald-600 border-emerald-400/30",
+        OCCUPIED: "bg-rose-500/15 text-rose-500 border-rose-400/30",
+        UNUSED: "bg-slate-500/15 text-slate-500 border-slate-400/30",
+      };
+      const labels: Record<BedOccupancyStatus, string> = {
+        AVAILABLE: "Available",
+        OCCUPIED: "Occupied",
+        UNUSED: "Unused",
+      };
+      const key: BedOccupancyStatus = status ?? "AVAILABLE";
+      return (
+        <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold border ${styles[key]}`}>
+          {labels[key]}
         </span>
       );
+    };
 
     let nodes: React.ReactNode[] = [];
     switch (tab.id) {
@@ -273,7 +282,7 @@ function BedWardManager() {
           item.bedType?.name ?? "—",
           item.bedGroup?.name ?? "—",
           item.bedGroup?.floor?.name ?? "—",
-          availability(item.notAvailableForUse),
+          statusBadge(item.status),
         ];
         break;
       case "beds":
@@ -281,7 +290,7 @@ function BedWardManager() {
           bold(item.name),
           item.bedType?.name ?? "—",
           item.bedGroup?.name ?? "—",
-          availability(item.notAvailableForUse),
+          statusBadge(item.status),
         ];
         break;
     }
@@ -384,7 +393,7 @@ function BedWardManager() {
         <p className="text-[11px] text-[var(--muted)]">{tab.hint}</p>
 
         {error && (
-          <p className="text-sm text-red-200 bg-red-500/20 border border-red-400/40 rounded-lg px-3 py-2">
+          <p className="text-sm alert-error">
             {error}
           </p>
         )}
@@ -514,7 +523,7 @@ function BedWardFormModal({
   const [floorId, setFloorId] = useState<number | null>(item?.floorId ?? null);
   const [bedTypeId, setBedTypeId] = useState<number | null>(item?.bedTypeId ?? null);
   const [bedGroupId, setBedGroupId] = useState<number | null>(item?.bedGroupId ?? null);
-  const [notAvailableForUse, setNotAvailableForUse] = useState(item?.notAvailableForUse ?? false);
+  const [status, setStatus] = useState<BedOccupancyStatus>(item?.status ?? "AVAILABLE");
   const [floors, setFloors] = useState<BedWardItem[]>([]);
   const [bedTypes, setBedTypes] = useState<BedWardItem[]>([]);
   const [bedGroups, setBedGroups] = useState<BedWardItem[]>([]);
@@ -575,7 +584,7 @@ function BedWardFormModal({
     } else if (kind === "beds") {
       payload.bedTypeId = bedTypeId ?? undefined;
       payload.bedGroupId = bedGroupId ?? undefined;
-      payload.notAvailableForUse = notAvailableForUse;
+      payload.status = status;
     }
     return payload;
   };
@@ -734,19 +743,22 @@ function BedWardFormModal({
           )}
 
           {kind === "beds" && (
-            <label className="flex items-center gap-2 text-xs font-bold text-[var(--text)] cursor-pointer">
-              <input
-                type="checkbox"
-                checked={notAvailableForUse}
-                onChange={(e) => setNotAvailableForUse(e.target.checked)}
-                className="w-4 h-4 rounded border-[var(--border)] accent-[var(--primary)]"
-              />
-              Not available for use
-            </label>
+            <div>
+              <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Status</label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as BedOccupancyStatus)}
+                className={INPUT_CLS}
+              >
+                <option value="AVAILABLE">Available</option>
+                <option value="OCCUPIED">Occupied</option>
+                <option value="UNUSED">Unused</option>
+              </select>
+            </div>
           )}
 
           {error && (
-            <p className="text-sm text-red-200 bg-red-500/20 border border-red-400/40 rounded-lg px-3 py-2">
+            <p className="text-sm alert-error">
               {error}
             </p>
           )}

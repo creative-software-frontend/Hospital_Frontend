@@ -765,14 +765,21 @@ model BedStatus {
   @@index([branchId])
 }
 
+/// Occupancy state of a bed on the bed board.
+enum BedOccupancyStatus {
+  AVAILABLE
+  OCCUPIED
+  UNUSED
+}
+
 /// Bed master created in Bed & Ward Setup: a named bed with a type and group.
 model BedDefinition {
-  id                 Int      @id @default(autoincrement())
+  id                 Int                @id @default(autoincrement())
   branchId           Int
   bedTypeId          Int
   bedGroupId         Int
   name               String
-  notAvailableForUse Boolean  @default(false)
+  status             BedOccupancyStatus @default(AVAILABLE)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

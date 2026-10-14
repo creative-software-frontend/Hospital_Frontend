@@ -18,8 +18,10 @@ import {
   FiX,
   FiMenu,
   FiPieChart,
-  FiFile
+  FiFile,
+  FiBell,
 } from "react-icons/fi";
+import { MdKingBed } from "react-icons/md";
 import type { IconType } from "react-icons";
 
 import { useMemo, useState } from "react";
@@ -33,6 +35,7 @@ import { PatientModule } from "@/app/patients/PatientModule";
 import { NurseModule } from "@/app/nurses/NurseModule";
 import { DoctorModule } from "@/app/doctors/DoctorModule";
 import { BedWardModule } from "@/app/bedward/BedWardModule";
+import { BedBoardOverlay } from "@/app/components/BedBoardOverlay";
 import { SuperAdminOverviewStats } from "@/app/dashboard/superadmin/SuperAdminOverviewStats";
 import { RolePermissionEditorModal } from "@/app/dashboard/role-permissions/RolePermissionEditorModal";
 import { useCurrency } from "@/app/hooks/useCurrency";
@@ -85,17 +88,9 @@ export const DashboardContent = ({
   const [pageSize] = useState<number>(50);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [editingRole, setEditingRole] = useState<{ seederKey: string; name: string } | null>(null);
+  const [bedBoardOpen, setBedBoardOpen] = useState(false);
   const { currency } = useCurrency();
   const { weekDays } = useLocalization();
-
-  const environment = useMemo(
-    () =>
-      typeof window !== "undefined" &&
-      ["localhost", "127.0.0.1"].includes(window.location.hostname)
-        ? "Development"
-        : "Production",
-    [],
-  );
 
 
   const roles = [
@@ -299,10 +294,30 @@ ${tbody}
             {activeSection === "feature-detail" && selectedFeature && `${selectedFeature.englishTitle}`}
           </h2>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="bg-[var(--primary-soft)]/35 text-[var(--primary-dark)] text-xs font-semibold px-3 py-1.5 rounded-full border border-[var(--primary)]/20">
-            Environment: {environment}
-          </span>
+        <div className="flex items-center gap-2">
+          <button
+            className="relative p-2 rounded-xl text-[var(--muted)] hover:bg-[var(--primary-soft)]/25 hover:text-[var(--text)] transition-colors"
+            title="Notifications"
+          >
+            <FiBell className="w-5 h-5" />
+            <span
+              className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
+              style={{ background: "var(--danger)" }}
+            />
+          </button>
+          <button
+            className="p-2 rounded-xl text-[var(--muted)] hover:bg-[var(--primary-soft)]/25 hover:text-[var(--text)] transition-colors"
+            title="Calendar"
+          >
+            <FiCalendar className="w-5 h-5" />
+          </button>
+          <button
+            className="p-2 rounded-xl text-[var(--muted)] hover:bg-[var(--primary-soft)]/25 hover:text-[var(--text)] transition-colors"
+            title="Bed status"
+            onClick={() => setBedBoardOpen(true)}
+          >
+            <MdKingBed className="w-5 h-5" />
+          </button>
         </div>
       </header>
 
@@ -820,6 +835,8 @@ ${tbody}
           </div>
         )}
       </main>
+
+      <BedBoardOverlay open={bedBoardOpen} onClose={() => setBedBoardOpen(false)} />
     </div>
   );
 };
