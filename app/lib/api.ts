@@ -877,6 +877,7 @@ export interface BranchRecord {
   address: string | null;
   city: string | null;
   district: string | null;
+  division: string | null;
   country: string | null;
   phone: string | null;
   email: string | null;
@@ -911,11 +912,12 @@ export type UpdateBranchInput = Partial<
 
 export type CreateBranchInput = {
   name: string;
-  code: string;
+  code?: string;
   registrationNo?: string | null;
   address?: string | null;
   city?: string | null;
   district?: string | null;
+  division?: string | null;
   country?: string | null;
   phone?: string | null;
   email?: string | null;
@@ -931,6 +933,8 @@ export const branchApi = {
     ),
 
   get: (id: number) => request<{ branch: BranchRecord }>(`/branches/${id}`),
+
+  nextCode: () => request<{ code: string }>(`/branches/next-code`),
 
   create: (input: CreateBranchInput) =>
     request<{ branch: BranchRecord }>(`/branches`, {

@@ -2,13 +2,19 @@ import { z } from "zod";
 
 export const BRANCH_STATUS_VALUES = ["active", "inactive"] as const;
 
+const BD_MOBILE_RE = /^(?:\+?880|0)1[3-9]\d{8}$/;
+
 const phoneSchema = z
   .string()
   .trim()
-  .max(32, "Phone must be at most 32 characters")
-  .regex(/^[0-9+\-\s()]*$/, "Phone contains invalid characters")
+  .max(20, "Phone must be at most 20 characters")
   .optional()
-  .or(z.literal("").transform(() => undefined));
+  .nullable()
+  .transform((v) => (v ? v.replace(/[\s-]/g, "") : null))
+  .refine(
+    (v) => v === null || BD_MOBILE_RE.test(v),
+    "Enter a valid Bangladeshi mobile number (e.g. 01712345678)",
+  );
 
 const emailSchema = z
   .string()
@@ -46,6 +52,7 @@ export const updateBranchSchema = z.object({
   address: optionalString(500),
   city: optionalString(255),
   district: optionalString(255),
+  division: optionalString(255),
   country: optionalString(255),
   phone: phoneSchema,
   email: emailSchema,
@@ -62,11 +69,13 @@ export const createBranchSchema = z.object({
     .trim()
     .min(1, "code is required")
     .max(32)
-    .regex(/^[A-Za-z0-9_-]+$/, "Code may only contain letters, numbers, dashes and underscores"),
+    .regex(/^[A-Za-z0-9_-]+$/, "Code may only contain letters, numbers, dashes and underscores")
+    .optional(),
   registrationNo: optionalString(64),
   address: optionalString(500),
   city: optionalString(255),
   district: optionalString(255),
+  division: optionalString(255),
   country: optionalString(255),
   phone: phoneSchema,
   email: emailSchema,

@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FiRefreshCcw, FiSearch, FiEdit2, FiPlus } from "react-icons/fi";
 import {
   branchApi,
@@ -13,7 +13,16 @@ import {
   errorMessage,
 } from "@/app/lib/api";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
-import { useCurrency } from "@/app/hooks/useCurrency";
+import { useAddressCascade } from "@/app/lib/useAddressCascade";
+import {
+  addError,
+  checkName,
+  checkEmail,
+  checkBdMobile,
+  checkText,
+  ADDRESS_MAX,
+  REGISTRATION_NO_MAX,
+} from "@/app/lib/formValidation";
 
 const PAGE_SIZE = 10;
 
@@ -23,7 +32,6 @@ const STATUS_STYLES: Record<BranchStatus, string> = {
 };
 
 export function BranchSettingsView() {
-  const { currency } = useCurrency();
   const [branches, setBranches] = useState<BranchRecord[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [loading, setLoading] = useState(true);
@@ -140,7 +148,7 @@ export function BranchSettingsView() {
           <table className="min-w-[900px] w-full">
             <thead>
               <tr className="bg-[var(--bg)]">
-                {["Code", "Name", "Location", "Phone", "Email", "Timezone", "Currency", "Status", "Actions"].map(
+                {["Code", "Name", "Location", "Phone", "Email", "Status", "Actions"].map(
                   (col) => (
                     <th
                       key={col}
@@ -155,13 +163,13 @@ export function BranchSettingsView() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center">
+                  <td colSpan={7} className="px-4 py-10 text-center">
                     <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--primary)]" />
                   </td>
                 </tr>
               ) : branches.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-xs text-[var(--muted)]">
+                  <td colSpan={7} className="px-4 py-10 text-center text-xs text-[var(--muted)]">
                     No branches found.
                   </td>
                 </tr>
@@ -175,19 +183,13 @@ export function BranchSettingsView() {
                       {b.name}
                     </td>
                     <td className="text-[12px] text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">
-                      {[b.city, b.district, b.country].filter(Boolean).join(", ") || "—"}
+                      {[b.city, b.district, b.division].filter(Boolean).join(", ") || "—"}
                     </td>
                     <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">
                       {b.phone || "—"}
                     </td>
                     <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">
                       {b.email || "—"}
-                    </td>
-                    <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">
-                      {b.timezone || "—"}
-                    </td>
-                    <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">
-                      {`${currency.currencyCode} (${currency.currencySymbol})`}
                     </td>
                     <td className="px-4 py-3 border-b border-[var(--border)]">
                       <span
@@ -284,28 +286,93 @@ function BranchEditModal({
   onClose: () => void;
   onSaved: (message: string) => void;
 }) {
-  const { currency } = useCurrency();
   const [name, setName] = useState(branch.name);
   const [registrationNo, setRegistrationNo] = useState(branch.registrationNo ?? "");
   const [address, setAddress] = useState(branch.address ?? "");
-  const [city, setCity] = useState(branch.city ?? "");
+  const [division, setDivision] = useState(branch.division ?? "");
   const [district, setDistrict] = useState(branch.district ?? "");
-  const [country, setCountry] = useState(branch.country ?? "");
+  const [city, setCity] = useState(branch.city ?? "");
   const [phone, setPhone] = useState(branch.phone ?? "");
   const [email, setEmail] = useState(branch.email ?? "");
-  const [timezone, setTimezone] = useState(branch.timezone ?? "");
   const [status, setStatus] = useState<BranchStatus>(branch.status);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const {
+    divisions,
+    districts,
+    localities,
+    divisionsLoading,
+    districtsLoading,
+    localitiesLoading,
+    addressError,
+    retryAddress,
+    loadDistricts,
+    loadLocalities,
+    resetDistricts,
+    resetLocalities,
+  } = useAddressCascade();
 
   const INPUT_CLS =
     "w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15 text-[var(--text)]";
+  const SELECT_CLS = `${INPUT_CLS} disabled:opacity-60 disabled:cursor-not-allowed`;
+
+  const onDivisionChange = (label: string) => {
+    resetDistricts();
+    resetLocalities();
+    setDivision(label);
+    setDistrict("");
+    setCity("");
+    const next = divisions.find((d) => d.label === label)?.code;
+    if (next) loadDistricts(next);
+  };
+
+  const onDistrictChange = (label: string) => {
+    resetLocalities();
+    setDistrict(label);
+    setCity("");
+    const next = districts.find((d) => d.label === label)?.code;
+    if (next) loadLocalities(next);
+  };
+
+  // The stored division/district are labels, so the child option lists have to
+  // arrive before a saved value can be shown as selected.
+  const prefillDone = useRef(false);
+  useEffect(() => {
+    if (prefillDone.current || divisionsLoading) return;
+    const savedDivision = branch.division ?? "";
+    const divisionCode = savedDivision
+      ? divisions.find((d) => d.label === savedDivision)?.code
+      : undefined;
+    prefillDone.current = true;
+    if (!divisionCode) return;
+    loadDistricts(divisionCode);
+  }, [divisions, divisionsLoading, branch.division, loadDistricts]);
+
+  useEffect(() => {
+    if (!district || districts.length === 0 || localities.length > 0) return;
+    const next = districts.find((d) => d.label === district)?.code;
+    if (next) loadLocalities(next);
+  }, [districts, district, localities.length, loadLocalities]);
+
+  const fieldError = (key: string) =>
+    fieldErrors[key] ? (
+      <p className="text-[10px] font-bold text-rose-500 mt-1">{fieldErrors[key]}</p>
+    ) : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!name.trim()) {
-      setError("Branch name is required.");
+    const next: Record<string, string> = {};
+    addError(next, "name", checkName(name));
+    addError(next, "registrationNo", checkText(registrationNo, REGISTRATION_NO_MAX, "Registration No."));
+    addError(next, "address", checkText(address, ADDRESS_MAX, "Address"));
+    addError(next, "phone", checkBdMobile(phone));
+    addError(next, "email", checkEmail(email));
+    setFieldErrors(next);
+    if (Object.keys(next).length > 0) {
+      setError("Please fix the highlighted fields.");
       return;
     }
     setSaving(true);
@@ -314,15 +381,11 @@ function BranchEditModal({
         name: name.trim(),
         registrationNo: registrationNo.trim() || null,
         address: address.trim() || null,
-        city: city.trim() || null,
-        district: district.trim() || null,
-        country: country.trim() || null,
+        division: division || null,
+        district: district || null,
+        city: city || null,
         phone: phone.trim() || null,
         email: email.trim() || null,
-        timezone: timezone.trim() || null,
-        // Mirror the hospital-wide currency (Settings → Localization → Currency) into the
-        // legacy Branch.currency column; branches share one global currency.
-        currency: currency.currencyCode,
         status,
       });
       onSaved(`Branch "${name.trim()}" updated.`);
@@ -365,10 +428,12 @@ function BranchEditModal({
           <div className="sm:col-span-2">
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Branch Name *</label>
             <input value={name} onChange={(e) => setName(e.target.value)} className={INPUT_CLS} />
+            {fieldError("name")}
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Registration No.</label>
             <input value={registrationNo} onChange={(e) => setRegistrationNo(e.target.value)} className={INPUT_CLS} />
+            {fieldError("registrationNo")}
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Status</label>
@@ -380,43 +445,70 @@ function BranchEditModal({
           <div className="sm:col-span-2">
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Address</label>
             <input value={address} onChange={(e) => setAddress(e.target.value)} className={INPUT_CLS} />
+            {fieldError("address")}
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">City</label>
-            <input value={city} onChange={(e) => setCity(e.target.value)} className={INPUT_CLS} />
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Division</label>
+            <select
+              value={division}
+              onChange={(e) => onDivisionChange(e.target.value)}
+              className={SELECT_CLS}
+              disabled={divisionsLoading}
+            >
+              <option value="">{divisionsLoading ? "Loading…" : "Select division"}</option>
+              {divisions.map((d) => (
+                <option key={d.code} value={d.label}>{d.label}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">District</label>
-            <input value={district} onChange={(e) => setDistrict(e.target.value)} className={INPUT_CLS} />
+            <select
+              value={district}
+              onChange={(e) => onDistrictChange(e.target.value)}
+              className={SELECT_CLS}
+              disabled={!division || districtsLoading}
+            >
+              <option value="">
+                {districtsLoading ? "Loading…" : !division ? "Select division first" : "Select district"}
+              </option>
+              {districts.map((d) => (
+                <option key={d.code} value={d.label}>{d.label}</option>
+              ))}
+            </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Country</label>
-            <input value={country} onChange={(e) => setCountry(e.target.value)} className={INPUT_CLS} />
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">City</label>
+            <select
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              className={SELECT_CLS}
+              disabled={!district || localitiesLoading}
+            >
+              <option value="">
+                {localitiesLoading ? "Loading…" : !district ? "Select district first" : "Select city"}
+              </option>
+              {localities.map((l) => (
+                <option key={l.code} value={l.label}>{l.label}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Phone</label>
             <input value={phone} onChange={(e) => setPhone(e.target.value)} className={INPUT_CLS} />
+            {fieldError("phone")}
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Email</label>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={INPUT_CLS} />
+            {fieldError("email")}
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Timezone</label>
-            <input value={timezone} onChange={(e) => setTimezone(e.target.value)} className={INPUT_CLS} />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Currency</label>
-            <input
-              type="text"
-              readOnly
-              value={`${currency.currencyCode} (${currency.currencySymbol})`}
-              className={`${INPUT_CLS} opacity-70 cursor-not-allowed`}
-            />
-            <p className="text-[10px] text-[var(--muted)] mt-1">
-              Hospital-wide — managed in Settings → Localization → Currency.
-            </p>
-          </div>
+          {addressError && (
+            <div className="sm:col-span-2 flex items-center gap-2 text-[11px] font-semibold text-rose-600">
+              <span>{addressError}</span>
+              <button type="button" onClick={retryAddress} className="underline font-bold">Retry</button>
+            </div>
+          )}
         </div>
 
         {error && (
@@ -455,51 +547,106 @@ function BranchCreateModal({
   onClose: () => void;
   onSaved: (message: string) => void;
 }) {
-  const { currency } = useCurrency();
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
+  const [codeLoading, setCodeLoading] = useState(true);
   const [registrationNo, setRegistrationNo] = useState("");
   const [address, setAddress] = useState("");
-  const [city, setCity] = useState("");
+  const [division, setDivision] = useState("");
   const [district, setDistrict] = useState("");
-  const [country, setCountry] = useState("");
+  const [city, setCity] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [timezone, setTimezone] = useState("");
   const [status, setStatus] = useState<BranchStatus>("active");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    branchApi
+      .nextCode()
+      .then((res) => {
+        if (!cancelled) setCode(res.code);
+      })
+      .catch(() => {
+        if (!cancelled) setError("Could not generate a branch code. Please close and retry.");
+      })
+      .finally(() => {
+        if (!cancelled) setCodeLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const {
+    divisions,
+    districts,
+    localities,
+    divisionsLoading,
+    districtsLoading,
+    localitiesLoading,
+    addressError,
+    retryAddress,
+    loadDistricts,
+    loadLocalities,
+    resetDistricts,
+    resetLocalities,
+  } = useAddressCascade();
 
   const INPUT_CLS =
     "w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15 text-[var(--text)]";
+  const SELECT_CLS = `${INPUT_CLS} disabled:opacity-60 disabled:cursor-not-allowed`;
+
+  const onDivisionChange = (label: string) => {
+    resetDistricts();
+    resetLocalities();
+    setDivision(label);
+    setDistrict("");
+    setCity("");
+    const next = divisions.find((d) => d.label === label)?.code;
+    if (next) loadDistricts(next);
+  };
+
+  const onDistrictChange = (label: string) => {
+    resetLocalities();
+    setDistrict(label);
+    setCity("");
+    const next = districts.find((d) => d.label === label)?.code;
+    if (next) loadLocalities(next);
+  };
+
+  const fieldError = (key: string) =>
+    fieldErrors[key] ? (
+      <p className="text-[10px] font-bold text-rose-500 mt-1">{fieldErrors[key]}</p>
+    ) : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!name.trim()) {
-      setError("Branch name is required.");
-      return;
-    }
-    if (!code.trim()) {
-      setError("Branch code is required.");
+    const next: Record<string, string> = {};
+    addError(next, "name", checkName(name));
+    addError(next, "registrationNo", checkText(registrationNo, REGISTRATION_NO_MAX, "Registration No."));
+    addError(next, "address", checkText(address, ADDRESS_MAX, "Address"));
+    addError(next, "phone", checkBdMobile(phone));
+    addError(next, "email", checkEmail(email));
+    setFieldErrors(next);
+    if (Object.keys(next).length > 0) {
+      setError("Please fix the highlighted fields.");
       return;
     }
     setSaving(true);
     try {
       await branchApi.create({
         name: name.trim(),
-        code: code.trim(),
         registrationNo: registrationNo.trim() || null,
         address: address.trim() || null,
-        city: city.trim() || null,
-        district: district.trim() || null,
-        country: country.trim() || null,
+        division: division || null,
+        district: district || null,
+        city: city || null,
         phone: phone.trim() || null,
         email: email.trim() || null,
-        timezone: timezone.trim() || null,
-        // Mirror the hospital-wide currency (Settings → Localization → Currency) into the
-        // legacy Branch.currency column; branches share one global currency.
-        currency: currency.currencyCode,
         status,
       });
       onSaved(`Branch "${name.trim()}" created.`);
@@ -542,11 +689,16 @@ function BranchCreateModal({
           <div className="sm:col-span-2">
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Branch Name *</label>
             <input value={name} onChange={(e) => setName(e.target.value)} className={INPUT_CLS} placeholder="e.g. Main Hospital" />
+            {fieldError("name")}
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Branch Code *</label>
-            <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} className={INPUT_CLS} placeholder="e.g. MAIN" />
-            <p className="text-[10px] text-[var(--muted)] mt-1">Letters, numbers, dashes or underscores.</p>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Branch Code</label>
+            <input
+              value={codeLoading ? "Generating…" : code}
+              readOnly
+              className={`${INPUT_CLS} opacity-70 cursor-not-allowed`}
+            />
+            <p className="text-[10px] text-[var(--muted)] mt-1">Generated automatically.</p>
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Status</label>
@@ -558,47 +710,75 @@ function BranchCreateModal({
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Registration No.</label>
             <input value={registrationNo} onChange={(e) => setRegistrationNo(e.target.value)} className={INPUT_CLS} />
+            {fieldError("registrationNo")}
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Phone</label>
             <input value={phone} onChange={(e) => setPhone(e.target.value)} className={INPUT_CLS} />
+            {fieldError("phone")}
           </div>
           <div className="sm:col-span-2">
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Address</label>
             <input value={address} onChange={(e) => setAddress(e.target.value)} className={INPUT_CLS} />
+            {fieldError("address")}
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">City</label>
-            <input value={city} onChange={(e) => setCity(e.target.value)} className={INPUT_CLS} />
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Division</label>
+            <select
+              value={division}
+              onChange={(e) => onDivisionChange(e.target.value)}
+              className={SELECT_CLS}
+              disabled={divisionsLoading}
+            >
+              <option value="">{divisionsLoading ? "Loading…" : "Select division"}</option>
+              {divisions.map((d) => (
+                <option key={d.code} value={d.label}>{d.label}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">District</label>
-            <input value={district} onChange={(e) => setDistrict(e.target.value)} className={INPUT_CLS} />
+            <select
+              value={district}
+              onChange={(e) => onDistrictChange(e.target.value)}
+              className={SELECT_CLS}
+              disabled={!division || districtsLoading}
+            >
+              <option value="">
+                {districtsLoading ? "Loading…" : !division ? "Select division first" : "Select district"}
+              </option>
+              {districts.map((d) => (
+                <option key={d.code} value={d.label}>{d.label}</option>
+              ))}
+            </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Country</label>
-            <input value={country} onChange={(e) => setCountry(e.target.value)} className={INPUT_CLS} />
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">City</label>
+            <select
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              className={SELECT_CLS}
+              disabled={!district || localitiesLoading}
+            >
+              <option value="">
+                {localitiesLoading ? "Loading…" : !district ? "Select district first" : "Select city"}
+              </option>
+              {localities.map((l) => (
+                <option key={l.code} value={l.label}>{l.label}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Email</label>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={INPUT_CLS} />
+            {fieldError("email")}
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Timezone</label>
-            <input value={timezone} onChange={(e) => setTimezone(e.target.value)} className={INPUT_CLS} />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Currency</label>
-            <input
-              type="text"
-              readOnly
-              value={`${currency.currencyCode} (${currency.currencySymbol})`}
-              className={`${INPUT_CLS} opacity-70 cursor-not-allowed`}
-            />
-            <p className="text-[10px] text-[var(--muted)] mt-1">
-              Hospital-wide — managed in Settings → Localization → Currency.
-            </p>
-          </div>
+          {addressError && (
+            <div className="sm:col-span-2 flex items-center gap-2 text-[11px] font-semibold text-rose-600">
+              <span>{addressError}</span>
+              <button type="button" onClick={retryAddress} className="underline font-bold">Retry</button>
+            </div>
+          )}
         </div>
 
         {error && (

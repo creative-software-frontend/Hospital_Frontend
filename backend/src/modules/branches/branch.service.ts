@@ -2,12 +2,39 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { AuthorizationError, ConflictError, NotFoundError } from "../../errors/ApiError";
 import { writeAuditLog } from "../../utils/audit";
+import {
+  CODE_ENTITIES,
+  formatBusinessCode,
+  nextCodeNumber,
+  peekNextCodeNumber,
+} from "../../utils/codeGenerator";
 import { parsePagination, buildPaginationMeta, type SortableField } from "../../utils/pagination";
 import type { AuthUser } from "../../types/auth";
 import type { CreateBranchInput, ListBranchesQuery, UpdateBranchInput } from "./branch.validation";
 
 function isSuperAdmin(user: AuthUser): boolean {
   return user.roles.some((r) => r.seederKey === "SUPER_ADMIN");
+}
+
+// Branches are the top-level scope, so their shared code sequence lives under a
+// sentinel branch id rather than a real branch.
+const BRANCH_SEQUENCE_BRANCH_ID = 0;
+const BRANCH_CODE_PREFIX = "BR";
+const BRANCH_CODE_PADDING = 6;
+
+async function generateBranchCode(): Promise<string> {
+  return prisma.$transaction(async (tx) => {
+    const sequence = await nextCodeNumber(tx, CODE_ENTITIES.BRANCH, BRANCH_SEQUENCE_BRANCH_ID);
+    return formatBusinessCode(BRANCH_CODE_PREFIX, sequence, BRANCH_CODE_PADDING);
+  });
+}
+
+export async function peekNextBranchCode(actor: AuthUser): Promise<string> {
+  if (!isSuperAdmin(actor)) {
+    throw new AuthorizationError("Only a super admin can create a branch");
+  }
+  const sequence = await peekNextCodeNumber(prisma, CODE_ENTITIES.BRANCH, BRANCH_SEQUENCE_BRANCH_ID);
+  return formatBusinessCode(BRANCH_CODE_PREFIX, sequence, BRANCH_CODE_PADDING);
 }
 
 const BRANCH_LIST_SELECT: Prisma.BranchSelect = {
@@ -18,6 +45,7 @@ const BRANCH_LIST_SELECT: Prisma.BranchSelect = {
   address: true,
   city: true,
   district: true,
+  division: true,
   country: true,
   phone: true,
   email: true,
@@ -107,7 +135,7 @@ export async function createBranch(actor: AuthUser, input: CreateBranchInput) {
     throw new AuthorizationError("Only a super admin can create a branch");
   }
 
-  const code = input.code.toUpperCase();
+  const code = input.code?.trim() ? input.code.trim().toUpperCase() : await generateBranchCode();
   const existing = await prisma.branch.findUnique({ where: { code }, select: { id: true } });
   if (existing) {
     throw new ConflictError(`Branch code "${code}" already exists`);
@@ -121,6 +149,7 @@ export async function createBranch(actor: AuthUser, input: CreateBranchInput) {
       address: input.address,
       city: input.city,
       district: input.district,
+      division: input.division,
       country: input.country,
       phone: input.phone,
       email: input.email,

@@ -29,6 +29,12 @@ router.post(
 );
 
 router.get(
+  "/next-code",
+  requirePermission("branch", "create"),
+  branchController.nextBranchCode,
+);
+
+router.get(
   "/:id",
   validate({ params: branchIdParamSchema }),
   requirePermission("branch", "read"),

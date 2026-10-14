@@ -13,6 +13,7 @@ export const CODE_ENTITIES = {
   LAB_ORDER: "LabOrder",
   PRESCRIPTION: "Prescription",
   EMERGENCY: "Emergency",
+  BRANCH: "Branch",
 } as const;
 
 export type CodeEntity = (typeof CODE_ENTITIES)[keyof typeof CODE_ENTITIES];
@@ -30,6 +31,7 @@ const ENTITY_PREFIX: Record<CodeEntity, string> = {
   [CODE_ENTITIES.LAB_ORDER]: "LAB",
   [CODE_ENTITIES.PRESCRIPTION]: "RX",
   [CODE_ENTITIES.EMERGENCY]: "EMR",
+  [CODE_ENTITIES.BRANCH]: "BR",
 };
 
 const DEFAULT_PADDING = 6;
@@ -68,6 +70,23 @@ export async function nextCodeNumber(
     select: { nextNumber: true },
   });
   return row.nextNumber;
+}
+
+/**
+ * Reads the next sequence number without claiming it, so a form can preview the
+ * code it is about to receive. The real code is still issued atomically at
+ * create time by `nextCodeNumber`.
+ */
+export async function peekNextCodeNumber(
+  tx: Prisma.TransactionClient,
+  entity: CodeEntity,
+  branchId: number,
+): Promise<number> {
+  const row = await tx.codeSequence.findUnique({
+    where: { entity_branchId: { entity, branchId } },
+    select: { nextNumber: true },
+  });
+  return row?.nextNumber ?? 1;
 }
 
 export async function generateBusinessCode(

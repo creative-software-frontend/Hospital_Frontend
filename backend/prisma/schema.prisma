@@ -165,6 +165,7 @@ model Branch {
   address        String?
   city           String?
   district       String?
+  division       String?
   country        String?
   phone          String?
   email          String?

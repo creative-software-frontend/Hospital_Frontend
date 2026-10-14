@@ -17,6 +17,7 @@ export const MAX_AGE_YEARS = 120;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^[0-9+\-\s()]+$/;
 const MONEY_RE = /^\d+(\.\d{1,2})?$/;
+const BD_MOBILE_RE = /^(?:\+?880|0)1[3-9]\d{8}$/;
 
 export function checkName(value: string): string {
   const v = value.trim();
@@ -38,6 +39,14 @@ export function checkPhone(value: string): string {
   if (!v) return "";
   if (v.length > PHONE_MAX) return `Phone must be at most ${PHONE_MAX} characters.`;
   if (!PHONE_RE.test(v)) return "Phone can only contain digits, spaces and + - ( ).";
+  return "";
+}
+
+export function checkBdMobile(value: string): string {
+  const v = value.trim().replace(/[\s-]/g, "");
+  if (!v) return "";
+  if (v.length > 20) return "Phone is too long.";
+  if (!BD_MOBILE_RE.test(v)) return "Enter a valid Bangladeshi mobile number (e.g. 01712345678).";
   return "";
 }
 
