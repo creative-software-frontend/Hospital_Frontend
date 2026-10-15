@@ -294,9 +294,9 @@ ${tbody}
             {activeSection === "feature-detail" && selectedFeature && `${selectedFeature.englishTitle}`}
           </h2>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--card)] px-1.5 py-1 mr-3">
           <button
-            className="relative p-2 rounded-xl text-[var(--muted)] hover:bg-[var(--primary-soft)]/25 hover:text-[var(--text)] transition-colors"
+            className="relative p-2 rounded-full text-[var(--muted)] hover:bg-[var(--primary-soft)]/25 hover:text-[var(--text)] transition-colors"
             title="Notifications"
           >
             <FiBell className="w-5 h-5" />
@@ -306,13 +306,13 @@ ${tbody}
             />
           </button>
           <button
-            className="p-2 rounded-xl text-[var(--muted)] hover:bg-[var(--primary-soft)]/25 hover:text-[var(--text)] transition-colors"
+            className="p-2 rounded-full text-[var(--muted)] hover:bg-[var(--primary-soft)]/25 hover:text-[var(--text)] transition-colors"
             title="Calendar"
           >
             <FiCalendar className="w-5 h-5" />
           </button>
           <button
-            className="p-2 rounded-xl text-[var(--muted)] hover:bg-[var(--primary-soft)]/25 hover:text-[var(--text)] transition-colors"
+            className="p-2 rounded-full text-[var(--muted)] hover:bg-[var(--primary-soft)]/25 hover:text-[var(--text)] transition-colors"
             title="Bed status"
             onClick={() => setBedBoardOpen(true)}
           >

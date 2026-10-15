@@ -42,6 +42,7 @@ import {
   SHORT_TEXT_MAX,
 } from "@/app/lib/formValidation";
 import type { Occupation } from "@/app/lib/api";
+import { FileUploadField } from "@/app/components/FileUploadField";
 
 interface ContactDraft {
   name: string;
@@ -730,8 +731,16 @@ export function PatientFormModal({
                 </div>
 
                 <div>
-                  <label className={labelCls}>Photo URL</label>
-                  <input className={inputCls} value={form.photo} onChange={set("photo")} placeholder="https://..." disabled={submitting} />
+                  <FileUploadField
+                    label="Photo"
+                    kind="photo"
+                    value={form.photo}
+                    onChange={(url) => {
+                      setFieldErrors((prev) => ({ ...prev, photo: "" }));
+                      setForm((prev) => ({ ...prev, photo: url }));
+                    }}
+                    hint="PNG, JPG, WEBP or GIF up to 5MB."
+                  />
                   {fieldError("photo")}
                 </div>
               </div>
