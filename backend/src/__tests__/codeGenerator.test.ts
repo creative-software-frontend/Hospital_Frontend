@@ -5,6 +5,7 @@ import {
   formatBusinessCode,
   generateBusinessCode,
   nextCodeNumber,
+  peekNextCodeNumber,
 } from "../utils/codeGenerator";
 
 /* ---------------------------------------------------------------------------
@@ -26,9 +27,19 @@ function makeTx() {
       return { nextNumber: next };
     },
   );
+  const findUnique = vi.fn(
+    async (args: {
+      where: { entity_branchId: { entity: string; branchId: number } };
+    }) => {
+      const { entity, branchId } = args.where.entity_branchId;
+      const value = counters.get(`${entity}:${branchId}`);
+      return value === undefined ? null : { nextNumber: value };
+    },
+  );
   return {
-    tx: { codeSequence: { upsert } } as unknown as Prisma.TransactionClient,
+    tx: { codeSequence: { upsert, findUnique } } as unknown as Prisma.TransactionClient,
     upsert,
+    findUnique,
   };
 }
 
@@ -86,6 +97,36 @@ describe("nextCodeNumber", () => {
     expect(new Set(codes).size).toBe(50);
     expect(codes[0]).toBe("PAT-000001");
     expect(codes[49]).toBe("PAT-000050");
+  });
+});
+
+describe("peekNextCodeNumber", () => {
+  it("previews 1 when the sequence has never been claimed (no row yet)", async () => {
+    const findUnique = vi.fn().mockResolvedValue(null);
+    const tx = { codeSequence: { findUnique } } as unknown as Prisma.TransactionClient;
+
+    expect(await peekNextCodeNumber(tx, CODE_ENTITIES.EMPLOYEE, 1)).toBe(1);
+  });
+
+  it("previews one past the last issued code and never claims a number", async () => {
+    const findUnique = vi.fn().mockResolvedValue({ nextNumber: 12 });
+    const upsert = vi.fn();
+    const tx = { codeSequence: { findUnique, upsert } } as unknown as Prisma.TransactionClient;
+
+    expect(await peekNextCodeNumber(tx, CODE_ENTITIES.EMPLOYEE, 1)).toBe(13);
+    expect(upsert).not.toHaveBeenCalled();
+    expect(findUnique).toHaveBeenCalledWith({
+      where: { entity_branchId: { entity: "Employee", branchId: 1 } },
+      select: { nextNumber: true },
+    });
+  });
+
+  it("matches the code that the next claim will issue", async () => {
+    const { tx } = makeTx();
+    const issued = await generateBusinessCode(tx, CODE_ENTITIES.EMPLOYEE, 1);
+    expect(issued).toBe("EMP-000001");
+    const preview = await peekNextCodeNumber(tx, CODE_ENTITIES.EMPLOYEE, 1);
+    expect(formatBusinessCode("EMP", preview)).toBe("EMP-000002");
   });
 });
 

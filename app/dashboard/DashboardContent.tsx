@@ -33,6 +33,7 @@ import { settingsData } from "@/app/data/settingsData";
 import { SettingsPageView } from "@/app/dashboard/settings/SettingsPageView";
 import { PatientModule } from "@/app/patients/PatientModule";
 import { NurseModule } from "@/app/nurses/NurseModule";
+import { EmployeeModule } from "@/app/employees/EmployeeModule";
 import { DoctorModule } from "@/app/doctors/DoctorModule";
 import { BedWardModule } from "@/app/bedward/BedWardModule";
 import { BedBoardOverlay } from "@/app/components/BedBoardOverlay";
@@ -558,6 +559,8 @@ ${tbody}
               <DoctorModule />
             ) : selectedFeature.id === 13 ? (
               <NurseModule />
+            ) : selectedFeature.id === 16 ? (
+              <EmployeeModule />
             ) : selectedFeature.id === 7 ? (
               <BedWardModule role={permissions?.role ?? null} />
             ) : (

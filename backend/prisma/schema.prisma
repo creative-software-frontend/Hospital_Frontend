@@ -39,6 +39,7 @@ enum RoleKey {
   ACCOUNTANT
   RECEPTIONIST
   NURSE
+  EMPLOYEE
 }
 
 enum UserStatus {
@@ -1558,6 +1559,13 @@ model Employee {
   employeeCode   String
   phone          String?
   email          String?
+  gender          Gender?
+  dateOfBirth     DateTime?
+  maritalStatus   MaritalStatus?
+  bloodGroup      BloodGroupCode?
+  photo           String?        @db.VarChar(500)
+  permanentAddress String?       @db.VarChar(500)
+  presentAddress  String?        @db.VarChar(500)
   hireDate       DateTime?
   basicSalary    Decimal?  @db.Decimal(12, 2)
   status         String    @default("active")

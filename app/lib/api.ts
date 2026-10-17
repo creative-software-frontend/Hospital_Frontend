@@ -2289,6 +2289,96 @@ export const nurseApi = {
     }),
 };
 
+export interface EmployeeReference {
+  employeeTypes: { id: number; name: string }[];
+  designations: { id: number; name: string }[];
+}
+
+export interface EmployeeRecord {
+  id: number;
+  userId: number | null;
+  branchId: number;
+  employeeTypeId: number | null;
+  designationId: number | null;
+  departmentId: number | null;
+  name: string;
+  employeeCode: string;
+  phone: string | null;
+  email: string | null;
+  gender: Gender | null;
+  dateOfBirth: string | null;
+  maritalStatus: MaritalStatus | null;
+  bloodGroup: BloodGroup | null;
+  photo: string | null;
+  permanentAddress: string | null;
+  presentAddress: string | null;
+  hireDate: string | null;
+  basicSalary: string | null;
+  status: ActiveStatus;
+  createdAt: string;
+  updatedAt: string;
+  department?: { id: number; name: string; code: string } | null;
+  designation?: { id: number; name: string } | null;
+  employeeType?: { id: number; name: string } | null;
+}
+
+export interface EmployeeListResult {
+  data: EmployeeRecord[];
+  pagination: PaginationMeta;
+}
+
+export interface EmployeeListQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: ActiveStatus;
+  departmentId?: number;
+  designationId?: number;
+}
+
+export interface CreateEmployeeInput {
+  name: string;
+  departmentId?: number | null;
+  designationId?: number | null;
+  employeeTypeId?: number | null;
+  hireDate?: string | null;
+  basicSalary?: string | null;
+  gender?: Gender | null;
+  dateOfBirth?: string | null;
+  maritalStatus?: MaritalStatus | null;
+  bloodGroup?: BloodGroup | null;
+  photo?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  permanentAddress?: string | null;
+  presentAddress?: string | null;
+  password?: string;
+  confirmPassword?: string;
+  status?: ActiveStatus;
+}
+
+export type UpdateEmployeeInput = Partial<CreateEmployeeInput>;
+
+export const employeeApi = {
+  list: (query: EmployeeListQuery = {}) =>
+    rawRequest<EmployeeListResult>(
+      `/employees${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+  get: (id: number) => request<{ employee: EmployeeRecord }>(`/employees/${id}`),
+  nextCode: () => request<{ code: string }>("/employees/next-code"),
+  references: () => request<EmployeeReference>("/employees/references"),
+  create: (input: CreateEmployeeInput) =>
+    request<{ employee: EmployeeRecord }>("/employees", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  update: (id: number, input: UpdateEmployeeInput) =>
+    request<{ employee: EmployeeRecord }>(`/employees/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+};
+
 export type UploadKind = "photo" | "signature" | "cv";
 
 export interface UploadedFile {

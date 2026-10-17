@@ -41,7 +41,7 @@ const SEED_BRANCH = {
 };
 
 type RoleKey = "SUPER_ADMIN" | "ADMIN" | "DOCTOR" | "PHARMACIST" | "PATHOLOGIST"
-  | "RADIOLOGIST" | "ACCOUNTANT" | "RECEPTIONIST" | "NURSE";
+  | "RADIOLOGIST" | "ACCOUNTANT" | "RECEPTIONIST" | "NURSE" | "EMPLOYEE";
 
 const ROLE_NAMES: Record<RoleKey, string> = {
   SUPER_ADMIN: "Super Admin",
@@ -53,6 +53,7 @@ const ROLE_NAMES: Record<RoleKey, string> = {
   ACCOUNTANT: "Accountant",
   RECEPTIONIST: "Receptionist",
   NURSE: "Nurse",
+  EMPLOYEE: "Employee",
 };
 
 const ROLE_DESCRIPTIONS: Record<RoleKey, string> = {
@@ -65,6 +66,7 @@ const ROLE_DESCRIPTIONS: Record<RoleKey, string> = {
   ACCOUNTANT: "Finance staff managing invoices, payments and accounts",
   RECEPTIONIST: "Front desk managing patients and appointments",
   NURSE: "Ward staff managing beds, admissions and care records",
+  EMPLOYEE: "General hospital staff with a login account",
 };
 
 /* ---------------------------------------------------------------------------
@@ -157,6 +159,9 @@ const PERMISSIONS: PermissionDef[] = [
   { module: "nurse", action: "read", description: "View nurses" },
   { module: "nurse", action: "create", description: "Create nurses" },
   { module: "nurse", action: "update", description: "Update nurses" },
+  { module: "employee", action: "read", description: "View employees" },
+  { module: "employee", action: "create", description: "Create employees" },
+  { module: "employee", action: "update", description: "Update employee records" },
   { module: "service", action: "read", description: "View billable services" },
   { module: "service", action: "create", description: "Create services" },
   { module: "service", action: "update", description: "Update services" },
@@ -246,6 +251,7 @@ const MATRIX: Record<RoleKey, string[]> = {
     "department:read", "department:create", "department:update",
     "doctor:read", "doctor:create", "doctor:update",
     "nurse:read", "nurse:create", "nurse:update",
+    "employee:read", "employee:create", "employee:update",
     "service:read", "service:create", "service:update",
     "patientSetting:read", "patientSetting:update",
     "opdSetting:read", "opdSetting:update",
@@ -304,6 +310,7 @@ const MATRIX: Record<RoleKey, string[]> = {
     "bed:read", "bed:update", "medicalRecord:read", "medicalRecord:create",
     "nurse:read",
   ],
+  EMPLOYEE: ["localizationSetting:read", "auth:read", "employee:read"],
 };
 
 /* ---------------------------------------------------------------------------

@@ -76,6 +76,10 @@ export async function nextCodeNumber(
  * Reads the next sequence number without claiming it, so a form can preview the
  * code it is about to receive. The real code is still issued atomically at
  * create time by `nextCodeNumber`.
+ *
+ * `CodeSequence.nextNumber` holds the number of the LAST code issued (it starts
+ * at 1 on the first claim and increments on every claim after that), so the
+ * next code is one past it — or 1 when no row exists yet.
  */
 export async function peekNextCodeNumber(
   tx: Prisma.TransactionClient,
@@ -86,7 +90,7 @@ export async function peekNextCodeNumber(
     where: { entity_branchId: { entity, branchId } },
     select: { nextNumber: true },
   });
-  return row?.nextNumber ?? 1;
+  return (row?.nextNumber ?? 0) + 1;
 }
 
 export async function generateBusinessCode(
