@@ -82,6 +82,19 @@ export const keyFeatures: Feature[] = [
         ]
     },
     {
+        id: 16,
+        englishTitle: "Human Resource Management",
+        icon: FiBriefcase,
+        subFeatures: [
+            { label: "Employee Management", icon: FiUsers },
+            { label: "Attendance Management", icon: FiCheckSquare },
+            { label: "Payroll Management", icon: FiDollarSign },
+            { label: "Leave Management", icon: FiCalendar },
+            { label: "Shift Management", icon: FiClock },
+            { label: "Employee Evaluation", icon: FiStar },
+        ]
+    },
+    {
         id: 3,
         englishTitle: "Appointment Management",
         icon: FiCalendar,
@@ -237,19 +250,6 @@ export const keyFeatures: Feature[] = [
             { label: "Trial Balance", icon: FiCheckSquare },
             { label: "Profit & Loss", icon: FiPieChart },
             { label: "Balance Sheet", icon: FiFileText },
-        ]
-    },
-    {
-        id: 16,
-        englishTitle: "Human Resource Management",
-        icon: FiBriefcase,
-        subFeatures: [
-            { label: "Employee Management", icon: FiUsers },
-            { label: "Attendance Management", icon: FiCheckSquare },
-            { label: "Payroll Management", icon: FiDollarSign },
-            { label: "Leave Management", icon: FiCalendar },
-            { label: "Shift Management", icon: FiClock },
-            { label: "Employee Evaluation", icon: FiStar },
         ]
     },
     {
