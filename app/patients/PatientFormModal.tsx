@@ -32,6 +32,7 @@ import { useAddressCascade } from "@/app/lib/useAddressCascade";
 import {
   ADDRESS_MAX,
   addError,
+  checkBdMobile,
   checkDateOfBirth,
   checkEmail,
   checkName,
@@ -360,8 +361,8 @@ export function PatientFormModal({
     const local: Record<string, string> = {};
     addError(local, "name", checkName(form.name));
     addError(local, "email", checkEmail(form.email));
-    addError(local, "phone", checkPhone(form.phone));
-    addError(local, "whatsapp", checkPhone(form.whatsapp));
+    addError(local, "phone", checkBdMobile(form.phone));
+    addError(local, "whatsapp", checkBdMobile(form.whatsapp));
     addError(local, "dateOfBirth", checkDateOfBirth(form.dateOfBirth));
     addError(local, "address", checkText(form.address, ADDRESS_MAX, "Address"));
     addError(local, "nationalId", checkText(form.nationalId, NATIONAL_ID_MAX, "National ID"));
