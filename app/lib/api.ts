@@ -2559,6 +2559,112 @@ export const bedBoardApi = {
 };
 
 /* ---------------------------------------------------------------------------
+ * OPD Appointments (Appointment Management feature)
+ * ------------------------------------------------------------------------- */
+
+/** Mirrors backend `AppointmentStatus`. */
+export type AppointmentStatus =
+  | "SCHEDULED"
+  | "CHECKED_IN"
+  | "IN_CONSULTATION"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "NO_SHOW";
+
+/** Mirrors backend `visitType`. */
+export type AppointmentVisitType = "OPD" | "FOLLOWUP";
+
+export interface AppointmentPatientRef {
+  id: number;
+  patientCode: string;
+  name: string;
+  phone: string | null;
+}
+
+export interface AppointmentDoctorRef {
+  id: number;
+  doctorCode: string;
+  name: string;
+  specialization: string | null;
+}
+
+export interface AppointmentRecord {
+  id: number;
+  branchId: number;
+  patientId: number;
+  doctorId: number;
+  /** ISO timestamp; render with `formatDate()`. */
+  appointmentDate: string;
+  /** "HH:MM" string. */
+  startTime: string;
+  /** "HH:MM" string. */
+  endTime: string;
+  status: AppointmentStatus;
+  reason: string | null;
+  notes: string | null;
+  createdAt: string;
+  patient: AppointmentPatientRef;
+  doctor: AppointmentDoctorRef;
+}
+
+export interface AppointmentListResult {
+  data: AppointmentRecord[];
+  pagination: PaginationMeta;
+}
+
+export interface AppointmentListQuery {
+  /** `YYYY-MM-DD`; filters to a single day. */
+  date?: string;
+  doctorId?: number;
+  patientId?: number;
+  status?: AppointmentStatus;
+  page?: number;
+  limit?: number;
+}
+
+export interface CreateAppointmentInput {
+  patientId: number;
+  doctorId: number;
+  /** `YYYY-MM-DD` (date) or ISO datetime. */
+  appointmentDate: string;
+  startTime: string;
+  endTime: string;
+  reason?: string | null;
+  notes?: string | null;
+  visitType?: AppointmentVisitType;
+}
+
+export interface UpdateAppointmentInput {
+  status?: AppointmentStatus;
+  reason?: string | null;
+  notes?: string | null;
+}
+
+/** PATCH returns only the changed identity/status fields, not the full record. */
+export interface AppointmentStatusUpdateResult {
+  id: number;
+  status: AppointmentStatus;
+  updatedAt: string;
+}
+
+export const appointmentApi = {
+  list: (query: AppointmentListQuery = {}) =>
+    rawRequest<AppointmentListResult>(
+      `/opd/appointments${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+  create: (input: CreateAppointmentInput) =>
+    request<AppointmentRecord>("/opd/appointments", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  update: (id: number, input: UpdateAppointmentInput) =>
+    request<AppointmentStatusUpdateResult>(`/opd/appointments/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+};
+
+/* ---------------------------------------------------------------------------
  * Shared error/date helpers
  * ------------------------------------------------------------------------- */
 

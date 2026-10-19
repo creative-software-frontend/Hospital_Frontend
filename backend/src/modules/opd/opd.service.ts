@@ -175,7 +175,7 @@ export async function listOpdAppointments(
 
   return {
     data: rows,
-    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
   };
 }
 

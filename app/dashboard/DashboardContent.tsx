@@ -35,6 +35,7 @@ import { PatientModule } from "@/app/patients/PatientModule";
 import { NurseModule } from "@/app/nurses/NurseModule";
 import { EmployeeModule } from "@/app/employees/EmployeeModule";
 import { DoctorModule } from "@/app/doctors/DoctorModule";
+import { AppointmentModule } from "@/app/appointments/AppointmentModule";
 import { BedWardModule } from "@/app/bedward/BedWardModule";
 import { BedBoardOverlay } from "@/app/components/BedBoardOverlay";
 import { SuperAdminOverviewStats } from "@/app/dashboard/superadmin/SuperAdminOverviewStats";
@@ -557,6 +558,8 @@ ${tbody}
               />
             ) : selectedFeature.id === 1 ? (
               <PatientModule role={permissions?.role ?? null} />
+            ) : selectedFeature.id === 3 ? (
+              <AppointmentModule role={permissions?.role ?? null} />
             ) : selectedFeature.id === 2 ? (
               <DoctorModule />
             ) : selectedFeature.id === 13 ? (

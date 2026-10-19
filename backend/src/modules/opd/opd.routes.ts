@@ -13,10 +13,14 @@ import {
 const router = Router();
 router.use(requireAuth);
 
+// Permissions are seeded under the `appointment` module (see prisma/seed.ts
+// PERMISSIONS/MATRIX); the historical `requirePermission("opd", ...)` matched
+// nothing in the Permission table and 403'd every route below.
+
 // Fee configuration — used by the frontend to display configured fees
 router.get(
   "/fee-config",
-  requirePermission("opd", "read"),
+  requirePermission("appointment", "read"),
   opdController.getOpdFeeConfig,
 );
 
@@ -24,21 +28,21 @@ router.get(
 router.get(
   "/appointments",
   validate({ query: listOpdAppointmentsQuerySchema }),
-  requirePermission("opd", "read"),
+  requirePermission("appointment", "read"),
   opdController.listOpdAppointments,
 );
 
 router.post(
   "/appointments",
   validate({ body: createOpdAppointmentSchema }),
-  requirePermission("opd", "create"),
+  requirePermission("appointment", "create"),
   opdController.createOpdAppointment,
 );
 
 router.patch(
   "/appointments/:id",
   validate({ body: updateOpdAppointmentSchema }),
-  requirePermission("opd", "update"),
+  requirePermission("appointment", "update"),
   opdController.updateOpdAppointmentStatus,
 );
 
@@ -46,7 +50,7 @@ router.patch(
 router.post(
   "/visits",
   validate({ body: createOpdVisitSchema }),
-  requirePermission("opd", "create"),
+  requirePermission("appointment", "create"),
   opdController.createOpdVisit,
 );
 
