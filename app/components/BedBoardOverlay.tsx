@@ -5,11 +5,13 @@ import { FiSearch, FiX } from "react-icons/fi";
 import { MdKingBed } from "react-icons/md";
 import {
   bedBoardApi,
+  branchApi,
   errorMessage,
   type BedBoard,
   type BedBoardBed,
   type BedBoardWard,
   type BedOccupancyStatus,
+  type BranchRecord,
 } from "@/app/lib/api";
 
 type Filter = "ALL" | BedOccupancyStatus;
@@ -46,8 +48,18 @@ const STATUS_META: Record<BedOccupancyStatus, StatusMeta> = {
   },
 };
 
-export function BedBoardOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function BedBoardOverlay({
+  open,
+  onClose,
+  defaultBranchId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  defaultBranchId?: number | null;
+}) {
   const [board, setBoard] = useState<BedBoard | null>(null);
+  const [branches, setBranches] = useState<BranchRecord[]>([]);
+  const [branchId, setBranchId] = useState<number | null>(defaultBranchId ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -56,16 +68,39 @@ export function BedBoardOverlay({ open, onClose }: { open: boolean; onClose: () 
 
   useEffect(() => {
     if (!open) return;
+    const timer = setTimeout(() => {
+      setSearch("");
+      setFilter("ALL");
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    branchApi
+      .list({ limit: 100 })
+      .then((r) => {
+        if (active) setBranches(r.data);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
     let active = true;
     const timer = setTimeout(() => {
       setLoading(true);
       setError("");
-      setSearch("");
-      setFilter("ALL");
       bedBoardApi
-        .get()
+        .get(branchId ?? undefined)
         .then((result) => {
-          if (active) setBoard(result.board);
+          if (!active) return;
+          setBoard(result.board);
+          setBranchId((prev) => prev ?? result.board.branchId);
         })
         .catch((err) => {
           if (active) setError(errorMessage(err));
@@ -78,7 +113,7 @@ export function BedBoardOverlay({ open, onClose }: { open: boolean; onClose: () 
       active = false;
       clearTimeout(timer);
     };
-  }, [open]);
+  }, [open, branchId]);
 
   useEffect(() => {
     if (!open) return;
@@ -166,13 +201,30 @@ export function BedBoardOverlay({ open, onClose }: { open: boolean; onClose: () 
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-xl p-2.5 text-[var(--muted)] transition-colors hover:bg-[var(--primary-soft)]/25 hover:text-[var(--text)]"
-            title="Close"
-          >
-            <FiX className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {branches.length > 0 && (
+              <select
+                value={branchId ?? ""}
+                onChange={(e) => setBranchId(e.target.value ? Number(e.target.value) : null)}
+                title="Branch"
+                className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs font-bold text-[var(--text)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15"
+              >
+                {branchId == null && <option value="">Select branch</option>}
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            )}
+            <button
+              onClick={onClose}
+              className="rounded-xl p-2.5 text-[var(--muted)] transition-colors hover:bg-[var(--primary-soft)]/25 hover:text-[var(--text)]"
+              title="Close"
+            >
+              <FiX className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {/* Body */}
@@ -240,7 +292,9 @@ export function BedBoardOverlay({ open, onClose }: { open: boolean; onClose: () 
               {/* Floors */}
               {visibleFloors.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] py-16 text-center text-sm font-semibold text-[var(--muted)]">
-                  No beds match your search or filter.
+                  {board.floors.length === 0
+                    ? "No beds are set up for this branch yet."
+                    : "No beds match your search or filter."}
                 </div>
               ) : (
                 visibleFloors.map((floor) => (

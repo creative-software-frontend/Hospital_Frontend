@@ -98,7 +98,7 @@ interface FormPayload {
   status?: BedOccupancyStatus;
 }
 
-export function BedWardModule({ role }: { role: string | null }) {
+export function BedWardModule({ role, defaultBranchId }: { role: string | null; defaultBranchId?: number | null }) {
   if (role !== "super-admin") {
     return (
       <div className="card p-8 rounded-2xl border border-[var(--border)] shadow-sm text-center space-y-2">
@@ -110,10 +110,10 @@ export function BedWardModule({ role }: { role: string | null }) {
       </div>
     );
   }
-  return <BedWardManager />;
+  return <BedWardManager defaultBranchId={defaultBranchId} />;
 }
 
-function BedWardManager() {
+function BedWardManager({ defaultBranchId }: { defaultBranchId?: number | null }) {
   const [activeTabId, setActiveTabId] = useState<string>("bed-statuses");
   const [branches, setBranches] = useState<BranchRecord[]>([]);
   const [branchId, setBranchId] = useState<number | null>(null);
@@ -147,13 +147,15 @@ function BedWardManager() {
       .then((r) => {
         if (!active) return;
         setBranches(r.data);
-        setBranchId((prev) => prev ?? r.data[0]?.id ?? null);
+        // Prefer the caller's own branch so new rows are not silently saved to
+        // whichever branch happens to sort first.
+        setBranchId((prev) => prev ?? (defaultBranchId ?? r.data[0]?.id) ?? null);
       })
       .catch(() => {});
     return () => {
       active = false;
     };
-  }, []);
+  }, [defaultBranchId]);
 
   const load = useCallback(async () => {
     const kind = (TABS.find((t) => t.id === activeTabId) ?? TABS[0]).kind;

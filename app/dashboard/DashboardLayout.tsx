@@ -89,6 +89,7 @@ export default function DashboardLayout({ role: initialRole }: { role?: UserRole
                 permissions={permissions}
                 roleStats={roleStats}
                 accessibleFeatures={accessibleFeatures}
+                branchId={session.user.branchId}
                 setActiveSection={setActiveSection}
                 setSelectedFeature={setSelectedFeature}
                 selectedSubFeatureId={selectedSubFeatureId}

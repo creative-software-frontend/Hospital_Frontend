@@ -68,6 +68,7 @@ export const DashboardContent = ({
   permissions,
   roleStats,
   accessibleFeatures,
+  branchId,
   setActiveSection,
   setSelectedFeature,
   selectedSubFeatureId,
@@ -80,6 +81,7 @@ export const DashboardContent = ({
   permissions: RolePermission | null;
   roleStats: RoleStat[];
   accessibleFeatures: Feature[];
+  branchId: number | null;
   setActiveSection: (section: string) => void;
   setSelectedFeature: (feature: Feature | null) => void;
   selectedSubFeatureId: string | null;
@@ -562,7 +564,7 @@ ${tbody}
             ) : selectedFeature.id === 16 ? (
               <EmployeeModule />
             ) : selectedFeature.id === 7 ? (
-              <BedWardModule role={permissions?.role ?? null} />
+              <BedWardModule role={permissions?.role ?? null} defaultBranchId={branchId} />
             ) : (
             <div className="grid grid-cols-1 gap-6">
               <div className="card p-6 rounded-2xl shadow-sm space-y-6 w-full">
@@ -839,7 +841,7 @@ ${tbody}
         )}
       </main>
 
-      <BedBoardOverlay open={bedBoardOpen} onClose={() => setBedBoardOpen(false)} />
+      <BedBoardOverlay open={bedBoardOpen} onClose={() => setBedBoardOpen(false)} defaultBranchId={branchId} />
     </div>
   );
 };
