@@ -2600,6 +2600,14 @@ export interface AppointmentRecord {
   /** "HH:MM" string. */
   endTime: string;
   status: AppointmentStatus;
+  doctorFee: string | null;
+  shift: string | null;
+  appointmentPriority: "LOW" | "NORMAL" | "HIGH";
+  discountPercentage: string | null;
+  liveConsultant: boolean;
+  paymentMode: string | null;
+  message: string | null;
+  alternateAddress: string | null;
   reason: string | null;
   notes: string | null;
   createdAt: string;
@@ -2629,6 +2637,14 @@ export interface CreateAppointmentInput {
   appointmentDate: string;
   startTime: string;
   endTime: string;
+  doctorFee?: string | null;
+  shift?: string | null;
+  appointmentPriority?: "LOW" | "NORMAL" | "HIGH";
+  discountPercentage?: string | null;
+  liveConsultant?: boolean;
+  paymentMode?: string | null;
+  message?: string | null;
+  alternateAddress?: string | null;
   reason?: string | null;
   notes?: string | null;
   visitType?: AppointmentVisitType;

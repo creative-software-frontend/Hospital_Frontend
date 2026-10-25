@@ -459,6 +459,13 @@ function ScheduleModal({
   const [date, setDate] = useState(TODAY);
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("09:30");
+  const [doctorFee, setDoctorFee] = useState("");
+  const [shift, setShift] = useState("");
+  const [appointmentPriority, setAppointmentPriority] = useState<"LOW" | "NORMAL" | "HIGH">("NORMAL");
+  const [discountPercentage, setDiscountPercentage] = useState("");
+  const [paymentMode, setPaymentMode] = useState("Cash");
+  const [message, setMessage] = useState("");
+  const [alternateAddress, setAlternateAddress] = useState("");
   const [visitType, setVisitType] = useState<AppointmentVisitType>("OPD");
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
@@ -480,7 +487,9 @@ function ScheduleModal({
     return r.data.map((d) => ({
       id: d.id,
       label: d.name,
-      sublabel: d.specialization || d.doctorCode,
+      sublabel: [d.specialization || d.doctorCode, d.consultationFee ? `$${d.consultationFee}` : ""]
+        .filter(Boolean)
+        .join(" · "),
     }));
   }, []);
 
@@ -488,10 +497,16 @@ function ScheduleModal({
     const next: Record<string, string> = {};
     if (patientId == null) next.patientId = "Patient is required";
     if (doctorId == null) next.doctorId = "Doctor is required";
+    if (!doctorFee) next.doctorFee = "Doctor fee is required";
     if (!date) next.date = "Date is required";
     else if (date < TODAY) next.date = "Date cannot be in the past";
     if (!startTime) next.startTime = "Start time is required";
     if (!endTime) next.endTime = "End time is required";
+    if (!shift) next.shift = "Shift is required";
+    if (doctorFee && !/^\d+(\.\d{1,2})?$/.test(doctorFee)) next.doctorFee = "Enter a valid fee";
+    if (discountPercentage && (!/^\d+(\.\d{1,2})?$/.test(discountPercentage) || Number(discountPercentage) > 100)) {
+      next.discountPercentage = "Enter a percentage from 0 to 100";
+    }
     if (startTime && endTime && endTime <= startTime)
       next.endTime = "End time must be after start time";
     setFieldErrors(next);
@@ -510,6 +525,13 @@ function ScheduleModal({
         appointmentDate: date,
         startTime,
         endTime,
+        doctorFee: doctorFee || null,
+        shift,
+        appointmentPriority,
+        discountPercentage: discountPercentage || null,
+        paymentMode: paymentMode || null,
+        message: message.trim() || null,
+        alternateAddress: alternateAddress.trim() || null,
         visitType,
         reason: reason.trim() || null,
         notes: notes.trim() || null,
@@ -530,8 +552,8 @@ function ScheduleModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-lg bg-[var(--card)] rounded-2xl border border-[var(--border)] shadow-xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+      <div className="w-full max-w-3xl max-h-[92vh] flex flex-col bg-[var(--card)] rounded-2xl border border-[var(--border)] shadow-xl overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] shrink-0">
           <div>
             <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">
               Outpatient Department
@@ -547,7 +569,13 @@ function ScheduleModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto">
+          <div>
+            <h4 className="text-sm font-black text-[var(--text)]">Appointment Details</h4>
+            <p className="text-[11px] text-[var(--muted)] mt-0.5">
+              Select the patient, doctor, fee and appointment schedule.
+            </p>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Patient *</label>
@@ -572,6 +600,7 @@ function ScheduleModal({
                 onChange={(id, label) => {
                   setDoctorId(id);
                   setDoctorLabel(label);
+                  if (id == null) setDoctorFee("");
                   setFieldErrors((p) => ({ ...p, doctorId: "" }));
                 }}
                 placeholder="Search doctor…"
@@ -579,11 +608,43 @@ function ScheduleModal({
               />
               {fieldError("doctorId")}
             </div>
+            <div>
+              <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Doctor Fees ($) *</label>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={doctorFee}
+                onChange={(e) => {
+                  setDoctorFee(e.target.value);
+                  setFieldErrors((p) => ({ ...p, doctorFee: "" }));
+                }}
+                className={INPUT_CLS}
+                placeholder="0.00"
+              />
+              {fieldError("doctorFee")}
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Date *</label>
+              <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Shift *</label>
+              <select
+                value={shift}
+                onChange={(e) => {
+                  setShift(e.target.value);
+                  setFieldErrors((p) => ({ ...p, shift: "" }));
+                }}
+                className={INPUT_CLS}
+              >
+                <option value="">Select</option>
+                <option value="Morning">Morning</option>
+                <option value="Afternoon">Afternoon</option>
+                <option value="Evening">Evening</option>
+              </select>
+              {fieldError("shift")}
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Appointment Date *</label>
               <input
                 type="date"
                 value={date}
@@ -625,35 +686,89 @@ function ScheduleModal({
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Visit type</label>
-            <select
-              value={visitType}
-              onChange={(e) => setVisitType(e.target.value as AppointmentVisitType)}
-              className={INPUT_CLS}
-            >
-              <option value="OPD">OPD</option>
-              <option value="FOLLOWUP">Follow-up</option>
-            </select>
+            <h4 className="text-sm font-black text-[var(--text)]">Appointment Settings</h4>
+            <p className="text-[11px] text-[var(--muted)] mt-0.5 mb-3">
+              Set priority, status, discount and consultation preferences.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Appointment Priority</label>
+                <select
+                  value={appointmentPriority}
+                  onChange={(e) => setAppointmentPriority(e.target.value as "LOW" | "NORMAL" | "HIGH")}
+                  className={INPUT_CLS}
+                >
+                  <option value="LOW">Low</option>
+                  <option value="NORMAL">Normal</option>
+                  <option value="HIGH">High</option>
+                </select>
+              </div>
+            <div>
+              <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Status *</label>
+              <input value="Scheduled" readOnly className={`${INPUT_CLS} opacity-70`} />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Discount Percentage</label>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={discountPercentage}
+                onChange={(e) => {
+                  setDiscountPercentage(e.target.value);
+                  setFieldErrors((p) => ({ ...p, discountPercentage: "" }));
+                }}
+                className={INPUT_CLS}
+                placeholder="0"
+              />
+              {fieldError("discountPercentage")}
+            </div>
+            </div>
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Reason</label>
-            <input
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className={INPUT_CLS}
-              placeholder="Reason for the visit (optional)"
-            />
+            <div>
+              <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Payment Mode</label>
+              <select value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} className={INPUT_CLS}>
+                <option>Cash</option>
+                <option>Card</option>
+                <option>Mobile Banking</option>
+                <option>Bank Transfer</option>
+                <option>Insurance</option>
+              </select>
+            </div>
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Notes</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className={`${INPUT_CLS} min-h-[64px]`}
-              placeholder="Optional notes"
-            />
+            <h4 className="text-sm font-black text-[var(--text)] mb-3">Additional Information</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Visit Type</label>
+                <select
+                  value={visitType}
+                  onChange={(e) => setVisitType(e.target.value as AppointmentVisitType)}
+                  className={INPUT_CLS}
+                >
+                  <option value="OPD">OPD</option>
+                  <option value="FOLLOWUP">Follow-up</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Message</label>
+                <input value={message} onChange={(e) => setMessage(e.target.value)} className={INPUT_CLS} placeholder="Optional message" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Reason</label>
+                <input value={reason} onChange={(e) => setReason(e.target.value)} className={INPUT_CLS} placeholder="Optional reason for the visit" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Alternate Address</label>
+                <input value={alternateAddress} onChange={(e) => setAlternateAddress(e.target.value)} className={INPUT_CLS} placeholder="Optional alternate address" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Notes</label>
+                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={`${INPUT_CLS} min-h-[64px]`} placeholder="Optional notes" />
+              </div>
+            </div>
           </div>
 
           {error && <p className="text-sm alert-error">{error}</p>}

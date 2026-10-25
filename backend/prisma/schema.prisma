@@ -1298,6 +1298,14 @@ model Appointment {
   startTime       String
   endTime         String
   status          AppointmentStatus @default(SCHEDULED)
+  doctorFee       Decimal?          @db.Decimal(12, 2)
+  shift           String?
+  appointmentPriority String        @default("NORMAL")
+  discountPercentage Decimal?       @db.Decimal(5, 2)
+  liveConsultant  Boolean            @default(false)
+  paymentMode     String?
+  message         String?
+  alternateAddress String?
   reason          String?
   notes           String?
   cancelledById   Int?
