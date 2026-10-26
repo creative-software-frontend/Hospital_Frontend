@@ -3,6 +3,7 @@ import { prisma } from "../../lib/prisma";
 import {
   AuthorizationError,
   BusinessRuleError,
+  ConflictError,
   NotFoundError,
 } from "../../errors/ApiError";
 import { writeAuditLog } from "../../utils/audit";
@@ -69,9 +70,32 @@ export async function createOpdAppointment(
   }
 
   const appointmentDate = new Date(input.appointmentDate);
+  const dayStart = new Date(appointmentDate);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(dayStart);
+  dayEnd.setDate(dayEnd.getDate() + 1);
 
   // Generate appointment number atomically
   const appointment = await prisma.$transaction(async (tx) => {
+    const conflictingAppointment = await tx.appointment.findFirst({
+      where: {
+        branchId,
+        doctorId: input.doctorId,
+        appointmentDate: { gte: dayStart, lt: dayEnd },
+        deletedAt: null,
+        status: { notIn: ["CANCELLED", "NO_SHOW"] },
+        startTime: { lt: input.endTime },
+        endTime: { gt: input.startTime },
+      },
+      select: { appointmentNumber: true },
+    });
+    if (conflictingAppointment) {
+      throw new ConflictError(
+        "The doctor already has an appointment during this time",
+        { startTime: "The selected time overlaps another appointment" },
+      );
+    }
+
     const row = await tx.codeSequence.upsert({
       where: { entity_branchId: { entity: CODE_ENTITIES.APPOINTMENT, branchId } },
       update: { nextNumber: { increment: 1 } },
@@ -82,6 +106,7 @@ export async function createOpdAppointment(
 
     return tx.appointment.create({
       data: {
+        appointmentNumber: apptNumber,
         branchId,
         patientId: input.patientId,
         doctorId: input.doctorId,
@@ -102,6 +127,7 @@ export async function createOpdAppointment(
       },
       select: {
         id: true,
+        appointmentNumber: true,
         branchId: true,
         patientId: true,
         doctorId: true,
@@ -154,8 +180,9 @@ export async function listOpdAppointments(
   };
   if (query.date) {
     const start = new Date(query.date + "T00:00:00");
-    const end = new Date(query.date + "T23:59:59");
-    where.appointmentDate = { gte: start, lte: end };
+    const end = new Date(query.date + "T00:00:00");
+    end.setDate(end.getDate() + 1);
+    where.appointmentDate = { gte: start, lt: end };
   }
   if (query.doctorId) where.doctorId = query.doctorId;
   if (query.patientId) where.patientId = query.patientId;
@@ -173,6 +200,7 @@ export async function listOpdAppointments(
       orderBy: [{ appointmentDate: "asc" }, { startTime: "asc" }],
       select: {
         id: true,
+        appointmentNumber: true,
         branchId: true,
         patientId: true,
         doctorId: true,
@@ -215,9 +243,33 @@ export async function updateOpdAppointmentStatus(
   if (!existing) throw new NotFoundError("Appointment not found");
   enforceBranch(actor, existing.branchId);
 
+  if (input.status) {
+    const allowedTransitions: Record<string, string[]> = {
+      SCHEDULED: ["CHECKED_IN", "CANCELLED", "NO_SHOW"],
+      CHECKED_IN: ["IN_CONSULTATION", "CANCELLED", "NO_SHOW"],
+      IN_CONSULTATION: ["COMPLETED"],
+      COMPLETED: [],
+      CANCELLED: [],
+      NO_SHOW: [],
+    };
+    if (!allowedTransitions[existing.status].includes(input.status)) {
+      throw new BusinessRuleError(
+        `Appointment cannot move from ${existing.status} to ${input.status}`,
+        { status: "Invalid appointment status transition" },
+      );
+    }
+  }
+
   const updated = await prisma.appointment.update({
     where: { id: appointmentId },
-    data: { ...input },
+    data: {
+      ...(input.status ? { status: input.status } : {}),
+      ...(input.reason !== undefined ? { reason: input.reason } : {}),
+      ...(input.notes !== undefined ? { notes: input.notes } : {}),
+      ...(input.status === "CANCELLED"
+        ? { cancelledAt: new Date(), cancelledById: actor.id }
+        : {}),
+    },
     select: { id: true, status: true, updatedAt: true },
   });
 

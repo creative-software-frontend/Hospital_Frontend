@@ -2590,6 +2590,7 @@ export interface AppointmentDoctorRef {
 
 export interface AppointmentRecord {
   id: number;
+  appointmentNumber: string;
   branchId: number;
   patientId: number;
   doctorId: number;

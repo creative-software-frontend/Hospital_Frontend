@@ -8,8 +8,8 @@ export const createOpdAppointmentSchema = z.object({
   patientId: z.number().int().positive(),
   doctorId: z.number().int().positive(),
   appointmentDate: z.string().datetime({ offset: true }).or(z.string().date()),
-  startTime: z.string().min(1),
-  endTime: z.string().min(1),
+  startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Invalid start time"),
+  endTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Invalid end time"),
   doctorFee: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid doctor fee").optional().nullable(),
   shift: z.string().trim().max(100).optional().nullable(),
   appointmentPriority: z.enum(["LOW", "NORMAL", "HIGH"]).default("NORMAL"),
@@ -18,9 +18,29 @@ export const createOpdAppointmentSchema = z.object({
   paymentMode: z.string().trim().max(100).optional().nullable(),
   message: z.string().trim().max(191).optional().nullable(),
   alternateAddress: z.string().trim().max(191).optional().nullable(),
-  reason: z.string().optional(),
-  notes: z.string().optional(),
+  reason: z.string().trim().max(1000).optional().nullable(),
+  notes: z.string().trim().max(2000).optional().nullable(),
   visitType: z.enum(["OPD", "FOLLOWUP"]).default("OPD"),
+}).superRefine((input, ctx) => {
+  if (input.endTime <= input.startTime) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["endTime"],
+      message: "End time must be after start time",
+    });
+  }
+
+  const appointmentDate = new Date(input.appointmentDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  appointmentDate.setHours(0, 0, 0, 0);
+  if (appointmentDate < today) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["appointmentDate"],
+      message: "Appointment date cannot be in the past",
+    });
+  }
 });
 
 export type CreateOpdAppointmentInput = z.infer<typeof createOpdAppointmentSchema>;
@@ -29,8 +49,8 @@ export const updateOpdAppointmentSchema = z.object({
   status: z
     .enum(["SCHEDULED", "CHECKED_IN", "IN_CONSULTATION", "COMPLETED", "CANCELLED", "NO_SHOW"])
     .optional(),
-  reason: z.string().optional(),
-  notes: z.string().optional(),
+  reason: z.string().trim().max(1000).optional().nullable(),
+  notes: z.string().trim().max(2000).optional().nullable(),
 });
 
 export type UpdateOpdAppointmentInput = z.infer<typeof updateOpdAppointmentSchema>;

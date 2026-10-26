@@ -1291,6 +1291,7 @@ model Admission {
 
 model Appointment {
   id              Int               @id @default(autoincrement())
+  appointmentNumber String
   branchId        Int
   patientId       Int
   doctorId        Int
@@ -1325,6 +1326,7 @@ model Appointment {
   @@index([appointmentDate])
   @@index([status])
   @@index([deletedAt])
+  @@unique([branchId, appointmentNumber])
 }
 
 // ============================================================
