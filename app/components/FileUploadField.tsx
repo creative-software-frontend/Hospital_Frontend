@@ -7,13 +7,14 @@
 
 import { useRef, useState } from "react";
 import { FiUpload, FiX, FiFileText } from "react-icons/fi";
-import { uploadApi, errorMessage, type UploadKind } from "@/app/lib/api";
+import { uploadApi, errorMessage, type UploadedFile, type UploadKind } from "@/app/lib/api";
 
 export function FileUploadField({
   label,
   kind,
   value,
   onChange,
+  onUploaded,
   hint,
   preview = "image",
 }: {
@@ -21,6 +22,8 @@ export function FileUploadField({
   kind: UploadKind;
   value: string;
   onChange: (url: string) => void;
+  /** Full upload result (original name, MIME type, byte size) when needed. */
+  onUploaded?: (file: UploadedFile) => void;
   hint?: string;
   /** `image` renders a thumbnail; `file` renders a "View file" link (CV). */
   preview?: "image" | "file";
@@ -39,6 +42,7 @@ export function FileUploadField({
     try {
       const uploaded = await uploadApi.file(file, kind);
       onChange(uploaded.url);
+      onUploaded?.(uploaded);
     } catch (err) {
       setError(errorMessage(err));
     } finally {

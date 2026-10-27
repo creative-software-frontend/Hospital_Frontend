@@ -14,7 +14,7 @@ export const UPLOAD_ROOT = path.resolve(process.cwd(), "public", "uploads");
  */
 export const UPLOAD_URL_PREFIX = "/api/uploads";
 
-export type UploadKind = "photo" | "signature" | "cv";
+export type UploadKind = "photo" | "signature" | "cv" | "document";
 
 interface UploadRule {
   /** Accepted MIME types. */
@@ -41,6 +41,12 @@ export const UPLOAD_RULES: Record<UploadKind, UploadRule> = {
     mimes: [...IMAGE_MIMES, ...DOC_MIMES],
     maxBytes: 10 * 1024 * 1024,
     subdir: "cvs",
+    label: "10 MB",
+  },
+  document: {
+    mimes: [...DOC_MIMES, ...IMAGE_MIMES],
+    maxBytes: 10 * 1024 * 1024,
+    subdir: "documents",
     label: "10 MB",
   },
 };

@@ -73,6 +73,65 @@ export const listPatientsQuerySchema = z.object({
   sortOrder: z.enum(["asc", "desc"]).optional(),
 });
 
+export const treatmentRecordsQuerySchema = z.object({
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().max(100).optional(),
+  visitType: z.string().trim().max(32).optional(),
+  /** Free-text over chief complaint / diagnosis name / doctor name. */
+  search: z.string().trim().max(120).optional(),
+});
+
+export type TreatmentRecordsQuery = z.infer<typeof treatmentRecordsQuerySchema>;
+
+/** `YYYY-MM-DD`, the value an `<input type="date">` submits. */
+const isoDate = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use the YYYY-MM-DD format")
+  .optional()
+  .or(z.literal("").transform(() => undefined));
+
+export const patientVisitsQuerySchema = z.object({
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().max(100).optional(),
+  visitType: z.string().trim().max(32).optional(),
+  /** Inclusive calendar-day range over the visit date. */
+  from: isoDate,
+  to: isoDate,
+  /** Free text over visit number, doctor name, complaint and diagnosis. */
+  search: z.string().trim().max(120).optional(),
+});
+
+export type PatientVisitsQuery = z.infer<typeof patientVisitsQuerySchema>;
+
+export const patientDocumentParamSchema = z.object({
+  id: z.coerce.number().int().positive("Invalid patient id"),
+  documentId: z.coerce.number().int().positive("Invalid document id"),
+});
+
+/**
+ * A patient document row. The binary is uploaded first through
+ * `POST /api/uploads` (kind `document`); this records the returned URL and the
+ * metadata the list renders.
+ */
+export const createPatientDocumentSchema = z.object({
+  title: z.string().trim().min(1, "title is required").max(255),
+  fileUrl: z
+    .string()
+    .trim()
+    .min(1, "fileUrl is required")
+    .max(500)
+    .regex(/^\/api\/uploads\/documents\/[\w.-]+$/, "Upload the file first, then save the returned URL"),
+  /** Master Data `document_types` code (NID, PP, BC, ...). Resolved to the FK. */
+  documentType: optionalString(64),
+  fileName: optionalString(255),
+  mimeType: optionalString(120),
+  fileSize: z.coerce.number().int().nonnegative().max(10 * 1024 * 1024).optional(),
+  notes: optionalString(500),
+});
+
+export type CreatePatientDocumentInput = z.infer<typeof createPatientDocumentSchema>;
+
 export const createPatientSchema = z.object({
   name: z.string().trim().min(1, "name is required").max(255),
   /**

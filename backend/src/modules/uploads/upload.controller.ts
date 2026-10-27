@@ -45,7 +45,7 @@ export function singleFile(req: Request, res: Response, next: NextFunction): voi
 export const uploadFile = asyncHandler(async (req: Request, res: Response) => {
   const kind = String(req.body?.kind ?? "").trim().toLowerCase();
   if (!isUploadKind(kind)) {
-    throw new ValidationError("Invalid upload kind", { kind: "kind must be one of photo, signature, cv" });
+    throw new ValidationError("Invalid upload kind", { kind: "kind must be one of photo, signature, cv, document" });
   }
 
   const file = req.file;

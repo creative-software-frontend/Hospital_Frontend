@@ -44,6 +44,53 @@ export const getPatient = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/patients/:id/history
+ */
+export const getPatientHistory = asyncHandler(async (req: Request, res: Response) => {
+  const history = await patientService.getPatientHistory(req.user!, Number(req.params.id));
+  success(res, history);
+});
+
+/**
+ * GET /api/patients/:id/treatment-records
+ */
+export const listPatientTreatmentRecords = asyncHandler(async (req: Request, res: Response) => {
+  const result = await patientService.listPatientTreatmentRecords(
+    req.user!,
+    Number(req.params.id),
+    (req.validatedQuery ?? {}) as never,
+  );
+  // Flat paginated payload (data + pagination) plus the patient header the
+  // records belong to, so the UI does not need a second request.
+  res.status(200).json({
+    success: true,
+    data: result.data,
+    pagination: result.pagination,
+    patient: result.patient,
+  });
+});
+
+/**
+ * GET /api/patients/:id/visits
+ */
+export const listPatientVisits = asyncHandler(async (req: Request, res: Response) => {
+  const result = await patientService.listPatientVisits(
+    req.user!,
+    Number(req.params.id),
+    (req.validatedQuery ?? {}) as never,
+  );
+  // Ledger page: paginated rows plus the patient header and the whole-history
+  // summary the stat tile row renders.
+  res.status(200).json({
+    success: true,
+    data: result.data,
+    pagination: result.pagination,
+    patient: result.patient,
+    summary: result.summary,
+  });
+});
+
+/**
  * PATCH /api/patients/:id
  */
 export const updatePatient = asyncHandler(async (req: Request, res: Response) => {
@@ -65,6 +112,38 @@ export const updatePatientStatus = asyncHandler(async (req: Request, res: Respon
 export const deletePatient = asyncHandler(async (req: Request, res: Response) => {
   await patientService.deletePatient(req.user!, Number(req.params.id));
   success(res, { message: "Patient deleted successfully" });
+});
+
+/**
+ * GET /api/patients/:id/documents
+ */
+export const listPatientDocuments = asyncHandler(async (req: Request, res: Response) => {
+  const documents = await patientService.listPatientDocuments(req.user!, Number(req.params.id));
+  success(res, { documents });
+});
+
+/**
+ * POST /api/patients/:id/documents
+ */
+export const createPatientDocument = asyncHandler(async (req: Request, res: Response) => {
+  const document = await patientService.createPatientDocument(
+    req.user!,
+    Number(req.params.id),
+    req.body,
+  );
+  created(res, { document });
+});
+
+/**
+ * DELETE /api/patients/:id/documents/:documentId
+ */
+export const deletePatientDocument = asyncHandler(async (req: Request, res: Response) => {
+  await patientService.deletePatientDocument(
+    req.user!,
+    Number(req.params.id),
+    Number(req.params.documentId),
+  );
+  success(res, { message: "Document deleted successfully" });
 });
 
 /**

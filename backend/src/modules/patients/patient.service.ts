@@ -5,6 +5,7 @@ import {
   BusinessRuleError,
   ConflictError,
   NotFoundError,
+  ValidationError,
 } from "../../errors/ApiError";
 import { writeAuditLog } from "../../utils/audit";
 import { assertAddressChain, settingsConfig } from "../settings/setting.service";
@@ -13,8 +14,11 @@ import { parsePagination, buildPaginationMeta, type SortableField } from "../../
 import type { AuthUser } from "../../types/auth";
 import type {
   CreateContactInput,
+  CreatePatientDocumentInput,
   CreatePatientInput,
   ListPatientsQuery,
+  PatientVisitsQuery,
+  TreatmentRecordsQuery,
   UpdateContactInput,
   UpdatePatientInput,
   UpdatePatientStatusInput,
@@ -936,6 +940,373 @@ export async function deletePatient(actor: AuthUser, id: number): Promise<void> 
 }
 
 /* ---------------------------------------------------------------------------
+ * History (read-only clinical timeline: appointments, visits, admissions)
+ * ------------------------------------------------------------------------- */
+
+const HISTORY_LIMIT = 100;
+
+/**
+ * Chronological clinical history for one patient. Read-only: the timeline
+ * merges outpatient appointments, consultation visits (MedicalRecord) and
+ * inpatient admissions, newest first.
+ */
+export async function getPatientHistory(actor: AuthUser, patientId: number) {
+  const patient = await prisma.patient.findFirst({
+    where: { id: patientId, deletedAt: null },
+    select: {
+      id: true,
+      branchId: true,
+      patientCode: true,
+      name: true,
+      phone: true,
+      gender: true,
+      dateOfBirth: true,
+      bloodGroup: true,
+      status: true,
+    },
+  });
+  if (!patient) {
+    throw new NotFoundError("Patient not found");
+  }
+  enforceBranchAccess(actor, patient.branchId);
+
+  const doctorSelect = { id: true, doctorCode: true, name: true, specialization: true } as const;
+
+  const [appointments, visits, admissions] = await Promise.all([
+    prisma.appointment.findMany({
+      where: { patientId, branchId: patient.branchId, deletedAt: null },
+      orderBy: [{ appointmentDate: "desc" }, { startTime: "desc" }],
+      take: HISTORY_LIMIT,
+      select: {
+        id: true,
+        appointmentNumber: true,
+        appointmentDate: true,
+        startTime: true,
+        endTime: true,
+        status: true,
+        shift: true,
+        reason: true,
+        notes: true,
+        doctorFee: true,
+        paymentMode: true,
+        createdAt: true,
+        doctor: { select: doctorSelect },
+      },
+    }),
+    prisma.medicalRecord.findMany({
+      where: { patientId, branchId: patient.branchId, deletedAt: null },
+      orderBy: { createdAt: "desc" },
+      take: HISTORY_LIMIT,
+      select: {
+        id: true,
+        visitNumber: true,
+        visitType: true,
+        chiefComplaint: true,
+        history: true,
+        examination: true,
+        notes: true,
+        status: true,
+        createdAt: true,
+        doctor: { select: doctorSelect },
+        _count: { select: { prescriptions: true, labOrders: true, diagnoses: true } },
+      },
+    }),
+    prisma.admission.findMany({
+      where: { patientId, branchId: patient.branchId, deletedAt: null },
+      orderBy: { admissionDate: "desc" },
+      take: HISTORY_LIMIT,
+      select: {
+        id: true,
+        admissionNumber: true,
+        admissionDate: true,
+        expectedDischargeDate: true,
+        dischargeDate: true,
+        status: true,
+        reason: true,
+        notes: true,
+        doctor: { select: { id: true, doctorCode: true, name: true } },
+        bed: { select: { id: true, bedNumber: true, bedClass: true } },
+      },
+    }),
+  ]);
+
+  return { patient, appointments, visits, admissions };
+}
+
+/* ---------------------------------------------------------------------------
+ * Treatment records (paginated, fully nested clinical visits)
+ * ------------------------------------------------------------------------- */
+
+/** Everything a "previous treatment record" card renders. */
+const TREATMENT_RECORD_SELECT = {
+  id: true,
+  visitNumber: true,
+  visitType: true,
+  chiefComplaint: true,
+  history: true,
+  examination: true,
+  notes: true,
+  vitals: true,
+  status: true,
+  createdAt: true,
+  updatedAt: true,
+  doctor: { select: { id: true, doctorCode: true, name: true, specialization: true } },
+  appointment: { select: { id: true, appointmentNumber: true } },
+  diagnoses: {
+    select: {
+      id: true,
+      isPrimary: true,
+      notes: true,
+      diagnosis: {
+        select: { id: true, code: true, name: true, category: { select: { name: true } } },
+      },
+    },
+  },
+  prescriptions: {
+    select: {
+      id: true,
+      prescriptionNumber: true,
+      status: true,
+      notes: true,
+      createdAt: true,
+      items: {
+        select: {
+          id: true,
+          dosage: true,
+          frequency: true,
+          duration: true,
+          instruction: true,
+          quantity: true,
+          route: true,
+          medicine: {
+            select: {
+              id: true,
+              medicineCode: true,
+              genericName: true,
+              brandName: true,
+              unit: { select: { name: true, shortName: true } },
+            },
+          },
+        },
+      },
+    },
+  },
+  labOrders: {
+    select: {
+      id: true,
+      orderNumber: true,
+      status: true,
+      priority: true,
+      notes: true,
+      createdAt: true,
+      items: {
+        select: {
+          id: true,
+          status: true,
+          price: true,
+          labTest: { select: { id: true, testCode: true, testName: true, sampleType: true } },
+        },
+      },
+    },
+  },
+} as const;
+
+/**
+ * Past consultations for one patient with their full clinical payload
+ * (diagnoses, prescribed medicines, lab tests, vitals). Read-only.
+ */
+export async function listPatientTreatmentRecords(
+  actor: AuthUser,
+  patientId: number,
+  query: TreatmentRecordsQuery,
+) {
+  const patient = await prisma.patient.findFirst({
+    where: { id: patientId, deletedAt: null },
+    select: {
+      id: true,
+      branchId: true,
+      patientCode: true,
+      name: true,
+      phone: true,
+      gender: true,
+      dateOfBirth: true,
+      bloodGroup: true,
+      status: true,
+    },
+  });
+  if (!patient) {
+    throw new NotFoundError("Patient not found");
+  }
+  enforceBranchAccess(actor, patient.branchId);
+
+  const { page, limit, search } = parsePagination(query as Record<string, unknown>);
+  const visitType = query.visitType?.trim();
+  const where: Prisma.MedicalRecordWhereInput = {
+    patientId,
+    branchId: patient.branchId,
+    deletedAt: null,
+    ...(visitType ? { visitType } : {}),
+    ...(search
+      ? {
+          OR: [
+            { chiefComplaint: { contains: search } },
+            { history: { contains: search } },
+            { examination: { contains: search } },
+            { notes: { contains: search } },
+            { visitNumber: { contains: search } },
+            { diagnoses: { some: { diagnosis: { name: { contains: search } } } } },
+            { doctor: { name: { contains: search } } },
+          ],
+        }
+      : {}),
+  };
+
+  const [total, records] = await Promise.all([
+    prisma.medicalRecord.count({ where }),
+    prisma.medicalRecord.findMany({
+      where,
+      select: TREATMENT_RECORD_SELECT,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  return {
+    patient,
+    data: records,
+    pagination: buildPaginationMeta(page, limit, total),
+  };
+}
+
+/* ---------------------------------------------------------------------------
+ * Visit history (compact ledger of every encounter, filterable + paginated)
+ * ------------------------------------------------------------------------- */
+
+/** Just enough for one ledger line — the clinical detail lives elsewhere. */
+const VISIT_LEDGER_SELECT = {
+  id: true,
+  visitNumber: true,
+  visitType: true,
+  status: true,
+  chiefComplaint: true,
+  createdAt: true,
+  doctor: { select: { id: true, doctorCode: true, name: true, specialization: true } },
+  appointment: { select: { id: true, appointmentNumber: true } },
+  _count: { select: { diagnoses: true, prescriptions: true, labOrders: true } },
+} as const;
+
+/**
+ * Every consultation for one patient, newest first, with the day-range / type /
+ * free-text filters the ledger bar offers. The response also carries a summary
+ * computed over the patient's *whole* history so the header tiles never jump
+ * when a filter is applied.
+ */
+export async function listPatientVisits(
+  actor: AuthUser,
+  patientId: number,
+  query: PatientVisitsQuery,
+) {
+  const patient = await prisma.patient.findFirst({
+    where: { id: patientId, deletedAt: null },
+    select: {
+      id: true,
+      branchId: true,
+      patientCode: true,
+      name: true,
+      phone: true,
+      gender: true,
+      dateOfBirth: true,
+      bloodGroup: true,
+      status: true,
+    },
+  });
+  if (!patient) {
+    throw new NotFoundError("Patient not found");
+  }
+  enforceBranchAccess(actor, patient.branchId);
+
+  const { page, limit, search } = parsePagination(query as Record<string, unknown>);
+  const visitType = query.visitType?.trim();
+
+  // Calendar-day range, matching the repo convention of local midnight bounds
+  // (`appointmentDate` filtering does the same). `to` is inclusive, so its
+  // upper bound is the following midnight.
+  let dateFilter: Prisma.DateTimeFilter<"MedicalRecord"> = {};
+  if (query.from || query.to) {
+    const from = query.from ? new Date(`${query.from}T00:00:00`) : null;
+    const to = query.to ? new Date(`${query.to}T00:00:00`) : null;
+    if (from && to && from.getTime() > to.getTime()) {
+      throw new ValidationError("`from` must be on or before `to`");
+    }
+    const end = to ? new Date(to) : null;
+    end?.setDate(end.getDate() + 1);
+    dateFilter = {
+      ...(from ? { gte: from } : {}),
+      ...(end ? { lt: end } : {}),
+    };
+  }
+
+  const baseWhere: Prisma.MedicalRecordWhereInput = {
+    patientId,
+    branchId: patient.branchId,
+    deletedAt: null,
+  };
+
+  const where: Prisma.MedicalRecordWhereInput = {
+    ...baseWhere,
+    ...(visitType ? { visitType } : {}),
+    ...(query.from || query.to ? { createdAt: dateFilter } : {}),
+    ...(search
+      ? {
+          OR: [
+            { visitNumber: { contains: search } },
+            { chiefComplaint: { contains: search } },
+            { doctor: { name: { contains: search } } },
+            { diagnoses: { some: { diagnosis: { name: { contains: search } } } } },
+          ],
+        }
+      : {}),
+  };
+
+  const [total, visits, grandTotal, byType, lastVisit, doctorGroups] = await Promise.all([
+    prisma.medicalRecord.count({ where }),
+    prisma.medicalRecord.findMany({
+      where,
+      select: VISIT_LEDGER_SELECT,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    }),
+    prisma.medicalRecord.count({ where: baseWhere }),
+    prisma.medicalRecord.groupBy({ by: ["visitType"], where: baseWhere, _count: { _all: true } }),
+    prisma.medicalRecord.findFirst({
+      where: baseWhere,
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    }),
+    prisma.medicalRecord.groupBy({ by: ["doctorId"], where: baseWhere }),
+  ]);
+
+  const typeCounts: Record<string, number> = {};
+  for (const row of byType) {
+    typeCounts[row.visitType ?? "OTHER"] = row._count._all;
+  }
+
+  return {
+    patient,
+    data: visits,
+    pagination: buildPaginationMeta(page, limit, total),
+    summary: {
+      total: grandTotal,
+      byType: typeCounts,
+      lastVisitAt: lastVisit?.createdAt ?? null,
+      doctorCount: doctorGroups.filter((g) => g.doctorId !== null).length,
+    },
+  };
+}
+
+/* ---------------------------------------------------------------------------
  * Contacts (always through the owning patient's authorization)
  * ------------------------------------------------------------------------- */
 
@@ -1039,6 +1410,128 @@ export async function deleteContact(actor: AuthUser, patientId: number, contactI
     action: "PATIENT_CONTACT_DELETED",
     tableName: "PatientContact",
     recordId: String(contactId),
+    user: actor,
+    branchId: patient.branchId,
+  });
+}
+
+/* ---------------------------------------------------------------------------
+ * Documents (uploaded scans: NID, passport, referral letter, insurance, ...)
+ * ------------------------------------------------------------------------- */
+
+/** Shape the documents table renders (type + uploader resolved server-side). */
+const PATIENT_DOCUMENT_SELECT = {
+  id: true,
+  title: true,
+  fileUrl: true,
+  fileName: true,
+  mimeType: true,
+  fileSize: true,
+  notes: true,
+  createdAt: true,
+  documentType: { select: { id: true, name: true, code: true } },
+  uploadedBy: { select: { id: true, name: true } },
+} as const;
+
+export async function listPatientDocuments(actor: AuthUser, patientId: number) {
+  await getActivePatientForActor(actor, patientId);
+  return prisma.patientDocument.findMany({
+    where: { patientId, deletedAt: null },
+    select: PATIENT_DOCUMENT_SELECT,
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function createPatientDocument(
+  actor: AuthUser,
+  patientId: number,
+  input: CreatePatientDocumentInput,
+) {
+  const patient = await getActivePatientForActor(actor, patientId);
+
+  // The type is optional, but when supplied its code must exist in this branch's
+  // Master Data so the FK always points at a row the UI offered.
+  let documentTypeId: number | null = null;
+  if (input.documentType) {
+    const documentType = await prisma.documentType.findFirst({
+      where: { branchId: patient.branchId, code: input.documentType },
+      select: { id: true },
+    });
+    if (!documentType) {
+      throw new NotFoundError("Document type not found");
+    }
+    documentTypeId = documentType.id;
+  }
+
+  const document = await prisma.patientDocument.create({
+    data: {
+      branchId: patient.branchId,
+      patientId,
+      documentTypeId,
+      title: input.title,
+      fileUrl: input.fileUrl,
+      fileName: input.fileName ?? null,
+      mimeType: input.mimeType ?? null,
+      fileSize: input.fileSize ?? null,
+      notes: input.notes ?? null,
+      uploadedByUserId: actor.id,
+    },
+    select: PATIENT_DOCUMENT_SELECT,
+  });
+
+  await writeAuditLog({
+    module: "PATIENT",
+    action: "PATIENT_DOCUMENT_UPLOADED",
+    tableName: "PatientDocument",
+    recordId: String(document.id),
+    newValues: {
+      patientId,
+      title: document.title,
+      documentType: input.documentType ?? null,
+      fileUrl: document.fileUrl,
+      fileName: document.fileName,
+    },
+    user: actor,
+    branchId: patient.branchId,
+  });
+
+  return document;
+}
+
+async function getOwnedDocument(actor: AuthUser, patientId: number, documentId: number) {
+  const patient = await getActivePatientForActor(actor, patientId);
+  const document = await prisma.patientDocument.findFirst({
+    where: { id: documentId, patientId, deletedAt: null },
+    select: { id: true, title: true, fileUrl: true },
+  });
+  if (!document) {
+    throw new NotFoundError("Document not found");
+  }
+  return { patient, document };
+}
+
+/**
+ * Soft delete: the file stays on disk so the record can be restored, but it
+ * disappears from the patient's document list.
+ */
+export async function deletePatientDocument(
+  actor: AuthUser,
+  patientId: number,
+  documentId: number,
+): Promise<void> {
+  const { patient, document } = await getOwnedDocument(actor, patientId, documentId);
+
+  await prisma.patientDocument.update({
+    where: { id: documentId },
+    data: { deletedAt: new Date() },
+  });
+
+  await writeAuditLog({
+    module: "PATIENT",
+    action: "PATIENT_DOCUMENT_DELETED",
+    tableName: "PatientDocument",
+    recordId: String(documentId),
+    oldValues: { patientId, title: document.title, fileUrl: document.fileUrl },
     user: actor,
     branchId: patient.branchId,
   });

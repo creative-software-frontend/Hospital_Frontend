@@ -787,6 +787,256 @@ export const auditApi = {
  * Patient endpoints
  * ------------------------------------------------------------------------- */
 
+/* ---------------------------------------------------------------------------
+ * Patient history (read-only clinical timeline)
+ * ------------------------------------------------------------------------- */
+
+/** Shared doctor reference used by the history timeline rows. */
+export interface PatientHistoryDoctorRef {
+  id: number;
+  doctorCode: string | null;
+  name: string;
+  specialization?: string | null;
+}
+
+export interface PatientHistorySummary {
+  id: number;
+  branchId: number;
+  patientCode: string;
+  name: string;
+  phone: string | null;
+  gender: Gender | null;
+  dateOfBirth: string | null;
+  bloodGroup: BloodGroup | null;
+  status: PatientStatus;
+}
+
+export interface PatientHistoryAppointment {
+  id: number;
+  appointmentNumber: string;
+  /** ISO timestamp. */
+  appointmentDate: string;
+  /** "HH:MM". */
+  startTime: string;
+  /** "HH:MM". */
+  endTime: string;
+  status: AppointmentStatus;
+  shift: string | null;
+  reason: string | null;
+  notes: string | null;
+  doctorFee: string | null;
+  paymentMode: string | null;
+  createdAt: string;
+  doctor: PatientHistoryDoctorRef | null;
+}
+
+export interface PatientHistoryVisit {
+  id: number;
+  visitNumber: string;
+  /** OPD | IPD | EMERGENCY | FOLLOWUP */
+  visitType: string | null;
+  chiefComplaint: string | null;
+  history: string | null;
+  examination: string | null;
+  notes: string | null;
+  status: string;
+  createdAt: string;
+  doctor: PatientHistoryDoctorRef | null;
+  _count: { prescriptions: number; labOrders: number; diagnoses: number };
+}
+
+export type AdmissionStatus = "ADMITTED" | "TRANSFERRED" | "DISCHARGED" | "CANCELLED";
+
+export interface PatientHistoryAdmission {
+  id: number;
+  admissionNumber: string;
+  admissionDate: string;
+  expectedDischargeDate: string | null;
+  dischargeDate: string | null;
+  status: AdmissionStatus;
+  reason: string | null;
+  notes: string | null;
+  doctor: { id: number; doctorCode: string | null; name: string } | null;
+  bed: { id: number; bedNumber: string; bedClass: string | null } | null;
+}
+
+export interface PatientHistoryResult {
+  patient: PatientHistorySummary;
+  appointments: PatientHistoryAppointment[];
+  visits: PatientHistoryVisit[];
+  admissions: PatientHistoryAdmission[];
+}
+
+/* ---------------------------------------------------------------------------
+ * Previous treatment records (fully nested consultation visits)
+ * ------------------------------------------------------------------------- */
+
+export interface TreatmentRecordDiagnosis {
+  id: number;
+  isPrimary: boolean;
+  notes: string | null;
+  diagnosis: {
+    id: number;
+    code: string;
+    name: string;
+    category: { name: string } | null;
+  } | null;
+}
+
+export interface TreatmentRecordPrescriptionItem {
+  id: number;
+  dosage: string | null;
+  frequency: string | null;
+  duration: string | null;
+  instruction: string | null;
+  quantity: number | null;
+  route: string | null;
+  medicine: {
+    id: number;
+    medicineCode: string;
+    genericName: string;
+    brandName: string | null;
+    unit: { name: string; shortName: string } | null;
+  } | null;
+}
+
+export interface TreatmentRecordPrescription {
+  id: number;
+  prescriptionNumber: string;
+  status: string;
+  notes: string | null;
+  createdAt: string;
+  items: TreatmentRecordPrescriptionItem[];
+}
+
+export interface TreatmentRecordLabItem {
+  id: number;
+  status: string;
+  price: string | null;
+  labTest: {
+    id: number;
+    testCode: string;
+    testName: string;
+    sampleType: string | null;
+  } | null;
+}
+
+export interface TreatmentRecordLabOrder {
+  id: number;
+  orderNumber: string;
+  status: string;
+  priority: string | null;
+  notes: string | null;
+  createdAt: string;
+  items: TreatmentRecordLabItem[];
+}
+
+export interface TreatmentRecord {
+  id: number;
+  visitNumber: string;
+  /** OPD | IPD | EMERGENCY | FOLLOWUP */
+  visitType: string | null;
+  chiefComplaint: string | null;
+  history: string | null;
+  examination: string | null;
+  notes: string | null;
+  /** Free-form vitals captured by the doctor (bp, pulse, temperature, ...). */
+  vitals: Record<string, unknown> | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  doctor: PatientHistoryDoctorRef | null;
+  appointment: { id: number; appointmentNumber: string } | null;
+  diagnoses: TreatmentRecordDiagnosis[];
+  prescriptions: TreatmentRecordPrescription[];
+  labOrders: TreatmentRecordLabOrder[];
+}
+
+export interface TreatmentRecordListResult {
+  data: TreatmentRecord[];
+  pagination: PaginationMeta;
+  patient: PatientHistorySummary;
+}
+
+export interface TreatmentRecordListQuery {
+  page?: number;
+  limit?: number;
+  visitType?: string;
+  /** Free text over complaint, diagnosis name, visit number and doctor name. */
+  search?: string;
+}
+
+/* ---------------------------------------------------------------------------
+ * Visit history (compact ledger of every encounter)
+ * ------------------------------------------------------------------------- */
+
+export interface PatientVisitRecord {
+  id: number;
+  visitNumber: string;
+  visitType: string | null;
+  status: string;
+  chiefComplaint: string | null;
+  createdAt: string;
+  doctor: PatientHistoryDoctorRef | null;
+  appointment: { id: number; appointmentNumber: string } | null;
+  _count: { diagnoses: number; prescriptions: number; labOrders: number };
+}
+
+export interface PatientVisitSummary {
+  total: number;
+  /** `OPD` / `FOLLOWUP` / `IPD` / `EMERGENCY` / `OTHER` → count. */
+  byType: Record<string, number>;
+  lastVisitAt: string | null;
+  doctorCount: number;
+}
+
+export interface PatientVisitListResult {
+  data: PatientVisitRecord[];
+  pagination: PaginationMeta;
+  patient: PatientHistorySummary;
+  summary: PatientVisitSummary;
+}
+
+export interface PatientVisitListQuery {
+  page?: number;
+  limit?: number;
+  visitType?: string;
+  /** Inclusive `YYYY-MM-DD` day range. */
+  from?: string;
+  to?: string;
+  /** Free text over visit number, doctor, complaint and diagnosis. */
+  search?: string;
+}
+
+/* ---------------------------------------------------------------------------
+ * Patient documents (uploaded scans: NID, passport, referral letter, ...)
+ * ------------------------------------------------------------------------- */
+
+export interface PatientDocumentRecord {
+  id: number;
+  title: string;
+  /** Public URL under /api/uploads/documents — open in a new tab. */
+  fileUrl: string;
+  fileName: string | null;
+  mimeType: string | null;
+  fileSize: number | null;
+  notes: string | null;
+  createdAt: string;
+  documentType: { id: number; name: string; code: string } | null;
+  uploadedBy: { id: number; name: string } | null;
+}
+
+export interface CreatePatientDocumentInput {
+  title: string;
+  fileUrl: string;
+  /** Master Data `document_types` code (NID, PP, BC, ...). */
+  documentType?: string;
+  fileName?: string;
+  mimeType?: string;
+  fileSize?: number;
+  notes?: string;
+}
+
 export const patientApi = {
   list: (query: PatientListQuery = {}) =>
     rawRequest<PatientListResult>(
@@ -794,6 +1044,30 @@ export const patientApi = {
     ),
 
   get: (id: number) => request<{ patient: PatientDetail }>(`/patients/${id}`),
+
+  /**
+   * Merged clinical timeline (appointments + consultation visits + IPD
+   * admissions), newest first. Server limits each collection to 100 rows.
+   */
+  history: (id: number) => request<PatientHistoryResult>(`/patients/${id}/history`),
+
+  /**
+   * Past consultations with their full clinical payload (diagnoses, prescribed
+   * medicines, lab tests, vitals), newest first and paginated.
+   */
+  treatmentRecords: (id: number, query: TreatmentRecordListQuery = {}) =>
+    rawRequest<TreatmentRecordListResult>(
+      `/patients/${id}/treatment-records${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+
+  /**
+   * Compact visit ledger: every encounter for the patient, newest first, with
+   * day-range / type / free-text filters plus a whole-history summary.
+   */
+  visits: (id: number, query: PatientVisitListQuery = {}) =>
+    rawRequest<PatientVisitListResult>(
+      `/patients/${id}/visits${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
 
   /**
    * Registration settings for the branch the caller will register into.
@@ -859,6 +1133,27 @@ export const contactApi = {
 
   remove: (patientId: number, contactId: number) =>
     request<{ message: string }>(`/patients/${patientId}/contacts/${contactId}`, {
+      method: "DELETE",
+    }),
+};
+
+/**
+ * Uploaded patient files (NID scan, referral letter, insurance card, ...).
+ * The binary goes through `uploadApi.file(file, "document")` first; these
+ * endpoints persist the returned URL plus its metadata.
+ */
+export const patientDocumentApi = {
+  list: (patientId: number) =>
+    request<{ documents: PatientDocumentRecord[] }>(`/patients/${patientId}/documents`),
+
+  create: (patientId: number, input: CreatePatientDocumentInput) =>
+    request<{ document: PatientDocumentRecord }>(`/patients/${patientId}/documents`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  remove: (patientId: number, documentId: number) =>
+    request<{ message: string }>(`/patients/${patientId}/documents/${documentId}`, {
       method: "DELETE",
     }),
 };
@@ -2379,7 +2674,7 @@ export const employeeApi = {
     }),
 };
 
-export type UploadKind = "photo" | "signature" | "cv";
+export type UploadKind = "photo" | "signature" | "cv" | "document";
 
 export interface UploadedFile {
   url: string;

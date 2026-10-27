@@ -557,7 +557,11 @@ ${tbody}
                 onNavigate={handleNavigateSettings}
               />
             ) : selectedFeature.id === 1 ? (
-              <PatientModule role={permissions?.role ?? null} />
+              <PatientModule
+                role={permissions?.role ?? null}
+                pageKey={selectedSubFeatureId ?? undefined}
+                onNavigate={setSelectedSubFeatureId}
+              />
             ) : selectedFeature.id === 3 ? (
               <AppointmentModule role={permissions?.role ?? null} />
             ) : selectedFeature.id === 2 ? (

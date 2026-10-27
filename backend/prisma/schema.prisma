@@ -223,6 +223,7 @@ model Branch {
   inventorySettings      InventorySetting[]
   notificationSettings   NotificationSetting[]
   documentTemplates      DocumentTemplate[]
+  patientDocuments       PatientDocument[]
   reportSettings         ReportSetting[]
   localizationSettings   LocalizationSetting[]
   divisions              Division[]
@@ -277,6 +278,7 @@ model User {
   doctor    Doctor?
   nurse     Nurse?
   employee  Employee?
+  uploadedDocuments PatientDocument[]
 
   @@index([branchId])
   @@index([email])
@@ -839,6 +841,7 @@ model Patient {
   labOrders      LabOrder[]
   invoices       Invoice[]
   payments       Payment[]
+  documents      PatientDocument[]
 
   @@unique([branchId, patientCode])
   @@index([branchId])
@@ -860,6 +863,36 @@ model PatientContact {
   patient Patient @relation(fields: [patientId], references: [id])
 
   @@index([patientId])
+}
+
+/// Files attached to a patient (NID scan, referral letter, insurance card, ...).
+/// The binary lives on disk under /api/uploads/documents; this row stores the
+/// URL plus the metadata the list renders. Soft-deleted so a mistaken removal is
+/// recoverable.
+model PatientDocument {
+  id               Int       @id @default(autoincrement())
+  branchId         Int
+  patientId        Int
+  documentTypeId   Int?
+  title            String
+  fileUrl          String
+  fileName         String?
+  mimeType         String?
+  fileSize         Int?
+  notes            String?   @db.VarChar(500)
+  uploadedByUserId Int?
+  deletedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  branch       Branch       @relation(fields: [branchId], references: [id])
+  patient      Patient      @relation(fields: [patientId], references: [id])
+  documentType DocumentType? @relation(fields: [documentTypeId], references: [id])
+  uploadedBy   User?         @relation(fields: [uploadedByUserId], references: [id])
+
+  @@index([branchId])
+  @@index([patientId])
+  @@index([deletedAt])
 }
 
 // ============================================================
@@ -2173,6 +2206,7 @@ model DocumentType {
   updatedAt DateTime @updatedAt
 
   branch Branch @relation(fields: [branchId], references: [id])
+  documents PatientDocument[]
 
   @@unique([branchId, code])
   @@unique([branchId, name])

@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  FiEye, FiEdit2, FiTrash2, FiPlus, FiRefreshCcw, FiSearch, FiUser, FiTag, FiPhone,
+  FiEye, FiEdit2, FiTrash2, FiRefreshCcw, FiSearch, FiUser, FiTag, FiPhone,
 } from "react-icons/fi";
 import {
   patientApi,
@@ -25,6 +25,11 @@ import { useMasterDataLabels } from "@/app/lib/useMasterData";
 import { useLocalization } from "@/app/hooks/useCurrency";
 import { PatientFormModal } from "@/app/patients/PatientFormModal";
 import { PatientProfileModal } from "@/app/patients/PatientProfileModal";
+import { PatientProfilePage } from "@/app/patients/PatientProfilePage";
+import { PatientHistoryPage } from "@/app/patients/PatientHistoryPage";
+import { TreatmentRecordsPage } from "@/app/patients/TreatmentRecordsPage";
+import { MedicalDocumentsPage } from "@/app/patients/MedicalDocumentsPage";
+import { PatientVisitHistoryPage } from "@/app/patients/PatientVisitHistoryPage";
 import { ConfirmDialog } from "@/app/patients/ConfirmDialog";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
 
@@ -37,7 +42,17 @@ interface ConfirmState {
   patient: PatientListRecord;
 }
 
-export function PatientModule({ role }: { role: UserRole | null }) {
+export function PatientModule({
+  role,
+  pageKey,
+  onNavigate,
+}: {
+  role: UserRole | null;
+  /** Selected sub-feature id from the sidebar (e.g. "patient-registration"). */
+  pageKey?: string;
+  /** Switch the active sub-feature: `null` returns to the patients list. */
+  onNavigate?: (key: string | null) => void;
+}) {
   const caps = patientCapabilities(role);
   const { formatDate } = useLocalization();
 
@@ -110,11 +125,6 @@ export function PatientModule({ role }: { role: UserRole | null }) {
     setReloadKey((k) => k + 1);
   }, []);
 
-  const openCreate = () => {
-    setEditingPatient(null);
-    setFormOpen(true);
-  };
-
   const openEdit = (patient: PatientListRecord) => {
     setEditingPatient(patient);
     setFormOpen(true);
@@ -167,6 +177,132 @@ export function PatientModule({ role }: { role: UserRole | null }) {
     }
   };
 
+  // Sub-feature "Patient Profile Management" — pick a patient, manage inline.
+  if (pageKey === "patient-profile") {
+    return (
+      <div className="space-y-4">
+        <button
+          onClick={() => onNavigate?.(null)}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] hover:text-[var(--primary-dark)] transition-colors cursor-pointer"
+        >
+          <span>← Back to Patients</span>
+        </button>
+
+        <PatientProfilePage caps={caps} notify={notify} onChanged={refreshList} />
+
+        <ToastViewport toasts={toasts} onDismiss={dismissToast} />
+      </div>
+    );
+  }
+
+  // Sub-feature "Patient History Tracking" — merged clinical timeline.
+  if (pageKey === "patient-history") {
+    return (
+      <div className="space-y-4">
+        <button
+          onClick={() => onNavigate?.(null)}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] hover:text-[var(--primary-dark)] transition-colors cursor-pointer"
+        >
+          <span>← Back to Patients</span>
+        </button>
+
+        <PatientHistoryPage />
+
+        <ToastViewport toasts={toasts} onDismiss={dismissToast} />
+      </div>
+    );
+  }
+
+  // Sub-feature "Previous Treatment Records" — expandable clinical visits.
+  if (pageKey === "treatment-records") {
+    return (
+      <div className="space-y-4">
+        <button
+          onClick={() => onNavigate?.(null)}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] hover:text-[var(--primary-dark)] transition-colors cursor-pointer"
+        >
+          <span>← Back to Patients</span>
+        </button>
+
+        <TreatmentRecordsPage />
+
+        <ToastViewport toasts={toasts} onDismiss={dismissToast} />
+      </div>
+    );
+  }
+
+  // Sub-feature "Medical Documents Upload" — attach scans and paperwork.
+  if (pageKey === "medical-documents") {
+    return (
+      <div className="space-y-4">
+        <button
+          onClick={() => onNavigate?.(null)}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] hover:text-[var(--primary-dark)] transition-colors cursor-pointer"
+        >
+          <span>← Back to Patients</span>
+        </button>
+
+        <MedicalDocumentsPage />
+
+        <ToastViewport toasts={toasts} onDismiss={dismissToast} />
+      </div>
+    );
+  }
+
+  // Sub-feature "Patient Visit History" — compact encounter ledger.
+  if (pageKey === "patient-visit-history") {
+    return (
+      <div className="space-y-4">
+        <button
+          onClick={() => onNavigate?.(null)}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] hover:text-[var(--primary-dark)] transition-colors cursor-pointer"
+        >
+          <span>← Back to Patients</span>
+        </button>
+
+        <PatientVisitHistoryPage />
+
+        <ToastViewport toasts={toasts} onDismiss={dismissToast} />
+      </div>
+    );
+  }
+
+  // Sub-feature "Patient Registration" renders the full-page create form.
+  if (pageKey === "patient-registration") {
+    const backToList = () => onNavigate?.(null);
+    return (
+      <div className="space-y-4">
+        <button
+          onClick={backToList}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] hover:text-[var(--primary-dark)] transition-colors cursor-pointer"
+        >
+          <span>← Back to Patients</span>
+        </button>
+
+        <PatientFormModal
+          variant="page"
+          mode="create"
+          patient={null}
+          onClose={backToList}
+          onSaved={(newCode, warnings) => {
+            notify("success", `Patient registered. Code: ${newCode ?? "generated"}.`);
+            if (warnings && warnings.length > 0) {
+              notify(
+                "info",
+                `Saved as a possible duplicate of ${warnings.map((w) => w.patientCode).join(", ")}.`,
+              );
+            }
+            setPage(1);
+            refreshList();
+            backToList();
+          }}
+        />
+
+        <ToastViewport toasts={toasts} onDismiss={dismissToast} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Header + toolbar */}
@@ -178,16 +314,6 @@ export function PatientModule({ role }: { role: UserRole | null }) {
             </span>
             <h3 className="font-black text-xl text-[var(--primary-dark)]">Patients</h3>
           </div>
-
-          {caps.create && (
-            <button
-              onClick={openCreate}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[var(--primary)] hover:bg-[var(--primary-dark)] text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-[var(--primary)]/20 active:scale-[0.98] cursor-pointer"
-            >
-              <FiPlus className="w-3.5 h-3.5" />
-              Register Patient
-            </button>
-          )}
         </div>
 
         <div className="flex items-center justify-between gap-4 flex-wrap">

@@ -136,14 +136,21 @@ export function PatientFormModal({
   patient,
   onClose,
   onSaved,
+  variant = "modal",
 }: {
   mode: "create" | "edit";
   patient: PatientDetail | PatientListRecord | null;
   onClose: () => void;
   /** `warnings` are the advisory duplicates the user acknowledged before saving. */
   onSaved: (patientCode?: string, warnings?: DuplicateMatch[]) => void;
+  /** `page` renders the form inline (Patient Registration page) instead of an overlay dialog. */
+  variant?: "modal" | "page";
 }) {
   const [form, setForm] = useState<FormState>(() => prefillFromPatient(patient));
+  // Edit needs the full record before it can be saved safely: the list payload
+  // omits nationalId / occupation / photo, and submitting a form built from it
+  // would silently clear those columns.
+  const [detailReady, setDetailReady] = useState(mode !== "edit" || !patient);
   const [contacts, setContacts] = useState<ContactDraft[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string>("");
@@ -208,9 +215,28 @@ export function PatientFormModal({
     };
   }, [mode]);
 
+  // Hydrate the edit form from the full record before allowing a save.
+  useEffect(() => {
+    if (mode !== "edit" || !patient) return;
+    let cancelled = false;
+    patientApi
+      .get(patient.id)
+      .then(({ patient: full }) => {
+        if (cancelled) return;
+        setForm(prefillFromPatient(full));
+        setDetailReady(true);
+      })
+      .catch(() => {
+        // Keep the list values; the user can still correct anything by hand.
+        if (!cancelled) setDetailReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, patient]);
+
   const autoGenerateId = config?.autoGenerateId ?? true;
   const guardianRequired = config?.requireGuardian ?? "NEVER";
-
   const set = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFieldErrors((prev) => ({ ...prev, [key]: "" }));
     // Changing the two fields the soft duplicate check compares withdraws the
@@ -353,6 +379,8 @@ export function PatientFormModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Never save an edit form that has not loaded the full record yet.
+    if (!detailReady) return;
     setFormError("");
 
     // Mirrors the backend Zod rules so an obviously bad value is caught before
@@ -471,11 +499,21 @@ export function PatientFormModal({
   const fieldError = (key: string) =>
     fieldErrors[key] ? <p className="text-[10px] font-bold text-rose-500 mt-1">{fieldErrors[key]}</p> : null;
 
-  return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" onClick={() => !submitting && onClose()} />
+  const isPage = variant === "page";
 
-      <div className="relative bg-[var(--card)] border border-[var(--border)] rounded-3xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[92vh] animate-[scaleIn_0.25s_ease-out]">
+  return (
+    <div className={isPage ? "" : "fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6"}>
+      {!isPage && (
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" onClick={() => !submitting && onClose()} />
+      )}
+
+      <div
+        className={
+          isPage
+            ? "relative bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-sm w-full flex flex-col"
+            : "relative bg-[var(--card)] border border-[var(--border)] rounded-3xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[92vh] animate-[scaleIn_0.25s_ease-out]"
+        }
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] shrink-0">
           <div>
@@ -837,15 +875,15 @@ export function PatientFormModal({
               disabled={submitting}
               className="px-4 py-2.5 bg-[var(--bg)] hover:bg-[var(--primary-soft)]/20 border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)] rounded-xl text-xs font-bold transition-colors disabled:opacity-60 cursor-pointer"
             >
-              Cancel
+              {isPage ? "Back to Patients" : "Cancel"}
             </button>
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !detailReady}
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--primary)] hover:bg-[var(--primary-dark)] text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-[var(--primary)]/20 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
             >
               <FiSave className="w-3.5 h-3.5" />
-              {submitting ? "Saving..." : mode === "create" ? "Create Patient" : "Save Changes"}
+              {submitting ? "Saving..." : !detailReady ? "Loading..." : mode === "create" ? "Create Patient" : "Save Changes"}
             </button>
           </div>
         </form>

@@ -49,6 +49,8 @@ export function PatientProfileModal({
   onRequestStatus,
   onRequestDelete,
   notify,
+  variant = "modal",
+  onEdit,
 }: {
   patient: PatientListRecord;
   caps: PatientCapabilities;
@@ -58,6 +60,10 @@ export function PatientProfileModal({
   onRequestStatus: (patient: PatientListRecord) => void;
   onRequestDelete: (patient: PatientListRecord) => void;
   notify: (kind: ToastKind, message: string) => void;
+  /** `page` renders the profile inline (Patient Profile Management page) instead of an overlay dialog. */
+  variant?: "modal" | "page";
+  /** When provided, an "Edit" button is shown in the header (page variant only). */
+  onEdit?: () => void;
 }) {
   const { formatDate } = useLocalization();
   const [detail, setDetail] = useState<PatientDetail | null>(null);
@@ -169,12 +175,21 @@ export function PatientProfileModal({
 
   const p = detail;
   const contacts: PatientContact[] = p?.contacts ?? patient.contacts ?? [];
+  const isPage = variant === "page";
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" onClick={onClose} />
+    <div className={isPage ? "" : "fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6"}>
+      {!isPage && (
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" onClick={onClose} />
+      )}
 
-      <div className="relative bg-[var(--card)] border border-[var(--border)] rounded-3xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[94vh] animate-[scaleIn_0.25s_ease-out]">
+      <div
+        className={
+          isPage
+            ? "relative bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-sm w-full flex flex-col"
+            : "relative bg-[var(--card)] border border-[var(--border)] rounded-3xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[94vh] animate-[scaleIn_0.25s_ease-out]"
+        }
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] shrink-0">
           <div className="flex items-center gap-3">
@@ -191,6 +206,16 @@ export function PatientProfileModal({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {onEdit && caps.edit && p && (
+              <button
+                onClick={onEdit}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-[var(--primary)] hover:bg-[var(--primary-dark)] text-white transition-colors cursor-pointer"
+                title="Edit patient details"
+              >
+                <FiEdit2 className="w-3.5 h-3.5" />
+                Edit
+              </button>
+            )}
             {caps.edit && p && (
               <button
                 onClick={() => onRequestStatus(patient)}
@@ -214,13 +239,15 @@ export function PatientProfileModal({
                 Delete
               </button>
             )}
-            <button
-              onClick={onClose}
-              className="p-2 rounded-xl text-[var(--muted)] hover:bg-[var(--bg)] hover:text-[var(--text)] transition-colors"
-              aria-label="Close"
-            >
-              <FiX className="w-5 h-5" />
-            </button>
+            {!isPage && (
+              <button
+                onClick={onClose}
+                className="p-2 rounded-xl text-[var(--muted)] hover:bg-[var(--bg)] hover:text-[var(--text)] transition-colors"
+                aria-label="Close"
+              >
+                <FiX className="w-5 h-5" />
+              </button>
+            )}
           </div>
         </div>
 

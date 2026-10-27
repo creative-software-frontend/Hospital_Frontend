@@ -13,11 +13,15 @@ vi.mock("../lib/prisma", () => {
     upsert: vi.fn(),
     findUniqueOrThrow: vi.fn(),
     delete: vi.fn(),
+    groupBy: vi.fn(),
   });
 
   const prismaClient = {
     patient: makeModel(),
     patientContact: makeModel(),
+    patientDocument: makeModel(),
+    medicalRecord: makeModel(),
+    documentType: makeModel(),
     patientSetting: makeModel(),
     branch: makeModel(),
     codeSequence: makeModel(),
@@ -63,6 +67,19 @@ const mockPrisma = (await import("../lib/prisma")).prisma as unknown as {
     findMany: ReturnType<typeof vi.fn>;
   };
   branch: { findUnique: ReturnType<typeof vi.fn> };
+  patientDocument: {
+    findFirst: ReturnType<typeof vi.fn>;
+    findMany: ReturnType<typeof vi.fn>;
+    create: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+  };
+  documentType: { findFirst: ReturnType<typeof vi.fn> };
+  medicalRecord: {
+    findFirst: ReturnType<typeof vi.fn>;
+    findMany: ReturnType<typeof vi.fn>;
+    count: ReturnType<typeof vi.fn>;
+    groupBy: ReturnType<typeof vi.fn>;
+  };
   patientSetting: { findFirst: ReturnType<typeof vi.fn> };
   codeSequence: { upsert: ReturnType<typeof vi.fn> };
   $transaction: ReturnType<typeof vi.fn>;
@@ -1062,6 +1079,193 @@ describe("patient service — contacts", () => {
 describe("permission catalog", () => {
   it("patient permissions exist in the Prisma client enum namespace", () => {
     expect(Prisma).toBeDefined();
+  });
+});
+
+describe("patient service - visits", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (mockPrisma.patient.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 10,
+      branchId: 1,
+      patientCode: "PT-0001",
+    });
+    (mockPrisma.medicalRecord.count as ReturnType<typeof vi.fn>).mockResolvedValue(2);
+    (mockPrisma.medicalRecord.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 2, visitNumber: "V-2", visitType: "OPD" },
+      { id: 1, visitNumber: "V-1", visitType: "FOLLOWUP" },
+    ]);
+    (mockPrisma.medicalRecord.groupBy as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce([
+        { visitType: "OPD", _count: { _all: 3 } },
+        { visitType: null, _count: { _all: 1 } },
+      ])
+      .mockResolvedValueOnce([{ doctorId: 4 }, { doctorId: 5 }, { doctorId: null }]);
+    (mockPrisma.medicalRecord.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+      createdAt: new Date("2026-10-20T09:00:00.000Z"),
+    });
+  });
+
+  it("applies the type, day-range and search filters to the ledger query", async () => {
+    const result = await patientService.listPatientVisits(actor, 10, {
+      visitType: "OPD",
+      from: "2026-10-01",
+      to: "2026-10-31",
+      search: "fever",
+    });
+
+    expect(result.data).toHaveLength(2);
+    expect(result.pagination.total).toBe(2);
+
+    const where = (mockPrisma.medicalRecord.findMany as ReturnType<typeof vi.fn>).mock
+      .calls[0][0].where;
+    expect(where).toMatchObject({
+      patientId: 10,
+      branchId: 1,
+      deletedAt: null,
+      visitType: "OPD",
+      createdAt: {
+        gte: new Date("2026-10-01T00:00:00"),
+        lt: new Date("2026-11-01T00:00:00"),
+      },
+    });
+    expect(where.OR).toHaveLength(4);
+  });
+
+  it("summarises the whole history, folding a null visit type into OTHER", async () => {
+    const result = await patientService.listPatientVisits(actor, 10, {});
+
+    expect(result.summary).toEqual({
+      total: 2,
+      byType: { OPD: 3, OTHER: 1 },
+      lastVisitAt: new Date("2026-10-20T09:00:00.000Z"),
+      doctorCount: 2,
+    });
+  });
+
+  it("rejects a reversed day range", async () => {
+    await expect(
+      patientService.listPatientVisits(actor, 10, { from: "2026-10-31", to: "2026-10-01" }),
+    ).rejects.toThrow("`from` must be on or before `to`");
+  });
+
+  it("branch-1 user cannot read a branch-2 patient's visits", async () => {
+    const actorLocal = { ...actor, roles: [{ id: 2, seederKey: "DOCTOR", name: "Doctor" }] };
+    (mockPrisma.patient.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 10,
+      branchId: 2,
+      patientCode: "PT-0001",
+    });
+
+    await expect(patientService.listPatientVisits(actorLocal, 10, {})).rejects.toThrow(
+      "You do not have permission",
+    );
+  });
+});
+
+describe("patient service - documents", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (mockPrisma.patient.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 10,
+      branchId: 1,
+      patientCode: "PT-0001",
+    });
+  });
+
+  it("lists only live documents for the patient", async () => {
+    (mockPrisma.patientDocument.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 3, title: "NID scan" },
+    ]);
+
+    const result = await patientService.listPatientDocuments(actor, 10);
+
+    expect(result).toHaveLength(1);
+    expect(mockPrisma.patientDocument.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { patientId: 10, deletedAt: null } }),
+    );
+  });
+
+  it("creates a document with the caller's branch and uploader", async () => {
+    (mockPrisma.documentType.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 2 });
+    (mockPrisma.patientDocument.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 7,
+      title: "Referral",
+    });
+
+    const result = await patientService.createPatientDocument(actor, 10, {
+      title: "Referral",
+      fileUrl: "/api/uploads/documents/123-abc.pdf",
+      documentType: "NID",
+      fileName: "referral.pdf",
+      mimeType: "application/pdf",
+      fileSize: 2048,
+    });
+
+    expect(result).toEqual({ id: 7, title: "Referral" });
+    expect(mockPrisma.documentType.findFirst).toHaveBeenCalledWith({
+      where: { branchId: 1, code: "NID" },
+      select: { id: true },
+    });
+    expect(mockPrisma.patientDocument.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          branchId: 1,
+          patientId: 10,
+          uploadedByUserId: 1,
+          documentTypeId: 2,
+        }),
+      }),
+    );
+  });
+
+  it("rejects a document type that is not in this branch's master data", async () => {
+    (mockPrisma.documentType.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+    await expect(
+      patientService.createPatientDocument(actor, 10, {
+        title: "NID",
+        fileUrl: "/api/uploads/documents/123-abc.pdf",
+        documentType: "NID",
+      }),
+    ).rejects.toThrow("Document type not found");
+  });
+
+  it("soft deletes a document instead of removing the row", async () => {
+    (mockPrisma.patientDocument.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 5,
+      title: "Old scan",
+      fileUrl: "/api/uploads/documents/1-x.pdf",
+    });
+    (mockPrisma.patientDocument.update as ReturnType<typeof vi.fn>).mockResolvedValue({});
+
+    await expect(patientService.deletePatientDocument(actor, 10, 5)).resolves.toBeUndefined();
+
+    expect(mockPrisma.patientDocument.update).toHaveBeenCalledWith({
+      where: { id: 5 },
+      data: { deletedAt: expect.any(Date) },
+    });
+  });
+
+  it("404s deleting a document that is not on the patient", async () => {
+    (mockPrisma.patientDocument.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+    await expect(patientService.deletePatientDocument(actor, 10, 5)).rejects.toThrow(
+      "Document not found",
+    );
+  });
+
+  it("branch-1 user cannot list documents of a branch-2 patient", async () => {
+    const actorLocal = { ...actor, roles: [{ id: 2, seederKey: "DOCTOR", name: "Doctor" }] };
+    (mockPrisma.patient.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 10,
+      branchId: 2,
+      patientCode: "PT-0001",
+    });
+
+    await expect(patientService.listPatientDocuments(actorLocal, 10)).rejects.toThrow(
+      "You do not have permission",
+    );
   });
 });
 
