@@ -209,31 +209,76 @@ export function AppointmentModule({ role }: { role: string | null }) {
       </div>
 
       <div className="card p-5 rounded-2xl border border-[var(--border)] shadow-sm space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[var(--border)]">
           <div>
             <h4 className="text-sm font-extrabold text-[var(--text)]">Appointments</h4>
             <p className="text-xs text-[var(--muted)]">
               {pagination ? `${pagination.total} appointment(s)` : "Loading…"}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={clearFilters}
+              className="inline-flex items-center gap-1.5 h-10 px-3.5 rounded-xl text-xs font-bold border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--primary-soft)]/20 transition-colors cursor-pointer"
+              title="Reset filters"
+            >
+              <FiX className="w-3.5 h-3.5" />
+              Clear
+            </button>
+            <button
+              onClick={() => setReloadKey((k) => k + 1)}
+              className="inline-flex items-center justify-center h-10 w-10 rounded-xl border border-[var(--border)] bg-[var(--bg)] hover:bg-[var(--primary-soft)]/20 text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer"
+              title="Refresh"
+            >
+              <FiRefreshCcw className="w-3.5 h-3.5" />
+            </button>
+            {role !== "doctor" && (
+              <button
+                onClick={() => setShowSchedule(true)}
+                className="inline-flex items-center gap-2 h-10 px-4 rounded-xl text-xs font-bold text-white shadow-lg shadow-[var(--primary)]/20 transition-all duration-200 active:scale-[0.98] cursor-pointer"
+                style={{ background: "var(--primary)" }}
+              >
+                <FiPlus className="w-3.5 h-3.5" />
+                Schedule Appointment
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-[9rem_10rem_9rem] gap-3">
+          <div>
+            <label
+              htmlFor="appt-filter-date"
+              className="block text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)] mb-1.5"
+            >
+              Date
+            </label>
             <input
+              id="appt-filter-date"
               type="date"
               value={dateFilter}
               onChange={(e) => {
                 setDateFilter(e.target.value);
                 setPage(1);
               }}
-              className={`${INPUT_CLS} w-40`}
-              title="Filter by date"
+              className={`${INPUT_CLS} h-10`}
             />
+          </div>
+          <div>
+            <label
+              htmlFor="appt-filter-doctor"
+              className="block text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)] mb-1.5"
+            >
+              Doctor
+            </label>
             <select
+              id="appt-filter-doctor"
               value={doctorFilter}
               onChange={(e) => {
                 setDoctorFilter(e.target.value);
                 setPage(1);
               }}
-              className={`${INPUT_CLS} w-48`}
+              className={`${INPUT_CLS} h-10`}
             >
               <option value="">All doctors</option>
               {doctors.map((d) => (
@@ -242,13 +287,22 @@ export function AppointmentModule({ role }: { role: string | null }) {
                 </option>
               ))}
             </select>
+          </div>
+          <div>
+            <label
+              htmlFor="appt-filter-status"
+              className="block text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)] mb-1.5"
+            >
+              Status
+            </label>
             <select
+              id="appt-filter-status"
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value);
                 setPage(1);
               }}
-              className={`${INPUT_CLS} w-44`}
+              className={`${INPUT_CLS} h-10`}
             >
               <option value="">All statuses</option>
               {(Object.keys(STATUS_STYLES) as AppointmentStatus[]).map((s) => (
@@ -257,29 +311,6 @@ export function AppointmentModule({ role }: { role: string | null }) {
                 </option>
               ))}
             </select>
-            <button
-              onClick={clearFilters}
-              className="px-3 py-2 rounded-xl text-xs font-bold border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--text)] transition-colors"
-            >
-              Clear
-            </button>
-            <button
-              onClick={() => setReloadKey((k) => k + 1)}
-              className="p-2.5 rounded-xl text-xs font-bold border border-[var(--border)] bg-[var(--bg)] hover:bg-[var(--primary-soft)]/20 text-[var(--muted)] hover:text-[var(--text)] transition-colors"
-              title="Refresh"
-            >
-              <FiRefreshCcw className="w-4 h-4" />
-            </button>
-            {role !== "doctor" && (
-              <button
-                onClick={() => setShowSchedule(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all duration-200 active:scale-[0.98]"
-                style={{ background: "var(--primary)" }}
-              >
-                <FiPlus className="w-3.5 h-3.5" />
-                Schedule Appointment
-              </button>
-            )}
           </div>
         </div>
 
