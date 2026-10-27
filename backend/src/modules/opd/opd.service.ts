@@ -58,9 +58,20 @@ export async function createOpdAppointment(
   // Verify doctor belongs to the branch
   const doctor = await prisma.doctor.findFirst({
     where: { id: input.doctorId, branchId, deletedAt: null },
-    select: { id: true },
+    select: { id: true, consultationFee: true, followupFee: true },
   });
   if (!doctor) throw new NotFoundError("Doctor not found in this branch");
+
+  const configuredDoctorFee =
+    input.visitType === "FOLLOWUP" ? doctor.followupFee : doctor.consultationFee;
+  if (configuredDoctorFee === null) {
+    throw new BusinessRuleError(
+      input.visitType === "FOLLOWUP"
+        ? "The selected doctor does not have a follow-up fee configured"
+        : "The selected doctor does not have a consultation fee configured",
+      { doctorId: "Configure the fee in Doctor Management before scheduling" },
+    );
+  }
 
   // Load OPD config — used for validation context only here
   const config = await loadOpdConfig(branchId);
@@ -114,7 +125,7 @@ export async function createOpdAppointment(
         startTime: input.startTime,
         endTime: input.endTime,
         status: "SCHEDULED",
-        doctorFee: input.doctorFee ?? null,
+        doctorFee: configuredDoctorFee,
         shift: input.shift ?? null,
         appointmentPriority: input.appointmentPriority,
         discountPercentage: input.discountPercentage ?? null,

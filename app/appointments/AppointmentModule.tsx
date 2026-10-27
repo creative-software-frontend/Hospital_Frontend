@@ -456,10 +456,10 @@ function ScheduleModal({
   const [patientLabel, setPatientLabel] = useState("");
   const [doctorId, setDoctorId] = useState<number | null>(null);
   const [doctorLabel, setDoctorLabel] = useState("");
+  const [selectedDoctor, setSelectedDoctor] = useState<DoctorRecord | null>(null);
   const [date, setDate] = useState(TODAY);
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("09:30");
-  const [doctorFee, setDoctorFee] = useState("");
   const [shift, setShift] = useState("");
   const [appointmentPriority, setAppointmentPriority] = useState<"LOW" | "NORMAL" | "HIGH">("NORMAL");
   const [discountPercentage, setDiscountPercentage] = useState("");
@@ -472,6 +472,12 @@ function ScheduleModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const doctorFee =
+    selectedDoctor === null
+      ? ""
+      : visitType === "FOLLOWUP"
+        ? selectedDoctor.followupFee ?? ""
+        : selectedDoctor.consultationFee ?? "";
 
   const fetchPatients = useCallback(async (search: string) => {
     const r = await patientApi.list({ search: search || undefined, limit: 12 });
@@ -497,7 +503,12 @@ function ScheduleModal({
     const next: Record<string, string> = {};
     if (patientId == null) next.patientId = "Patient is required";
     if (doctorId == null) next.doctorId = "Doctor is required";
-    if (!doctorFee) next.doctorFee = "Doctor fee is required";
+    if (!doctorFee) {
+      next.doctorFee =
+        visitType === "FOLLOWUP"
+          ? "Configure this doctor's follow-up fee in Doctor Management"
+          : "Configure this doctor's consultation fee in Doctor Management";
+    }
     if (!date) next.date = "Date is required";
     else if (date < TODAY) next.date = "Date cannot be in the past";
     if (!startTime) next.startTime = "Start time is required";
@@ -600,7 +611,16 @@ function ScheduleModal({
                 onChange={(id, label) => {
                   setDoctorId(id);
                   setDoctorLabel(label);
-                  if (id == null) setDoctorFee("");
+                  setSelectedDoctor(null);
+                  if (id != null) {
+                    void doctorApi
+                      .get(id)
+                      .then((result) => {
+                        setSelectedDoctor(result.doctor);
+                        setFieldErrors((p) => ({ ...p, doctorId: "", doctorFee: "" }));
+                      })
+                      .catch((err) => setError(errorMessage(err)));
+                  }
                   setFieldErrors((p) => ({ ...p, doctorId: "" }));
                 }}
                 placeholder="Search doctor…"
@@ -609,17 +629,16 @@ function ScheduleModal({
               {fieldError("doctorId")}
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Doctor Fees ($) *</label>
+              <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">
+                {visitType === "FOLLOWUP" ? "Follow-up Fee" : "Consultation Fee"} *
+              </label>
               <input
                 type="text"
                 inputMode="decimal"
                 value={doctorFee}
-                onChange={(e) => {
-                  setDoctorFee(e.target.value);
-                  setFieldErrors((p) => ({ ...p, doctorFee: "" }));
-                }}
-                className={INPUT_CLS}
-                placeholder="0.00"
+                readOnly
+                className={`${INPUT_CLS} opacity-70 cursor-not-allowed`}
+                placeholder={selectedDoctor ? "Not configured" : "Select a doctor"}
               />
               {fieldError("doctorFee")}
             </div>
