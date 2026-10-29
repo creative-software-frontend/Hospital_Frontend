@@ -4,6 +4,14 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+## Memory: Doctor Schedule Management page (weekly availability)
+- User chose (via `question`): **build it** — there was no backend, so a new module was added rather than a read-only view.
+- Backend: `backend/src/modules/doctor-schedules/` (validation/service/controller/routes), registered at `/api/doctor-schedules`. Reuses `doctor:read|create|update` permissions. Model `DoctorSchedule` already existed in the init schema (`id, branchId, doctorId, dayOfWeek 0-6, startTime, endTime, roomId, appointmentLimit, status`); no migration needed. Endpoints: list/get/create/update/delete plus `GET /doctor-schedules/doctor/:doctorId` and `PUT /doctor-schedules/doctor/:doctorId` (bulk replace of the whole week). Branch-scoped; create/update audit-logged.
+- `app/lib/api.ts`: `DoctorScheduleRecord`/`DoctorScheduleListQuery`/`CreateDoctorScheduleInput`/`UpdateDoctorScheduleInput`/`ReplaceDoctorScheduleInput` + `doctorScheduleApi` (`list/get/forDoctor/create/update/remove/replace`). `request<T>` returns `data`, so `forDoctor`/`replace` return the array directly.
+- `app/doctors/DoctorSchedulePage.tsx`: doctor `<select>` (sorted by name) + 7-day table (Available checkbox + start/end time inputs, disabled when off) + Save schedule button → `doctorScheduleApi.replace`. Loads the existing week on doctor change; toasts on success/error.
+- `app/data/features.ts`: "Doctor Schedule Management" now carries `id: "doctor-schedule"`. `app/doctors/DoctorModule.tsx` early-returns "← Back to Doctors" + `<DoctorSchedulePage />` for that pageKey.
+- Verified live (super-admin): selected a doctor, set Monday 08:00–17:00, saved → PUT 200; re-opened the page and Monday still showed 08:00; then cleared the schedule (PUT with empty slots) to restore the probe state. No console errors; `tsc` + `next build` green.
+
 ## Memory: Doctor Management — Department Assignment page (doctor-centric inline table)
 - User chose (via `question`): **doctor-centric inline table** — every doctor row has a department dropdown, changing it saves instantly (no save button). The other offered shapes (department cards, two-pane) were rejected.
 - `app/data/features.ts`: sub-feature `id: 2` "Department Assignment" now carries `id: "department-assignment"`. Other doctor sub-items remain inert/listed.

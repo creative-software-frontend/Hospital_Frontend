@@ -2422,6 +2422,83 @@ export interface DoctorListResult {
   pagination: PaginationMeta;
 }
 
+export interface DoctorScheduleRecord {
+  id: number;
+  branchId: number;
+  doctorId: number;
+  dayOfWeek: number;
+  startTime: string | null;
+  endTime: string | null;
+  roomId: number | null;
+  appointmentLimit: number;
+  status: ActiveStatus;
+  doctor?: { id: number; name: string; doctorCode: string };
+  room?: { id: number; name: string } | null;
+}
+
+export interface DoctorScheduleListQuery {
+  page?: number;
+  limit?: number;
+  doctorId?: number;
+}
+
+export interface CreateDoctorScheduleInput {
+  doctorId: number;
+  dayOfWeek: number;
+  startTime?: string | null;
+  endTime?: string | null;
+  roomId?: number | null;
+  appointmentLimit?: number;
+  status?: ActiveStatus;
+}
+
+export interface UpdateDoctorScheduleInput {
+  dayOfWeek?: number;
+  startTime?: string | null;
+  endTime?: string | null;
+  roomId?: number | null;
+  appointmentLimit?: number;
+  status?: ActiveStatus;
+}
+
+export interface ReplaceDoctorScheduleInput {
+  slots: Array<{
+    dayOfWeek: number;
+    startTime?: string | null;
+    endTime?: string | null;
+    roomId?: number | null;
+    appointmentLimit?: number;
+    status?: ActiveStatus;
+  }>;
+}
+
+export const doctorScheduleApi = {
+  list: (query: DoctorScheduleListQuery = {}) =>
+    rawRequest<{ data: DoctorScheduleRecord[]; pagination: PaginationMeta }>(
+      `/doctor-schedules${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+  get: (id: number) => request<DoctorScheduleRecord>(`/doctor-schedules/${id}`),
+  forDoctor: (doctorId: number) =>
+    request<DoctorScheduleRecord[]>(`/doctor-schedules/doctor/${doctorId}`),
+  create: (input: CreateDoctorScheduleInput) =>
+    request<DoctorScheduleRecord>("/doctor-schedules", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  update: (id: number, input: UpdateDoctorScheduleInput) =>
+    request<DoctorScheduleRecord>(`/doctor-schedules/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  remove: (id: number) =>
+    request<{ message: string }>(`/doctor-schedules/${id}`, { method: "DELETE" }),
+  replace: (doctorId: number, input: ReplaceDoctorScheduleInput) =>
+    request<DoctorScheduleRecord[]>(`/doctor-schedules/doctor/${doctorId}`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
+};
+
 export interface DoctorListQuery {
   page?: number;
   limit?: number;
