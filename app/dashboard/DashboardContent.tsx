@@ -565,7 +565,10 @@ ${tbody}
             ) : selectedFeature.id === 3 ? (
               <AppointmentModule role={permissions?.role ?? null} />
             ) : selectedFeature.id === 2 ? (
-              <DoctorModule />
+              <DoctorModule
+                pageKey={selectedSubFeatureId ?? undefined}
+                onNavigate={setSelectedSubFeatureId}
+              />
             ) : selectedFeature.id === 13 ? (
               <NurseModule />
             ) : selectedFeature.id === 16 ? (

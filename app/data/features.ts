@@ -45,8 +45,8 @@ export const keyFeatures: Feature[] = [
         englishTitle: "Doctor Management",
         icon: FiActivity,
         subFeatures: [
-            { label: "Doctor Profile Management", icon: FiUser },
-            { label: "Department Assignment", icon: FiFolder },
+            { label: "Doctor Profile Management", icon: FiUser, id: "doctor-profile" },
+            { label: "Department Assignment", icon: FiFolder, id: "department-assignment" },
             { label: "Doctor Schedule Management", icon: FiCalendar },
             { label: "Chamber Management", icon: FiHome },
             { label: "Doctor Attendance", icon: FiCheckSquare },

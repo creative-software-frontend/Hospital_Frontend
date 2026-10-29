@@ -6,7 +6,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { FiPlus, FiRefreshCcw, FiSearch, FiEdit2, FiEye, FiUserCheck, FiUserX } from "react-icons/fi";
+import { FiRefreshCcw, FiSearch, FiEdit2, FiEye, FiUserCheck, FiUserX } from "react-icons/fi";
 import {
   departmentApi,
   doctorApi,
@@ -44,6 +44,7 @@ import { useMasterDataOptions } from "@/app/lib/useMasterData";
 import { FileUploadField } from "@/app/components/FileUploadField";
 import { useCurrency } from "@/app/hooks/useCurrency";
 import { formatCurrency } from "@/app/lib/currency";
+import { DepartmentAssignmentPage } from "@/app/doctors/DepartmentAssignmentPage";
 
 const PAGE_SIZE = 10;
 
@@ -63,7 +64,15 @@ const STATUS_STYLES: Record<ActiveStatus, string> = {
   inactive: "bg-slate-100 text-slate-500 border-slate-200",
 };
 
-export function DoctorModule() {
+export function DoctorModule({
+  pageKey,
+  onNavigate,
+}: {
+  /** Selected sub-feature id from the sidebar (e.g. "doctor-profile"). */
+  pageKey?: string;
+  /** Clears the sub-feature selection so the module falls back to the list. */
+  onNavigate?: (key: string | null) => void;
+}) {
   const { currency } = useCurrency();
   const [rows, setRows] = useState<DoctorRecord[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
@@ -119,9 +128,20 @@ export function DoctorModule() {
   const totalPages = pagination?.totalPages ?? 1;
   const safePage = Math.min(page, Math.max(1, totalPages));
 
+  // "Doctor Profile Management" in the sub-menu opens the Add Doctor page
+  // directly — the list itself no longer carries an "Add Doctor" button.
+  const creatingFromMenu = pageKey === "doctor-profile";
+  const activeDoctor = creatingFromMenu ? null : editing;
+
+  const closeForm = () => {
+    setFormMode("list");
+    setEditing(null);
+    if (pageKey) onNavigate?.(null);
+  };
+
   const submit = async (input: CreateDoctorInput): Promise<void> => {
-    if (editing) {
-      await doctorApi.update(editing.id, input);
+    if (activeDoctor) {
+      await doctorApi.update(activeDoctor.id, input);
       notify("success", `Doctor "${input.name}" updated.`);
     } else {
       const created = await doctorApi.create(input);
@@ -132,6 +152,7 @@ export function DoctorModule() {
     }
     setFormMode("list");
     setEditing(null);
+    if (pageKey) onNavigate?.(null);
     setReloadKey((k) => k + 1);
   };
 
@@ -146,33 +167,48 @@ export function DoctorModule() {
     }
   };
 
-  if (formMode === "form") {
+  if (pageKey === "department-assignment") {
+    return (
+      <div className="space-y-6">
+        <button
+          onClick={() => onNavigate?.(null)}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] hover:text-[var(--primary-dark)] transition-colors cursor-pointer"
+        >
+          <span>{"\u2190"} Back to Doctors</span>
+        </button>
+
+        <DepartmentAssignmentPage />
+      </div>
+    );
+  }
+
+  if (creatingFromMenu || formMode === "form") {
     return (
       <div className="space-y-6">
         <div className="card p-5 rounded-2xl border border-[var(--border)] shadow-sm">
           <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">
             Doctor Management
           </span>
-          <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">{editing ? "Edit Doctor" : "Add Doctor"}</h3>
+          <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">{activeDoctor ? "Edit Doctor" : "Add Doctor"}</h3>
           <p className="text-xs text-[var(--muted)] mt-1.5 leading-relaxed max-w-3xl">
-            {editing
+            {activeDoctor
               ? "Update the doctor profile, consultation fees and commission setup."
               : "Register a new doctor and set consultation, follow-up, emergency and commission details."}
           </p>
         </div>
 
         <button
-          onClick={() => { setFormMode("list"); setEditing(null); }}
+          onClick={closeForm}
           className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] hover:text-[var(--primary-dark)] transition-colors cursor-pointer"
         >
           <span>{"\u2190"} Back to Doctors</span>
         </button>
 
         <DoctorFormPage
-          key={editing?.id ?? "new"}
-          doctor={editing}
+          key={activeDoctor?.id ?? "new"}
+          doctor={activeDoctor}
           onSubmit={submit}
-          onCancel={() => { setFormMode("list"); setEditing(null); }}
+          onCancel={closeForm}
         />
       </div>
     );
@@ -214,14 +250,6 @@ export function DoctorModule() {
               title="Refresh"
             >
               <FiRefreshCcw className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => { setEditing(null); setFormMode("form"); }}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all duration-200 active:scale-[0.98]"
-              style={{ background: "var(--primary)" }}
-            >
-              <FiPlus className="w-3.5 h-3.5" />
-              Add Doctor
             </button>
           </div>
         </div>
