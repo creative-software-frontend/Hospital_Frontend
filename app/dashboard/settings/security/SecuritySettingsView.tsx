@@ -195,7 +195,7 @@ export function SecuritySettingsView() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-[var(--muted)]">
-          {loading ? "Loading…" : "Applies to all branches"}
+          {loading ? "Loadingâ€¦" : "Applies to all branches"}
         </p>
         <div className="flex items-center gap-2">
           <button
@@ -289,7 +289,7 @@ export function SecuritySettingsView() {
             title="Login Protection"
             subtitle="Every attempt is recorded with its IP and device. Failures lock the account for the configured window."
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
               <NumberField
                 label="Maximum Login Attempts"
                 hint="Failed attempts tolerated before the account locks."
@@ -313,7 +313,7 @@ export function SecuritySettingsView() {
             title="Session & Devices"
             subtitle="Sessions are tracked server-side, so a timeout, a logout or a device cap revokes access immediately instead of waiting for the token to expire."
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
               <NumberField
                 label="Session Timeout (minutes)"
                 hint="A session is refused after this long, even if its token has not expired."
@@ -375,7 +375,7 @@ export function SecuritySettingsView() {
                 <span className="text-xs font-bold text-[var(--text)]">Enable IP Restriction</span>
                 <p className="text-[10px] text-[var(--muted)] mt-0.5">
                   {rangeCount === 0
-                    ? "No ranges configured — enabling this would block every sign-in."
+                    ? "No ranges configured â€” enabling this would block every sign-in."
                     : `${rangeCount} range${rangeCount === 1 ? "" : "s"} configured.`}
                 </p>
               </div>

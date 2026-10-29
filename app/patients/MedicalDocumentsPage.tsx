@@ -216,7 +216,7 @@ export function MedicalDocumentsPage() {
               <h5 className="text-xs font-black text-[var(--text)]">Upload a document</h5>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-[10rem_1fr] gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-[10rem_minmax(0,24rem)] gap-3">
               <div>
                 <label htmlFor="doc-type" className={LABEL_CLS}>
                   Document type
@@ -250,7 +250,7 @@ export function MedicalDocumentsPage() {
               </div>
             </div>
 
-            <div>
+            <div className="max-w-3xl">
               <label htmlFor="doc-notes" className={LABEL_CLS}>
                 Notes
               </label>

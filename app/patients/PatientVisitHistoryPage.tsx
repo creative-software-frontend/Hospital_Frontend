@@ -232,7 +232,7 @@ export function PatientVisitHistoryPage() {
           </div>
 
           {/* Filter bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-[9rem_9rem_9rem_1fr] gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-[9rem_9rem_9rem_minmax(0,24rem)] gap-3">
             <div>
               <label htmlFor="pv-from" className={LABEL_CLS}>
                 From

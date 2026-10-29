@@ -446,7 +446,7 @@ function EmployeeFormPage({
         <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">Human Resource</span>
         <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">{editing ? "Edit Employee" : "Add Employee"}</h3>
 
-        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Emp ID</label>
             <input

@@ -87,7 +87,7 @@ export function AccountingSettingsView() {
     try {
       await settingsApi.accounting.update({
         fiscalYear: data.fiscalYear,
-        // Mirror the hospital-wide currency (Settings → Localization → Currency) into the
+        // Mirror the hospital-wide currency (Settings â†’ Localization â†’ Currency) into the
         // legacy AccountingSetting.baseCurrency column so it never drifts from the single source.
         baseCurrency: currency.currencyCode,
         chartOfAccounts: data.chartOfAccounts,
@@ -125,7 +125,7 @@ export function AccountingSettingsView() {
         <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">Accounting Settings</h3>
         <p className="text-xs text-[var(--muted)] mt-1.5 leading-relaxed max-w-3xl">
           Live from the backend: fiscal year, chart of accounts and ledger posting rules. Currency
-          is the hospital-wide value from Settings → Localization → Currency.
+          is the hospital-wide value from Settings â†’ Localization â†’ Currency.
         </p>
       </div>
 
@@ -134,7 +134,7 @@ export function AccountingSettingsView() {
           <div>
             <h4 className="text-sm font-extrabold text-[var(--text)]">Chart of Accounts</h4>
             <p className="text-xs text-[var(--muted)]">
-              {loading ? "Loading…" : "Applies to this branch"}
+              {loading ? "Loadingâ€¦" : "Applies to this branch"}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -168,7 +168,7 @@ export function AccountingSettingsView() {
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--primary)]" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
             <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-3 space-y-1.5 sm:col-span-2">
               <label className="block text-xs font-bold text-[var(--muted)]">Fiscal Year</label>
               <input
@@ -191,7 +191,7 @@ export function AccountingSettingsView() {
                 />
               </div>
               <p className="text-[10px] text-[var(--muted)]">
-                Hospital-wide currency — managed in Settings → Localization → Currency.
+                Hospital-wide currency â€” managed in Settings â†’ Localization â†’ Currency.
               </p>
             </div>
             <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-3 space-y-1.5">

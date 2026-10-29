@@ -135,7 +135,7 @@ export function NotificationSettingsView() {
           <div>
             <h4 className="text-sm font-extrabold text-[var(--text)]">Delivery Channels</h4>
             <p className="text-xs text-[var(--muted)]">
-              {loading ? "Loading…" : "Applies to this branch"}
+              {loading ? "Loadingâ€¦" : "Applies to this branch"}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -184,7 +184,7 @@ export function NotificationSettingsView() {
               <h5 className="text-xs font-extrabold uppercase tracking-widest text-[var(--muted)] mb-2">
                 Event Triggers
               </h5>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
                 <ToggleRow
                   label="Appointment Reminder"
                   checked={data.appointmentNotification}

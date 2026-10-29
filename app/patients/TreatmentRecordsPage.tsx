@@ -474,7 +474,7 @@ export function TreatmentRecordsPage() {
           </div>
 
           {/* Filters */}
-          <div className="grid grid-cols-1 sm:grid-cols-[1fr_10rem] gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,20rem)_10rem] gap-3">
             <div>
               <label
                 htmlFor="tr-filter-search"

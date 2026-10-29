@@ -294,7 +294,7 @@ export function EmergencyRegistrationPage() {
             </span>
           </label>
 
-          <div className="grid grid-cols-1 sm:grid-cols-[1fr_9rem_9rem] gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,20rem)_9rem_9rem] gap-3">
             <div>
               <label htmlFor="er-name" className={LABEL_CLS}>
                 Patient name *
@@ -360,7 +360,7 @@ export function EmergencyRegistrationPage() {
             </div>
           </div>
 
-          <div>
+          <div className="max-w-3xl">
             <label htmlFor="er-complaint" className={LABEL_CLS}>
               Chief complaint
             </label>

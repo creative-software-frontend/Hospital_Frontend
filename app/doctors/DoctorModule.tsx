@@ -487,7 +487,7 @@ function DoctorFormPage({
         <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">Doctors</span>
         <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">{editing ? "Edit Doctor" : "Add Doctor"}</h3>
 
-        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Joining Date</label>
             <input type="date" value={joiningDate} onChange={(e) => setJoiningDate(setField("joiningDate", e.target.value))} className={INPUT_CLS} />

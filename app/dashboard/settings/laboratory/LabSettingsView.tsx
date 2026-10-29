@@ -125,7 +125,7 @@ export function LabSettingsView() {
           <div>
             <h4 className="text-sm font-extrabold text-[var(--text)]">Laboratory Flow</h4>
             <p className="text-xs text-[var(--muted)]">
-              {loading ? "Loading…" : "Applies to this branch"}
+              {loading ? "Loadingâ€¦" : "Applies to this branch"}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -159,7 +159,7 @@ export function LabSettingsView() {
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--primary)]" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
             {toggleRow("Sample Tracking", data.sampleTrackingEnabled, (v) =>
               patch({ sampleTrackingEnabled: v }),
             )}

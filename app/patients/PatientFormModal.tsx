@@ -535,7 +535,7 @@ export function PatientFormModal({
 
         <form onSubmit={handleSubmit} className="flex flex-col min-h-0">
           {/* Scrollable body */}
-          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 news-scroll">
+          <div className={`flex-1 overflow-y-auto px-6 py-5 space-y-5 news-scroll${isPage ? " max-w-3xl" : ""}`}>
             {formError && (
               <div className="bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 text-xs font-semibold text-rose-600">
                 {formError}
@@ -576,7 +576,7 @@ export function PatientFormModal({
             <div>
               <h4 className="text-xs font-extrabold text-[var(--text)] mb-3 uppercase tracking-wider">Identity</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-2">
+                <div>
                   <label className={labelCls}>Name *</label>
                   <input className={inputCls} value={form.name} onChange={set("name")} placeholder="Full name" disabled={submitting} />
                   {fieldError("name")}
@@ -585,7 +585,7 @@ export function PatientFormModal({
                 {/* Manual ID is offered only when the branch has turned
                     auto-generation off; otherwise the code is server-issued. */}
                 {mode === "create" && !autoGenerateId && (
-                  <div className="sm:col-span-2">
+                  <div>
                     <label className={labelCls}>Patient ID *</label>
                     <input
                       className={inputCls}
@@ -613,11 +613,6 @@ export function PatientFormModal({
                   </select>
                   {fieldError("gender")}
                 </div>
-              </div>
-            </div>
-
-            <div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className={labelCls}>Blood Group</label>
                   <select className={selectCls} value={form.bloodGroup} onChange={set("bloodGroup")} disabled={submitting}>

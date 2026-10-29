@@ -294,7 +294,7 @@ export function HospitalInformationView() {
           Hospital Configuration
         </h3>
         <p className="text-xs text-[var(--muted)] mt-1.5 leading-relaxed max-w-3xl">
-          Central hospital identity — name, logo, contact and location. This is the single
+          Central hospital identity â€” name, logo, contact and location. This is the single
           source used across the system; it is not duplicated elsewhere.
         </p>
       </div>
@@ -304,8 +304,8 @@ export function HospitalInformationView() {
           <div>
             <h4 className="text-sm font-extrabold text-[var(--text)]">Hospital Information</h4>
             <p className="text-xs text-[var(--muted)]">
-              {loading ? "Loading…" : `${settings.length} of ${HOSPITAL_FIELDS.length} field(s) saved`}
-              {!loading && pendingCount > 0 && ` • ${pendingCount} unsaved`}
+              {loading ? "Loadingâ€¦" : `${settings.length} of ${HOSPITAL_FIELDS.length} field(s) saved`}
+              {!loading && pendingCount > 0 && ` â€¢ ${pendingCount} unsaved`}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -352,7 +352,7 @@ export function HospitalInformationView() {
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--primary)]" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
             {HOSPITAL_FIELDS.map((f) => (
               <div
                 key={f.key}

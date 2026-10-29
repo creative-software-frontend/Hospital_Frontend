@@ -160,7 +160,7 @@ export function PatientConfigurationView() {
           <div>
             <h4 className="text-sm font-extrabold text-[var(--text)]">Patient Registration Settings</h4>
             <p className="text-xs text-[var(--muted)]">
-              {loading ? "Loading…" : "Applies to this branch"}
+              {loading ? "Loadingâ€¦" : "Applies to this branch"}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -194,7 +194,7 @@ export function PatientConfigurationView() {
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--primary)]" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
             <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-3 space-y-1.5">
               <label className="block text-xs font-bold text-[var(--muted)]">Patient ID Prefix</label>
               <input
@@ -209,7 +209,7 @@ export function PatientConfigurationView() {
                 <span className="font-bold text-[var(--text)]">
                   {`${(data.patientIdPrefix || "PAT").replace(/[-\s]+$/, "") || "PAT"}-000001`}
                 </span>
-                . Letters, digits, hyphen and underscore; 2–8 characters.
+                . Letters, digits, hyphen and underscore; 2â€“8 characters.
               </p>
               {fieldErrors.patientIdPrefix && (
                 <p className="text-[11px] font-bold text-rose-500">{fieldErrors.patientIdPrefix}</p>
@@ -269,7 +269,7 @@ export function PatientConfigurationView() {
               <p className="text-[11px] text-[var(--muted)]">
                 {data.duplicateDetection
                   ? "Refuses a repeated national ID, phone or email; a repeated name and date of birth asks for confirmation."
-                  : "No comparison is made — every registration is accepted as given."}
+                  : "No comparison is made â€” every registration is accepted as given."}
               </p>
               {fieldErrors.duplicateDetection && (
                 <p className="text-[11px] font-bold text-rose-500">{fieldErrors.duplicateDetection}</p>

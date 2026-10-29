@@ -15,7 +15,7 @@ import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/To
 
 const GENERAL_GROUP = "general";
 
-// Locale & formatting keys belong to Settings → Localization (single source). If legacy
+// Locale & formatting keys belong to Settings â†’ Localization (single source). If legacy
 // rows still exist in the "general" group they must NOT appear here (no duplicated fields).
 const LOCALIZATION_OWNED_KEYS = new Set([
   "currency",
@@ -133,7 +133,7 @@ export function GeneralSettingsView() {
         </h3>
         <p className="text-xs text-[var(--muted)] mt-1.5 leading-relaxed max-w-3xl">
           Live from the backend: system name, version and maintenance mode. Locale,
-          formats and currency are managed in Settings → Localization.
+          formats and currency are managed in Settings â†’ Localization.
         </p>
       </div>
 
@@ -142,7 +142,7 @@ export function GeneralSettingsView() {
           <div>
             <h4 className="text-sm font-extrabold text-[var(--text)]">Application Preferences</h4>
             <p className="text-xs text-[var(--muted)]">
-              {loading ? "Loading…" : `${settings.length} setting(s)`}
+              {loading ? "Loadingâ€¦" : `${settings.length} setting(s)`}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -178,7 +178,7 @@ export function GeneralSettingsView() {
         ) : ordered.length === 0 ? (
           <p className="text-sm text-[var(--muted)] py-8 text-center">No general settings found.</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
             {ordered.map((s) => {
               const isBool = s.dataType === "boolean";
               const label = SETTING_LABELS[s.settingKey] ?? s.settingKey;
@@ -215,7 +215,7 @@ export function GeneralSettingsView() {
                     >
                       {SELECT_OPTIONS[s.settingKey].some((o) => o.value === (form[s.settingKey] ?? "")) ? null : (
                         <option value={form[s.settingKey] ?? ""}>
-                          {form[s.settingKey] ?? "Select…"}
+                          {form[s.settingKey] ?? "Selectâ€¦"}
                         </option>
                       )}
                       {SELECT_OPTIONS[s.settingKey].map((o) => (

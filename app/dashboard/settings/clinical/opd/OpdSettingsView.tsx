@@ -141,7 +141,7 @@ export function OpdSettingsView() {
           <div>
             <h4 className="text-sm font-extrabold text-[var(--text)]">Outpatient Workflow</h4>
             <p className="text-xs text-[var(--muted)]">
-              {loading ? "Loading…" : "Applies to this branch"}
+              {loading ? "Loadingâ€¦" : "Applies to this branch"}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -175,7 +175,7 @@ export function OpdSettingsView() {
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--primary)]" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
             <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-3 space-y-1.5">
               <label className="block text-xs font-bold text-[var(--muted)]">Registration Fee ({currency.currencySymbol})</label>
               {money(data.registrationFee, (v) => patch({ registrationFee: v }))}

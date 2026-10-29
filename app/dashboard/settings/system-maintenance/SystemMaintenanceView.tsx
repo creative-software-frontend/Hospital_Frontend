@@ -34,7 +34,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 }
 
 function formatUptime(seconds?: number) {
-  if (!seconds) return "—";
+  if (!seconds) return "â€”";
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
@@ -152,7 +152,7 @@ export function SystemMaintenanceView() {
   };
 
   const systemStatus = !data
-    ? "—"
+    ? "â€”"
     : data.maintenanceMode
       ? "Maintenance Mode"
       : data.status === "active"
@@ -213,7 +213,7 @@ export function SystemMaintenanceView() {
             <StatCard label="Last Maintenance" value={formatDateTime(lastMaintenance)} />
             <StatCard
               label="Database Health"
-              value={data.dbHealth ?? "—"}
+              value={data.dbHealth ?? "â€”"}
               tone={data.dbHealth === "Optimal" ? "good" : "bad"}
             />
             <StatCard
@@ -231,8 +231,8 @@ export function SystemMaintenanceView() {
           <h4 className="text-sm font-extrabold text-[var(--text)]">Maintenance Tools</h4>
           <p className="text-xs text-[var(--muted)]">
             {data
-              ? `Version ${data.systemVersion ?? "—"} · Last update ${formatDateTime(data.lastUpdate)}`
-              : "Loading…"}
+              ? `Version ${data.systemVersion ?? "â€”"} Â· Last update ${formatDateTime(data.lastUpdate)}`
+              : "Loadingâ€¦"}
           </p>
         </div>
 
@@ -242,7 +242,7 @@ export function SystemMaintenanceView() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
               <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-3">
                 <div className="flex items-center justify-between">
                   <div>

@@ -238,9 +238,9 @@ const [clearingAll, setClearingAll] = useState(false);
       {overview?.mysqldumpAvailable && (
         <p className="text-xs text-[var(--muted)]">
           Dumping with <span className="font-mono">{overview.mysqldumpBinary}</span>
-          {overview.mysqldumpVersion ? ` — ${overview.mysqldumpVersion}` : ""}
-          {" · "}Saving to <span className="font-mono">{overview.storageDir}</span>
-          {" · "}
+          {overview.mysqldumpVersion ? ` â€” ${overview.mysqldumpVersion}` : ""}
+          {" Â· "}Saving to <span className="font-mono">{overview.storageDir}</span>
+          {" Â· "}
           {overview.nextScheduledRunAt
             ? `Next automatic backup: ${formatDateTime(overview.nextScheduledRunAt)}`
             : "Automatic backups are currently off"}
@@ -314,7 +314,7 @@ const [clearingAll, setClearingAll] = useState(false);
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
               <div>
                 <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Backup Type</label>
                 <select
@@ -353,7 +353,7 @@ const [clearingAll, setClearingAll] = useState(false);
               </div>
               <div>
                 <label className="block text-xs font-semibold text-[var(--muted)] mb-1">
-                  Retention (days) — {data.retentionDays} day(s)
+                  Retention (days) â€” {data.retentionDays} day(s)
                 </label>
                 <input
                   type="number"
@@ -387,7 +387,7 @@ const [clearingAll, setClearingAll] = useState(false);
       <div className="card p-5 rounded-2xl border border-[var(--border)] shadow-sm space-y-4">
         <div>
           <h4 className="text-sm font-extrabold text-[var(--text)]">Backup History</h4>
-          <p className="text-xs text-[var(--muted)]">{loading ? "Loading…" : `${logs.length} recorded backup(s)`}</p>
+          <p className="text-xs text-[var(--muted)]">{loading ? "Loadingâ€¦" : `${logs.length} recorded backup(s)`}</p>
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
@@ -411,10 +411,10 @@ const [clearingAll, setClearingAll] = useState(false);
                   <tr key={log.id} className="hover:bg-[var(--primary-soft)]/10 transition-colors">
                     <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">{formatDateTime(log.startedAt)}</td>
                     <td className="text-[12px] font-bold text-[var(--text)] px-4 py-3 border-b border-[var(--border)] capitalize">{BACKUP_TYPE_LABELS[log.backupType]}</td>
-                    <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)] font-mono">{log.fileName ?? "—"}</td>
+                    <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)] font-mono">{log.fileName ?? "â€”"}</td>
                     <td className="text-[12px] text-[var(--text)] px-4 py-3 border-b border-[var(--border)] whitespace-nowrap">{formatBytes(log.fileSize)}</td>
                     <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)] font-mono text-[11px] break-all max-w-[220px]">
-                      {log.storageLocation ?? "—"}
+                      {log.storageLocation ?? "â€”"}
                     </td>
                     <td className="px-4 py-3 border-b border-[var(--border)]">
                       <span className={`inline-block text-[10px] font-bold capitalize px-2 py-0.5 rounded-md border ${LOG_STATUS_STYLES[log.status]}`}>{log.status}</span>
