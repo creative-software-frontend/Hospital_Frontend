@@ -222,6 +222,46 @@ describe("patient service — create", () => {
     expect(result.id).toBe(12);
   });
 
+  it("skips the required-demographic rules for emergency intake", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce({
+      phoneRequired: true,
+      emailRequired: true,
+      whatsappRequired: true,
+    });
+    (mockPrisma.codeSequence.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({ nextNumber: 4 });
+    (mockPrisma.patient.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 13,
+      branchId: 1,
+      patientCode: "PAT-000004",
+    });
+
+    const result = await patientService.createPatient(
+      actor,
+      { name: "Unknown Male ~40" },
+      { forEmergency: true },
+    );
+
+    expect(result.id).toBe(13);
+  });
+
+  it("skips the guardian rule for emergency intake", async () => {
+    mockPrisma.patientSetting.findFirst.mockResolvedValueOnce({ requireGuardian: "ALWAYS" });
+    (mockPrisma.codeSequence.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({ nextNumber: 5 });
+    (mockPrisma.patient.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 14,
+      branchId: 1,
+      patientCode: "PAT-000005",
+    });
+
+    const result = await patientService.createPatient(
+      actor,
+      { name: "Unknown Child" },
+      { forEmergency: true },
+    );
+
+    expect(result.id).toBe(14);
+  });
+
   it("maps a unique-index violation on the generated code to ConflictError", async () => {
     (mockPrisma.codeSequence.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({ nextNumber: 1 });
     (mockPrisma.patient.create as ReturnType<typeof vi.fn>).mockRejectedValue(

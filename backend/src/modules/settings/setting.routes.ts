@@ -13,7 +13,6 @@ import {
   updateAccountingSettingSchema,
   updateBackupSettingSchema,
   updateBillingSettingSchema,
-  updateEmergencySettingSchema,
   updateHrSettingSchema,
   updateIntegrationSchema,
   updateInventorySettingSchema,
@@ -122,20 +121,6 @@ router.patch(
   validate({ body: updateIpdSettingSchema }),
   requirePermission("ipdSetting", "update"),
   settingController.updateIpdSetting,
-);
-
-// Emergency settings
-router.get(
-  "/emergency",
-  requirePermission("emergencySetting", "read"),
-  settingController.getEmergencySetting,
-);
-
-router.patch(
-  "/emergency",
-  validate({ body: updateEmergencySettingSchema }),
-  requirePermission("emergencySetting", "update"),
-  settingController.updateEmergencySetting,
 );
 
 // Prescription settings

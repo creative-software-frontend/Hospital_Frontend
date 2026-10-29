@@ -244,23 +244,6 @@ export const settingsData: Record<string, SettingsPageData> = {
     ],
   },
 
-  "clinical-emergency": {
-    title: "Emergency Settings",
-    description: "Configure triage levels and emergency patient routing.",
-    blocks: [
-      {
-        type: "list",
-        items: [
-          "Triage Level 1 – Resuscitation (red)",
-          "Triage Level 2 – Emergency (orange)",
-          "Triage Level 3 – Urgent (yellow)",
-          "Triage Level 4 – Less Urgent (green)",
-          "Critical patient auto-priority assignment",
-        ],
-      },
-    ],
-  },
-
   "clinical-prescription": {
     title: "Prescription Settings",
     description: "Configure digital prescription templates and doctor signature.",

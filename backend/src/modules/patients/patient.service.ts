@@ -238,22 +238,6 @@ export async function calculateIpdFees(branchId: number): Promise<{
 }
 
 /**
- * Calculate Emergency fees for a branch based on settings.
- */
-export async function calculateEmergencyFees(branchId: number): Promise<{
-  registrationFee: Prisma.Decimal | null;
-  consultationFee: Prisma.Decimal | null;
-  serviceCharge: Prisma.Decimal | null;
-}> {
-  const config = await settingsConfig.loadEmergencyConfig(branchId);
-  return {
-    registrationFee: config.registrationFee,
-    consultationFee: config.consultationFee,
-    serviceCharge: config.serviceCharge,
-  };
-}
-
-/**
  * The registration settings the create form needs to render itself.
  *
  * The Patient Configuration screen itself is gated on `patientSetting:read`,
@@ -290,11 +274,17 @@ export async function getPatientRegistrationConfig(
  * decides which contact channels must be present, so the values submitted for
  * this branch are validated here (after the merge on update, so clearing a
  * previously stored value is rejected too).
+ *
+ * `relaxed` is set for emergency intake (`forEmergency`), where the patient must
+ * be registered before their contact details are known. `createPatient` is the
+ * only caller, so the flag never leaks into the registration form.
  */
 async function assertRequiredContactChannels(
   config: EffectivePatientConfig,
   values: { phone?: string | null; email?: string | null; whatsapp?: string | null },
+  relaxed = false,
 ): Promise<void> {
+  if (relaxed) return;
   // Each rejection names its field via `details` so the registration form can
   // mark the offending input rather than showing a bare banner.
   if (config.whatsappRequired && !values.whatsapp?.trim()) {
@@ -324,12 +314,17 @@ async function assertRequiredContactChannels(
  *
  * The contact must be reachable, so a row with a name but no phone does not
  * satisfy the requirement.
+ *
+ * `relaxed` (emergency intake) skips the rule entirely: treatment starts before
+ * consent paperwork, and the queue records the still-missing details.
  */
 function assertGuardianRequirement(
   config: EffectivePatientConfig,
   patient: { dateOfBirth?: Date | null },
   contacts: Array<{ name?: string | null; phone?: string | null }> | undefined,
+  relaxed = false,
 ): void {
+  if (relaxed) return;
   if (config.requireGuardian === "NEVER") return;
 
   if (config.requireGuardian === "MINORS_ONLY" && !isMinor(patient.dateOfBirth)) {
@@ -553,9 +548,24 @@ export type CreatedPatient = {
   duplicateWarnings: DuplicateMatch[];
 };
 
+/**
+ * Internal switches for a caller that is not the registration form.
+ *
+ * `forEmergency` exists because emergency intake is deliberately incomplete: the
+ * door clerk may only have a name, and the patient must still be treated. The
+ * branch's required-demographic (`Phone`/`WhatsApp`/`Email`) and guardian rules
+ * are therefore skipped — they are exactly the fields the emergency queue later
+ * flags as missing. Auto-generated codes, duplicate detection and the audit
+ * trail still apply, so the record is a normal patient row.
+ */
+export interface CreatePatientOptions {
+  forEmergency?: boolean;
+}
+
 export async function createPatient(
   actor: AuthUser,
   input: CreatePatientInput,
+  options: CreatePatientOptions = {},
 ): Promise<CreatedPatient> {
   // Normal users are always bound to their own branch; SUPER_ADMIN may choose.
   let targetBranchId: number;
@@ -595,9 +605,14 @@ export async function createPatient(
     phone: input.phone,
     email: input.email,
     whatsapp: input.whatsapp,
-  });
+  }, options.forEmergency === true);
 
-  assertGuardianRequirement(config, { dateOfBirth: input.dateOfBirth }, input.contacts);
+  assertGuardianRequirement(
+    config,
+    { dateOfBirth: input.dateOfBirth },
+    input.contacts,
+    options.forEmergency === true,
+  );
 
   const duplicateWarnings = await assertNotDuplicate(
     config,

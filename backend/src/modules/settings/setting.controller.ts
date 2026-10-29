@@ -65,16 +65,6 @@ export const updateIpdSetting = asyncHandler(async (req: Request, res: Response)
   success(res, { ipdSetting });
 });
 
-export const getEmergencySetting = asyncHandler(async (req: Request, res: Response) => {
-  const emergencySetting = await settingService.getEmergencySetting(req.user!);
-  success(res, { emergencySetting });
-});
-
-export const updateEmergencySetting = asyncHandler(async (req: Request, res: Response) => {
-  const emergencySetting = await settingService.updateEmergencySetting(req.user!, req.body);
-  success(res, { emergencySetting });
-});
-
 export const getPrescriptionSetting = asyncHandler(async (req: Request, res: Response) => {
   const prescriptionSetting = await settingService.getPrescriptionSetting(req.user!);
   success(res, { prescriptionSetting });

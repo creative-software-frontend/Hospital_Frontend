@@ -1159,6 +1159,90 @@ export const patientDocumentApi = {
 };
 
 /* ---------------------------------------------------------------------------
+ * Emergency desk (fast intake + "needs completing" queue)
+ * ------------------------------------------------------------------------- */
+
+export type EmergencyPriority = "CRITICAL" | "URGENT" | "NON_URGENT";
+
+export interface EmergencyPatientRef {
+  id: number;
+  patientCode: string;
+  name: string;
+  gender: Gender | null;
+  dateOfBirth: string | null;
+  phone: string | null;
+  address: string | null;
+  /** Human labels of the demographics still missing (empty = complete). */
+  missing: string[];
+}
+
+export interface EmergencyCaseRecord {
+  id: number;
+  caseNumber: string;
+  priority: EmergencyPriority;
+  chiefComplaint: string | null;
+  unidentified: boolean;
+  arrivedAt: string;
+  createdAt: string;
+  patient: EmergencyPatientRef;
+}
+
+export interface EmergencySummary {
+  /** The calendar day the summary covers (`YYYY-MM-DD`). */
+  date: string;
+  total: number;
+  /** Cases whose patient still misses a core demographic. */
+  needsInfo: number;
+}
+
+export interface EmergencyCaseListResult {
+  data: EmergencyCaseRecord[];
+  pagination: PaginationMeta;
+  summary: EmergencySummary;
+}
+
+export interface EmergencyCaseListQuery {
+  date?: string;
+  /** Only cases whose patient is still incomplete. */
+  incomplete?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+export interface CreateEmergencyPatientInput {
+  name: string;
+  gender?: Gender;
+  /** Years, converted to an estimated 1 January date of birth. */
+  approxAge?: number;
+}
+
+export interface CreateEmergencyCaseInput {
+  patient: CreateEmergencyPatientInput;
+  /** Defaults to `URGENT` server-side; triage can raise it later. */
+  priority?: EmergencyPriority;
+  chiefComplaint?: string;
+  unidentified?: boolean;
+}
+
+export interface RegisterEmergencyResult {
+  emergencyCase: EmergencyCaseRecord;
+  duplicateWarnings: DuplicateMatch[];
+}
+
+export const emergencyApi = {
+  list: (query: EmergencyCaseListQuery = {}) =>
+    rawRequest<EmergencyCaseListResult>(
+      `/emergency/cases${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+
+  register: (input: CreateEmergencyCaseInput) =>
+    request<RegisterEmergencyResult>("/emergency/cases", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+};
+
+/* ---------------------------------------------------------------------------
  * Branches (Settings → Branch Settings)
  * ------------------------------------------------------------------------- */
 
@@ -1359,24 +1443,6 @@ export type UpdateIpdSettingInput = {
   bedCharge?: string | null;
   nursingCharge?: string | null;
   serviceCharge?: string | null;
-  status?: "active" | "inactive";
-};
-
-export interface EmergencySetting {
-  id: number;
-  branchId: number;
-  registrationFee: string | null;
-  consultationFee: string | null;
-  serviceCharge: string | null;
-  triageEnabled: boolean;
-  status: "active" | "inactive";
-}
-
-export type UpdateEmergencySettingInput = {
-  registrationFee?: string | null;
-  consultationFee?: string | null;
-  serviceCharge?: string | null;
-  triageEnabled?: boolean;
   status?: "active" | "inactive";
 };
 
@@ -2075,14 +2141,6 @@ export const settingsApi = {
     get: () => request<{ ipdSetting: IpdSetting }>("/settings/ipd"),
     update: (input: UpdateIpdSettingInput) =>
       request<{ ipdSetting: IpdSetting }>("/settings/ipd", {
-        method: "PATCH",
-        body: JSON.stringify(input),
-      }),
-  },
-  emergency: {
-    get: () => request<{ emergencySetting: EmergencySetting }>("/settings/emergency"),
-    update: (input: UpdateEmergencySettingInput) =>
-      request<{ emergencySetting: EmergencySetting }>("/settings/emergency", {
         method: "PATCH",
         body: JSON.stringify(input),
       }),

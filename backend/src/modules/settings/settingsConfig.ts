@@ -24,14 +24,6 @@ export type EffectiveIpdConfig = {
   serviceCharge: Prisma.Decimal | null;
 };
 
-export type EffectiveEmergencyConfig = {
-  exists: boolean;
-  registrationFee: Prisma.Decimal | null;
-  consultationFee: Prisma.Decimal | null;
-  serviceCharge: Prisma.Decimal | null;
-  triageEnabled: boolean;
-};
-
 export type EffectivePharmacyConfig = {
   exists: boolean;
   taxPercent: Prisma.Decimal | null;
@@ -122,13 +114,6 @@ const DEFAULT_IPD_CONFIG: Omit<EffectiveIpdConfig, "exists"> = {
   bedCharge: null,
   nursingCharge: null,
   serviceCharge: null,
-};
-
-const DEFAULT_EMERGENCY_CONFIG: Omit<EffectiveEmergencyConfig, "exists"> = {
-  registrationFee: null,
-  consultationFee: null,
-  serviceCharge: null,
-  triageEnabled: true,
 };
 
 const DEFAULT_PHARMACY_CONFIG: Omit<EffectivePharmacyConfig, "exists"> = {
@@ -244,27 +229,6 @@ export async function loadIpdConfig(branchId: number): Promise<EffectiveIpdConfi
     bedCharge: s.bedCharge,
     nursingCharge: s.nursingCharge,
     serviceCharge: s.serviceCharge,
-  };
-}
-
-export async function loadEmergencyConfig(branchId: number): Promise<EffectiveEmergencyConfig> {
-  const s = await prisma.emergencySetting.findFirst({
-    where: { branchId },
-    orderBy: { id: "asc" },
-    select: {
-      registrationFee: true,
-      consultationFee: true,
-      serviceCharge: true,
-      triageEnabled: true,
-    },
-  });
-  if (!s) return { exists: false, ...DEFAULT_EMERGENCY_CONFIG };
-  return {
-    exists: true,
-    registrationFee: s.registrationFee,
-    consultationFee: s.consultationFee,
-    serviceCharge: s.serviceCharge,
-    triageEnabled: s.triageEnabled ?? DEFAULT_EMERGENCY_CONFIG.triageEnabled,
   };
 }
 
@@ -481,21 +445,6 @@ export async function calculateIpdFees(branchId: number): Promise<IpdFees> {
   };
 }
 
-export interface EmergencyFees {
-  registrationFee: Prisma.Decimal | null;
-  consultationFee: Prisma.Decimal | null;
-  serviceCharge: Prisma.Decimal | null;
-}
-
-export async function calculateEmergencyFees(branchId: number): Promise<EmergencyFees> {
-  const config = await loadEmergencyConfig(branchId);
-  return {
-    registrationFee: config.registrationFee,
-    consultationFee: config.consultationFee,
-    serviceCharge: config.serviceCharge,
-  };
-}
-
 export interface BillingCalculationInput {
   subtotal: Prisma.Decimal;
   discountAmount?: Prisma.Decimal;
@@ -607,7 +556,6 @@ export async function generateNextReceiptNumber(
 export type AllEffectiveConfigs = {
   opd: EffectiveOpdConfig;
   ipd: EffectiveIpdConfig;
-  emergency: EffectiveEmergencyConfig;
   pharmacy: EffectivePharmacyConfig;
   lab: EffectiveLabConfig;
   billing: EffectiveBillingConfig;
@@ -621,7 +569,6 @@ export async function loadAllConfigs(branchId: number): Promise<AllEffectiveConf
   const [
     opd,
     ipd,
-    emergency,
     pharmacy,
     lab,
     billing,
@@ -632,7 +579,6 @@ export async function loadAllConfigs(branchId: number): Promise<AllEffectiveConf
   ] = await Promise.all([
     loadOpdConfig(branchId),
     loadIpdConfig(branchId),
-    loadEmergencyConfig(branchId),
     loadPharmacyConfig(branchId),
     loadLabConfig(branchId),
     loadBillingConfig(branchId),
@@ -641,5 +587,5 @@ export async function loadAllConfigs(branchId: number): Promise<AllEffectiveConf
     loadAccountingConfig(branchId),
     loadNotificationConfig(branchId),
   ]);
-  return { opd, ipd, emergency, pharmacy, lab, billing, hr, inventory, accounting, notification };
+  return { opd, ipd, pharmacy, lab, billing, hr, inventory, accounting, notification };
 }

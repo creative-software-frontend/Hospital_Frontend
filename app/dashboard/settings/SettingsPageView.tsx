@@ -12,7 +12,6 @@ import { ServicesView } from "@/app/dashboard/settings/services/ServicesView";
 import { PatientConfigurationView } from "@/app/dashboard/settings/patient/PatientConfigurationView";
 import { OpdSettingsView } from "@/app/dashboard/settings/clinical/opd/OpdSettingsView";
 import { IpdSettingsView } from "@/app/dashboard/settings/clinical/ipd/IpdSettingsView";
-import { EmergencySettingsView } from "@/app/dashboard/settings/clinical/emergency/EmergencySettingsView";
 import { PrescriptionSettingsView } from "@/app/dashboard/settings/clinical/prescription/PrescriptionSettingsView";
 import { PharmacySettingsView } from "@/app/dashboard/settings/pharmacy/PharmacySettingsView";
 import { LabSettingsView } from "@/app/dashboard/settings/laboratory/LabSettingsView";
@@ -78,10 +77,6 @@ export const SettingsPageView = ({
 
   if (pageKey === "clinical-ipd") {
     return <IpdSettingsView />;
-  }
-
-  if (pageKey === "clinical-emergency") {
-    return <EmergencySettingsView />;
   }
 
   if (pageKey === "clinical-prescription") {

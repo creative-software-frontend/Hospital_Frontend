@@ -96,6 +96,10 @@ const PERMISSIONS: PermissionDef[] = [
   { module: "appointment", action: "create", description: "Create appointments" },
   { module: "appointment", action: "update", description: "Update appointments" },
 
+  // Emergency desk
+  { module: "emergency", action: "read", description: "View emergency registrations" },
+  { module: "emergency", action: "create", description: "Register emergency patients" },
+
   // Clinical
   { module: "medicalRecord", action: "read", description: "View medical records" },
   { module: "medicalRecord", action: "create", description: "Create medical records" },
@@ -175,8 +179,6 @@ const PERMISSIONS: PermissionDef[] = [
   { module: "opdSetting", action: "update", description: "Update OPD settings" },
   { module: "ipdSetting", action: "read", description: "View IPD settings" },
   { module: "ipdSetting", action: "update", description: "Update IPD settings" },
-  { module: "emergencySetting", action: "read", description: "View emergency settings" },
-  { module: "emergencySetting", action: "update", description: "Update emergency settings" },
   { module: "prescriptionSetting", action: "read", description: "View prescription settings" },
   { module: "prescriptionSetting", action: "update", description: "Update prescription settings" },
 
@@ -247,6 +249,7 @@ const MATRIX: Record<RoleKey, string[]> = {
     "user:read", "user:create", "user:update", "role:read", "permission:read", "audit:read",
     "patient:read", "patient:create", "patient:update", "patient:delete",
     "appointment:read", "appointment:create", "appointment:update",
+    "emergency:read", "emergency:create",
     "branch:read", "branch:update", "systemSetting:read", "systemSetting:update", "securitySetting:read",
     "department:read", "department:create", "department:update",
     "doctor:read", "doctor:create", "doctor:update",
@@ -256,7 +259,6 @@ const MATRIX: Record<RoleKey, string[]> = {
     "patientSetting:read", "patientSetting:update",
     "opdSetting:read", "opdSetting:update",
     "ipdSetting:read", "ipdSetting:update",
-    "emergencySetting:read", "emergencySetting:update",
     "prescriptionSetting:read", "prescriptionSetting:update",
     "pharmacySetting:read", "pharmacySetting:update",
     "labSetting:read", "labSetting:update",
@@ -282,6 +284,7 @@ const MATRIX: Record<RoleKey, string[]> = {
     "admission:read", "bed:read", "labOrder:read", "labOrder:update",
     "imaging:read", "imaging:create", "imaging:update",
     "department:read", "doctor:read", "service:read",
+    "emergency:read",
   ],
   PHARMACIST: [
     "localizationSetting:read",
@@ -303,12 +306,14 @@ const MATRIX: Record<RoleKey, string[]> = {
     "localizationSetting:read",
     "auth:read", "patient:read", "patient:create", "patient:update",
     "appointment:read", "appointment:create", "appointment:update", "bed:read",
+    "emergency:read", "emergency:create",
   ],
   NURSE: [
     "localizationSetting:read",
     "auth:read", "patient:read", "admission:read", "admission:update",
     "bed:read", "bed:update", "medicalRecord:read", "medicalRecord:create",
     "nurse:read",
+    "emergency:read", "emergency:create",
   ],
   EMPLOYEE: ["localizationSetting:read", "auth:read", "employee:read"],
 };
@@ -642,23 +647,6 @@ async function seed() {
     });
   }
   console.log("IPD settings ready.");
-
-  const existingEmergency = await prisma.emergencySetting.findFirst({
-    where: { branchId: branch.id },
-  });
-  if (!existingEmergency) {
-    await prisma.emergencySetting.create({
-      data: {
-        branchId: branch.id,
-        registrationFee: "150",
-        consultationFee: "800",
-        serviceCharge: "0",
-        triageEnabled: true,
-        status: "active",
-      },
-    });
-  }
-  console.log("Emergency settings ready.");
 
   const existingPrescription = await prisma.prescriptionSetting.findFirst({
     where: { branchId: branch.id },

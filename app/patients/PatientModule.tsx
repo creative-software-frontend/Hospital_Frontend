@@ -30,6 +30,7 @@ import { PatientHistoryPage } from "@/app/patients/PatientHistoryPage";
 import { TreatmentRecordsPage } from "@/app/patients/TreatmentRecordsPage";
 import { MedicalDocumentsPage } from "@/app/patients/MedicalDocumentsPage";
 import { PatientVisitHistoryPage } from "@/app/patients/PatientVisitHistoryPage";
+import { EmergencyRegistrationPage } from "@/app/patients/EmergencyRegistrationPage";
 import { ConfirmDialog } from "@/app/patients/ConfirmDialog";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
 
@@ -261,6 +262,24 @@ export function PatientModule({
         </button>
 
         <PatientVisitHistoryPage />
+
+        <ToastViewport toasts={toasts} onDismiss={dismissToast} />
+      </div>
+    );
+  }
+
+  // Sub-feature "Emergency Patient Registration" — fast intake + completion queue.
+  if (pageKey === "emergency-registration") {
+    return (
+      <div className="space-y-4">
+        <button
+          onClick={() => onNavigate?.(null)}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] hover:text-[var(--primary-dark)] transition-colors cursor-pointer"
+        >
+          <span>← Back to Patients</span>
+        </button>
+
+        <EmergencyRegistrationPage />
 
         <ToastViewport toasts={toasts} onDismiss={dismissToast} />
       </div>

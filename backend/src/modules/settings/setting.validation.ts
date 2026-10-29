@@ -176,14 +176,6 @@ export const updateIpdSettingSchema = z.object({
   status: z.enum(SETTING_STATUS_VALUES).optional(),
 });
 
-export const updateEmergencySettingSchema = z.object({
-  registrationFee: optionalMoney,
-  consultationFee: optionalMoney,
-  serviceCharge: optionalMoney,
-  triageEnabled: z.boolean().optional(),
-  status: z.enum(SETTING_STATUS_VALUES).optional(),
-});
-
 export const updatePrescriptionSettingSchema = z.object({
   showPatientHistory: z.boolean().optional(),
   showDiagnosis: z.boolean().optional(),
@@ -197,7 +189,6 @@ export const updatePrescriptionSettingSchema = z.object({
 
 export type UpdateOpdSettingInput = z.infer<typeof updateOpdSettingSchema>;
 export type UpdateIpdSettingInput = z.infer<typeof updateIpdSettingSchema>;
-export type UpdateEmergencySettingInput = z.infer<typeof updateEmergencySettingSchema>;
 export type UpdatePrescriptionSettingInput = z.infer<typeof updatePrescriptionSettingSchema>;
 
 /* Pharmacy settings (Settings → Pharmacy Settings) ------------------------- */

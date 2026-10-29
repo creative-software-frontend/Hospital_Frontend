@@ -45,7 +45,6 @@ import type {
   RevealAssetPathInput,
   UpdateAccountingSettingInput,
   UpdateBillingSettingInput,
-  UpdateEmergencySettingInput,
   UpdateHrSettingInput,
   UpdateInventorySettingInput,
   UpdateIntegrationInput,
@@ -514,44 +513,6 @@ export async function updateIpdSetting(actor: AuthUser, input: UpdateIpdSettingI
     tableName: "IpdSetting",
     recordId: String(current.id),
     oldValues: { admissionFee: current.admissionFee, bedCharge: current.bedCharge },
-    newValues: { ...input },
-    user: actor,
-    branchId: actor.branchId,
-  });
-  return updated;
-}
-
-export async function getEmergencySetting(actor: AuthUser) {
-  return findOrCreateBranchSetting({
-    findFirst: () =>
-      prisma.emergencySetting.findFirst({ where: { branchId: actor.branchId }, orderBy: { id: "asc" } }),
-    create: () =>
-      prisma.emergencySetting.create({
-        data: {
-          branchId: actor.branchId,
-          registrationFee: null,
-          consultationFee: null,
-          serviceCharge: null,
-          triageEnabled: true,
-          status: "active",
-        },
-      }),
-  });
-}
-
-export async function updateEmergencySetting(actor: AuthUser, input: UpdateEmergencySettingInput) {
-  const current = await getEmergencySetting(actor);
-  const updated = await prisma.emergencySetting.update({ where: { id: current.id }, data: { ...input } });
-  await writeAuditLog({
-    module: "emergencySetting",
-    action: "update",
-    tableName: "EmergencySetting",
-    recordId: String(current.id),
-    oldValues: {
-      registrationFee: current.registrationFee,
-      consultationFee: current.consultationFee,
-      triageEnabled: current.triageEnabled,
-    },
     newValues: { ...input },
     user: actor,
     branchId: actor.branchId,

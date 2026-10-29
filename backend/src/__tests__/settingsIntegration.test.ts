@@ -3,11 +3,9 @@ import { Prisma } from "@prisma/client";
 import {
   loadOpdConfig,
   loadIpdConfig,
-  loadEmergencyConfig,
   loadBillingConfig,
   calculateOpdFees,
   calculateIpdFees,
-  calculateEmergencyFees,
   calculateInvoiceTotals,
 } from "../modules/settings/settingsConfig";
 
@@ -15,7 +13,6 @@ vi.mock("../lib/prisma", () => {
   const prisma = {
     opdSetting: { findFirst: vi.fn() },
     ipdSetting: { findFirst: vi.fn() },
-    emergencySetting: { findFirst: vi.fn() },
     billingSetting: { findFirst: vi.fn() },
     medicalRecord: { create: vi.fn() },
     admission: { create: vi.fn() },
@@ -169,21 +166,6 @@ describe("Settings Integration across OPD, IPD, Emergency, and Billing", () => {
       });
 
       expect(result.appliedFees.admissionFee).toBe("1500.00");
-    });
-  });
-
-  describe("Emergency Fee Calculation & Settings Integration", () => {
-    it("calculates Emergency fees", async () => {
-      (mockPrisma.emergencySetting.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
-        branchId: 1,
-        registrationFee: new Prisma.Decimal(1000),
-        consultationFee: new Prisma.Decimal(500),
-        serviceCharge: new Prisma.Decimal(200),
-      });
-
-      const fees = await calculateEmergencyFees(1);
-      expect(fees.registrationFee?.toNumber()).toBe(1000);
-      expect(fees.consultationFee?.toNumber()).toBe(500);
     });
   });
 

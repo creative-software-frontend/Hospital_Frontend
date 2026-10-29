@@ -37,7 +37,7 @@ export const keyFeatures: Feature[] = [
             { label: "Previous Treatment Records", icon: FiFileText, id: "treatment-records" },
             { label: "Medical Documents Upload", icon: FiBookOpen, id: "medical-documents" },
             { label: "Patient Visit History", icon: FiClock, id: "patient-visit-history" },
-            { label: "Emergency Patient Registration", icon: FiAlertCircle },
+            { label: "Emergency Patient Registration", icon: FiAlertCircle, id: "emergency-registration" },
         ]
     },
     {
@@ -331,7 +331,6 @@ export const keyFeatures: Feature[] = [
                 children: [
                     { id: "clinical-opd", label: "OPD", icon: FiPlusSquare },
                     { id: "clinical-ipd", label: "IPD", icon: FiHome },
-                    { id: "clinical-emergency", label: "Emergency", icon: FiAlertCircle },
                     { id: "clinical-prescription", label: "Prescription", icon: FiFileText },
                     { id: "clinical-diagnosis", label: "Diagnosis", icon: FiClipboard },
                 ],
