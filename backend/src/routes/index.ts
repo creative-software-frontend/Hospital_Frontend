@@ -21,6 +21,7 @@ import uploadRoutes from "../modules/uploads/upload.routes";
 import bedWardRoutes from "../modules/bedward/bedWard.routes";
 import bedBoardRoutes from "../modules/bedboard/bedBoard.routes";
 import emergencyRoutes from "../modules/emergency/emergency.routes";
+import chamberRoutes from "../modules/chambers/chamber.routes";
 import doctorScheduleRoutes from "../modules/doctor-schedules/doctor-schedule.routes";
 
 const router = Router();
@@ -48,6 +49,7 @@ router.use("/uploads", uploadRoutes);
 router.use("/bed-ward", bedWardRoutes);
 router.use("/bed-board", bedBoardRoutes);
 router.use("/emergency", emergencyRoutes);
+router.use("/chambers", chamberRoutes);
 router.use("/doctor-schedules", doctorScheduleRoutes);
 
 export default router;

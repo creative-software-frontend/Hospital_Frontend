@@ -12,6 +12,14 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - `app/data/features.ts`: "Doctor Schedule Management" now carries `id: "doctor-schedule"`. `app/doctors/DoctorModule.tsx` early-returns "← Back to Doctors" + `<DoctorSchedulePage />` for that pageKey.
 - Verified live (super-admin): selected a doctor, set Monday 08:00–17:00, saved → PUT 200; re-opened the page and Monday still showed 08:00; then cleared the schedule (PUT with empty slots) to restore the probe state. No console errors; `tsc` + `next build` green.
 
+## Memory: Doctor Management — Chamber Management page
+- User chose (via `question`): **build it** — no backend existed, so a new module was added.
+- Backend: `backend/src/modules/chambers/` (validation/service/controller/routes) registered at `/api/chambers`, reusing `doctor:read|create|update` permissions. New `Chamber` model (`id, branchId, name, code, location, description, doctorId?, status, deletedAt, timestamps`; unique `[branchId, code]`); migration `20261030120000_chamber_management` (applied). Endpoints: list/get/create/update/delete (soft delete). Branch-scoped; doctor must belong to the same branch; audit-logged.
+- `app/lib/api.ts`: `ChamberRecord`/`ChamberListQuery`/`CreateChamberInput`/`UpdateChamberInput` + `chamberApi` (`list/get/create/update/remove`), typed as the row directly (consistent with the doctor-schedule pattern).
+- `app/doctors/ChamberManagementPage.tsx`: list (Code/Name/Location/Assigned Doctor/Status/Actions) + search + pagination, Add/Edit modal (name, code, location, description, assigned doctor, status), delete with confirm, ToastViewport.
+- `app/data/features.ts`: "Chamber Management" now carries `id: "chamber-management"`. `app/doctors/DoctorModule.tsx` early-returns "← Back to Doctors" + `<ChamberManagementPage />`.
+- Verified live (super-admin): created "Probe Chamber" (PC-001) → POST 201, row appeared; deleted it → DELETE 200, empty state returned. No console errors; `tsc` + `next build` green.
+
 ## Memory: Doctor Management — Department Assignment page (doctor-centric inline table)
 - User chose (via `question`): **doctor-centric inline table** — every doctor row has a department dropdown, changing it saves instantly (no save button). The other offered shapes (department cards, two-pane) were rejected.
 - `app/data/features.ts`: sub-feature `id: 2` "Department Assignment" now carries `id: "department-assignment"`. Other doctor sub-items remain inert/listed.

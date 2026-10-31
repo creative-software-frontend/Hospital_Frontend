@@ -46,6 +46,7 @@ import { useCurrency } from "@/app/hooks/useCurrency";
 import { formatCurrency } from "@/app/lib/currency";
 import { DepartmentAssignmentPage } from "@/app/doctors/DepartmentAssignmentPage";
 import { DoctorSchedulePage } from "@/app/doctors/DoctorSchedulePage";
+import { ChamberManagementPage } from "@/app/doctors/ChamberManagementPage";
 
 const PAGE_SIZE = 10;
 
@@ -194,6 +195,21 @@ export function DoctorModule({
         </button>
 
         <DoctorSchedulePage />
+      </div>
+    );
+  }
+
+  if (pageKey === "chamber-management") {
+    return (
+      <div className="space-y-6">
+        <button
+          onClick={() => onNavigate?.(null)}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] hover:text-[var(--primary-dark)] transition-colors cursor-pointer"
+        >
+          <span>{"\u2190"} Back to Doctors</span>
+        </button>
+
+        <ChamberManagementPage />
       </div>
     );
   }

@@ -2664,6 +2664,65 @@ export interface CreateServiceInput {
 
 export type UpdateServiceInput = Partial<CreateServiceInput>;
 
+export interface ChamberRecord {
+  id: number;
+  branchId: number;
+  name: string;
+  code: string;
+  location: string | null;
+  description: string | null;
+  doctorId: number | null;
+  status: ActiveStatus;
+  deletedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  doctor?: { id: number; name: string; doctorCode: string } | null;
+}
+
+export interface ChamberListQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: ActiveStatus;
+  doctorId?: number;
+}
+
+export interface CreateChamberInput {
+  name: string;
+  code: string;
+  location?: string | null;
+  description?: string | null;
+  doctorId?: number | null;
+  status?: ActiveStatus;
+}
+
+export type UpdateChamberInput = Partial<Omit<CreateChamberInput, "code">>;
+
+export const chamberApi = {
+  list: (query: ChamberListQuery = {}) =>
+    rawRequest<ChamberListResult>(
+      `/chambers${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+  get: (id: number) => request<ChamberRecord>(`/chambers/${id}`),
+  create: (input: CreateChamberInput) =>
+    request<ChamberRecord>("/chambers", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  update: (id: number, input: UpdateChamberInput) =>
+    request<ChamberRecord>(`/chambers/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  remove: (id: number) =>
+    request<{ message: string }>(`/chambers/${id}`, { method: "DELETE" }),
+};
+
+export interface ChamberListResult {
+  data: ChamberRecord[];
+  pagination: PaginationMeta;
+}
+
 export const departmentApi = {
   list: (query: DepartmentListQuery = {}) =>
     rawRequest<DepartmentListResult>(

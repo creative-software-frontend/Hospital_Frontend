@@ -179,6 +179,7 @@ model Branch {
 
   users                  User[]
   departments            Department[]
+  chambers               Chamber[]
   doctors                Doctor[]
   nurses                 Nurse[]
   patients               Patient[]
@@ -563,6 +564,7 @@ model Doctor {
   branch         Branch?          @relation(fields: [branchId], references: [id])
   department     Department?      @relation(fields: [departmentId], references: [id])
   schedules      DoctorSchedule[]
+  chambers       Chamber[]
   appointments   Appointment[]
   admissions     Admission[]
   medicalRecords MedicalRecord[]
@@ -2275,4 +2277,25 @@ model CodeSequence {
   updatedAt  DateTime @updatedAt
 
   @@unique([entity, branchId])
+}
+
+model Chamber {
+  id          Int       @id @default(autoincrement())
+  branchId    Int
+  name        String
+  code        String
+  location    String?
+  description String?   @db.VarChar(500)
+  doctorId    Int?
+  status      String    @default("active")
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  branch Branch  @relation(fields: [branchId], references: [id])
+  doctor Doctor? @relation(fields: [doctorId], references: [id])
+
+  @@unique([branchId, code])
+  @@index([branchId])
+  @@index([doctorId])
 }
