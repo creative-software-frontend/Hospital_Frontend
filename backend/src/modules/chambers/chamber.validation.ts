@@ -27,7 +27,8 @@ export const listChambersQuerySchema = z.object({
 
 export const createChamberSchema = z.object({
   name: z.string().trim().min(1, "name is required").max(255),
-  code: z.string().trim().min(1, "code is required").max(32),
+  code: z.string().trim().min(1, "code is required").max(32).optional(),
+  branchId: z.coerce.number().int().positive().optional(),
   location: optionalString(255),
   description: optionalString(500),
   doctorId: z.coerce.number().int().positive().optional().nullable(),

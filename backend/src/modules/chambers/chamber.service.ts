@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { AuthorizationError, ConflictError, NotFoundError } from "../../errors/ApiError";
 import { writeAuditLog } from "../../utils/audit";
+import { generateBusinessCode, CODE_ENTITIES } from "../../utils/codeGenerator";
 import { parsePagination, buildPaginationMeta, type SortableField } from "../../utils/pagination";
 import type { AuthUser } from "../../types/auth";
 import type { CreateChamberInput, ListChambersQuery, UpdateChamberInput } from "./chamber.validation";
@@ -49,6 +50,7 @@ const CHAMBER_SELECT: Prisma.ChamberSelect = {
   deletedAt: true,
   createdAt: true,
   updatedAt: true,
+  branch: { select: { id: true, name: true, code: true, city: true } },
   doctor: { select: { id: true, name: true, doctorCode: true } },
 };
 
@@ -87,22 +89,32 @@ export async function getChamber(actor: AuthUser, id: number) {
 }
 
 export async function createChamber(actor: AuthUser, input: CreateChamberInput) {
-  const branchId = resolveBranchId(actor);
+  const branchId = input.branchId ?? resolveBranchId(actor);
+  if (!isSuperAdmin(actor) && branchId !== actor.branchId) {
+    throw new AuthorizationError("You do not have permission to create a chamber in this branch");
+  }
   await ensureBranch(branchId);
   await ensureDoctor(actor, input.doctorId ?? null, branchId);
 
+  let code = input.code?.trim();
+  if (!code) {
+    code = await prisma.$transaction(async (tx) =>
+      generateBusinessCode(tx, CODE_ENTITIES.CHAMBER, branchId, { prefix: "CH", padding: 6 }),
+    );
+  }
+
   const existing = await prisma.chamber.findFirst({
-    where: { branchId, code: input.code },
+    where: { branchId, code },
     select: { id: true },
   });
-  if (existing) throw new ConflictError(`Chamber code "${input.code}" already exists in this branch`);
+  if (existing) throw new ConflictError(`Chamber code "${code}" already exists in this branch`);
 
   const row = await prisma.chamber.create({
     data: {
       branchId,
       name: input.name,
-      code: input.code,
-      location: input.location,
+      code,
+      location: input.location ?? null,
       description: input.description,
       doctorId: input.doctorId ?? null,
       status: input.status ?? "active",

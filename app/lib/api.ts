@@ -2676,6 +2676,7 @@ export interface ChamberRecord {
   deletedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  branch?: { id: number; name: string; code: string; city: string | null } | null;
   doctor?: { id: number; name: string; doctorCode: string } | null;
 }
 
@@ -2689,7 +2690,7 @@ export interface ChamberListQuery {
 
 export interface CreateChamberInput {
   name: string;
-  code: string;
+  branchId?: number;
   location?: string | null;
   description?: string | null;
   doctorId?: number | null;

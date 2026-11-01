@@ -14,6 +14,7 @@ export const CODE_ENTITIES = {
   PRESCRIPTION: "Prescription",
   EMERGENCY: "Emergency",
   BRANCH: "Branch",
+  CHAMBER: "Chamber",
 } as const;
 
 export type CodeEntity = (typeof CODE_ENTITIES)[keyof typeof CODE_ENTITIES];
@@ -32,6 +33,7 @@ const ENTITY_PREFIX: Record<CodeEntity, string> = {
   [CODE_ENTITIES.PRESCRIPTION]: "RX",
   [CODE_ENTITIES.EMERGENCY]: "EMR",
   [CODE_ENTITIES.BRANCH]: "BR",
+  [CODE_ENTITIES.CHAMBER]: "CH",
 };
 
 const DEFAULT_PADDING = 6;

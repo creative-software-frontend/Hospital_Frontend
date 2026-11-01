@@ -7,10 +7,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { FiPlus, FiRefreshCcw, FiSearch, FiEdit2, FiX } from "react-icons/fi";
 import {
+  branchApi,
   chamberApi,
   doctorApi,
   errorMessage,
-  type ActiveStatus,
+  type BranchRecord,
   type ChamberRecord,
   type CreateChamberInput,
   type DoctorRecord,
@@ -20,11 +21,6 @@ import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/To
 
 const PAGE_SIZE = 10;
 
-const STATUS_STYLES: Record<ActiveStatus, string> = {
-  active: "bg-emerald-50 text-emerald-600 border-emerald-200",
-  inactive: "bg-slate-100 text-slate-500 border-slate-200",
-};
-
 const INPUT_CLS =
   "w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15 text-[var(--text)]";
 
@@ -32,20 +28,16 @@ const LABEL_CLS = "block text-xs font-semibold text-[var(--muted)] mb-1";
 
 interface FormState {
   name: string;
-  code: string;
-  location: string;
+  branchId: string;
   description: string;
   doctorId: string;
-  status: ActiveStatus;
 }
 
 const EMPTY_FORM: FormState = {
   name: "",
-  code: "",
-  location: "",
+  branchId: "",
   description: "",
   doctorId: "",
-  status: "active",
 };
 
 export function ChamberManagementPage() {
@@ -63,6 +55,7 @@ export function ChamberManagementPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [doctors, setDoctors] = useState<DoctorRecord[]>([]);
+  const [branches, setBranches] = useState<BranchRecord[]>([]);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const notify = useCallback((kind: ToastKind, message: string) => {
@@ -108,6 +101,10 @@ export function ChamberManagementPage() {
       .list({ page: 1, limit: 100 })
       .then((r) => setDoctors([...r.data].sort((a, b) => a.name.localeCompare(b.name))))
       .catch(() => {});
+    branchApi
+      .list({ limit: 100 })
+      .then((r) => setBranches([...r.data].sort((a, b) => a.name.localeCompare(b.name))))
+      .catch(() => {});
   }, []);
 
   const totalPages = pagination?.totalPages ?? 1;
@@ -115,7 +112,7 @@ export function ChamberManagementPage() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm(EMPTY_FORM);
+    setForm({ ...EMPTY_FORM, branchId: branches.length === 1 ? String(branches[0].id) : "" });
     setFormError("");
     setFormOpen(true);
   };
@@ -124,11 +121,9 @@ export function ChamberManagementPage() {
     setEditing(c);
     setForm({
       name: c.name,
-      code: c.code,
-      location: c.location ?? "",
+      branchId: String(c.branchId),
       description: c.description ?? "",
       doctorId: c.doctorId ? String(c.doctorId) : "",
-      status: c.status,
     });
     setFormError("");
     setFormOpen(true);
@@ -141,8 +136,12 @@ export function ChamberManagementPage() {
   };
 
   const submit = async () => {
-    if (!form.name.trim() || !form.code.trim()) {
-      setFormError("Name and code are required.");
+    if (!form.name.trim()) {
+      setFormError("Name is required.");
+      return;
+    }
+    if (!form.branchId) {
+      setFormError("Branch is required.");
       return;
     }
     setSaving(true);
@@ -150,11 +149,9 @@ export function ChamberManagementPage() {
     try {
       const input: CreateChamberInput = {
         name: form.name.trim(),
-        code: form.code.trim(),
-        location: form.location.trim() || undefined,
+        branchId: Number(form.branchId),
         description: form.description.trim() || undefined,
         doctorId: form.doctorId ? Number(form.doctorId) : null,
-        status: form.status,
       };
       if (editing) {
         await chamberApi.update(editing.id, input);
@@ -195,7 +192,7 @@ export function ChamberManagementPage() {
         </span>
         <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">Chamber Management</h3>
         <p className="text-xs text-[var(--muted)] mt-1.5 leading-relaxed max-w-3xl">
-          Consultation chambers and the doctors assigned to them.
+          Consultation chambers and the doctors assigned to them. Each chamber belongs to a branch.
         </p>
       </div>
 
@@ -249,10 +246,10 @@ export function ChamberManagementPage() {
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
-            <table className="min-w-[760px] w-full">
+            <table className="min-w-[640px] w-full">
               <thead>
                 <tr className="bg-[var(--bg)]">
-                  {["Code", "Name", "Location", "Assigned Doctor", "Status", "Actions"].map((col) => (
+                  {["Name", "Branch", "Assigned Doctor", "Actions"].map((col) => (
                     <th
                       key={col}
                       className="text-left text-[11px] font-bold text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]"
@@ -265,27 +262,21 @@ export function ChamberManagementPage() {
               <tbody>
                 {rows.map((c) => (
                   <tr key={c.id} className="hover:bg-[var(--primary-soft)]/10 transition-colors">
-                    <td className="text-[12px] font-bold text-[var(--primary-dark)] px-4 py-3 border-b border-[var(--border)]">
-                      {c.code}
-                    </td>
                     <td className="text-[12px] font-bold text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">
                       {c.name}
+                      <span className="block text-[10px] text-[var(--muted)]">{c.code}</span>
                     </td>
-                    <td className="text-[12px] text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]">
-                      {c.location ?? "—"}
+                    <td className="text-[12px] text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">
+                      {c.branch?.name ?? "—"}
+                      {c.branch?.city ? (
+                        <span className="block text-[10px] text-[var(--muted)]">{c.branch.city}</span>
+                      ) : null}
                     </td>
                     <td className="text-[12px] text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">
                       {c.doctor?.name ?? "Unassigned"}
                       {c.doctor?.doctorCode ? (
                         <span className="block text-[10px] text-[var(--muted)]">{c.doctor.doctorCode}</span>
                       ) : null}
-                    </td>
-                    <td className="px-4 py-3 border-b border-[var(--border)]">
-                      <span
-                        className={`inline-block text-[10px] font-bold capitalize px-2 py-0.5 rounded-md border ${STATUS_STYLES[c.status]}`}
-                      >
-                        {c.status}
-                      </span>
                     </td>
                     <td className="px-4 py-3 border-b border-[var(--border)]">
                       <div className="flex items-center gap-1.5">
@@ -342,7 +333,6 @@ export function ChamberManagementPage() {
         )}
       </div>
 
-      {/* Modal */}
       {formOpen && (
         <div
           className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6"
@@ -369,39 +359,33 @@ export function ChamberManagementPage() {
               {editing ? "Edit Chamber" : "Add Chamber"}
             </h3>
 
-            {formError && (
-              <div className="mt-4 alert-error text-xs">{formError}</div>
-            )}
+            {formError && <div className="mt-4 alert-error text-xs">{formError}</div>}
 
             <div className="mt-5 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={LABEL_CLS}>Name *</label>
-                  <input
-                    className={INPUT_CLS}
-                    value={form.name}
-                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    disabled={saving}
-                  />
-                </div>
-                <div>
-                  <label className={LABEL_CLS}>Code *</label>
-                  <input
-                    className={INPUT_CLS}
-                    value={form.code}
-                    onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
-                    disabled={saving || !!editing}
-                  />
-                </div>
-              </div>
               <div>
-                <label className={LABEL_CLS}>Location</label>
+                <label className={LABEL_CLS}>Name *</label>
                 <input
                   className={INPUT_CLS}
-                  value={form.location}
-                  onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   disabled={saving}
                 />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Branch (location) *</label>
+                <select
+                  className={INPUT_CLS}
+                  value={form.branchId}
+                  onChange={(e) => setForm((f) => ({ ...f, branchId: e.target.value, doctorId: "" }))}
+                  disabled={saving}
+                >
+                  <option value="">Select branch</option>
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name} — {b.city ?? b.code}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className={LABEL_CLS}>Description</label>
@@ -422,23 +406,13 @@ export function ChamberManagementPage() {
                   disabled={saving}
                 >
                   <option value="">Unassigned</option>
-                  {doctors.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name} ({d.doctorCode})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={LABEL_CLS}>Status</label>
-                <select
-                  className={INPUT_CLS}
-                  value={form.status}
-                  onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as ActiveStatus }))}
-                  disabled={saving}
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
+                  {doctors
+                    .filter((d) => !form.branchId || d.branchId === Number(form.branchId))
+                    .map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name} ({d.doctorCode})
+                      </option>
+                    ))}
                 </select>
               </div>
             </div>
