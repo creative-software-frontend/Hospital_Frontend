@@ -12,6 +12,12 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - `app/data/features.ts`: "Doctor Schedule Management" now carries `id: "doctor-schedule"`. `app/doctors/DoctorModule.tsx` early-returns "← Back to Doctors" + `<DoctorSchedulePage />` for that pageKey.
 - Verified live (super-admin): selected a doctor, set Monday 08:00–17:00, saved → PUT 200; re-opened the page and Monday still showed 08:00; then cleared the schedule (PUT with empty slots) to restore the probe state. No console errors; `tsc` + `next build` green.
 
+## Memory: Doctor Management — Commission Setup page (doctor-wise)
+- No new backend needed: `Doctor` already has `commissionType` ("PERCENT"/"FIXED"/null) and `commissionValue`. The page reads all doctors (paginated, client-side search) and saves per row via `doctorApi.update(id, { commissionType, commissionValue })`.
+- `app/doctors/CommissionSetupPage.tsx`: table (Doctor · Specialty · Commission Type select · Commission Value input · Save). Save button disabled until the row is dirty; spinner while saving; toast on success/error.
+- `app/data/features.ts`: "Commission Setup" now carries `id: "commission-setup"`. `app/doctors/DoctorModule.tsx` early-returns "← Back to Doctors" + `<CommissionSetupPage />`.
+- Verified live (super-admin): PATCH `/api/doctors/7 {"commissionType":"PERCENT","commissionValue":"10"}` → 200 and the value persisted (GET returned PERCENT/10); reverted to null. No console errors; `tsc` + `next build` green.
+
 ## Memory: Doctor Management — Doctor Attendance page
 - User chose (via `question`): **build it** — no backend existed.
 - Backend: `backend/src/modules/doctor-attendances/` (validation/service/controller/routes) registered at `/api/doctor-attendances`, reusing `doctor:read|create|update`. New `DoctorAttendance` model (`id, branchId, doctorId, date (Date), status, checkInTime, checkOutTime, notes, timestamps`; unique `[branchId, doctorId, date]`); migration `20261031120000_doctor_attendance` (applied). Endpoints: list/get/create/update/delete + `GET /doctor-attendances/for-date?date=` (returns all active doctors for the branch with their attendance or null) + `POST /doctor-attendances/bulk` (upserts a whole day). Branch-scoped; audit-logged.
