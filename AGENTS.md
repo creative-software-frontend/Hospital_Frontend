@@ -12,6 +12,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - `app/data/features.ts`: "Doctor Schedule Management" now carries `id: "doctor-schedule"`. `app/doctors/DoctorModule.tsx` early-returns "← Back to Doctors" + `<DoctorSchedulePage />` for that pageKey.
 - Verified live (super-admin): selected a doctor, set Monday 08:00–17:00, saved → PUT 200; re-opened the page and Monday still showed 08:00; then cleared the schedule (PUT with empty slots) to restore the probe state. No console errors; `tsc` + `next build` green.
 
+## Memory: Doctor Management — Appointment Management (wired into sub-menu)
+- The top-level Appointment Management module (feature id 3) already existed. The doctor sub-feature "Appointment Management" now carries `id: "appointment-management"` and renders the same `<AppointmentModule>` inside Doctor Management with a "← Back to Doctors" link, via a branch in `app/dashboard/DashboardContent.tsx` (`selectedFeature.id === 2 && selectedSubFeatureId === "appointment-management"`). No new backend work.
+- Verified: `tsc` + `next build` green.
+
 ## Memory: Doctor Management — Commission Setup page (doctor-wise)
 - No new backend needed: `Doctor` already has `commissionType` ("PERCENT"/"FIXED"/null) and `commissionValue`. The page reads all doctors (paginated, client-side search) and saves per row via `doctorApi.update(id, { commissionType, commissionValue })`.
 - `app/doctors/CommissionSetupPage.tsx`: table (Doctor · Specialty · Commission Type select · Commission Value input · Save). Save button disabled until the row is dirty; spinner while saving; toast on success/error.

@@ -565,10 +565,22 @@ ${tbody}
             ) : selectedFeature.id === 3 ? (
               <AppointmentModule role={permissions?.role ?? null} />
             ) : selectedFeature.id === 2 ? (
-              <DoctorModule
-                pageKey={selectedSubFeatureId ?? undefined}
-                onNavigate={setSelectedSubFeatureId}
-              />
+              selectedSubFeatureId === "appointment-management" ? (
+                <div className="space-y-4">
+                  <button
+                    onClick={() => setSelectedSubFeatureId(null)}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] hover:text-[var(--primary-dark)] transition-colors cursor-pointer"
+                  >
+                    <span>← Back to Doctors</span>
+                  </button>
+                  <AppointmentModule role={permissions?.role ?? null} />
+                </div>
+              ) : (
+                <DoctorModule
+                  pageKey={selectedSubFeatureId ?? undefined}
+                  onNavigate={setSelectedSubFeatureId}
+                />
+              )
             ) : selectedFeature.id === 13 ? (
               <NurseModule />
             ) : selectedFeature.id === 16 ? (

@@ -51,7 +51,7 @@ export const keyFeatures: Feature[] = [
             { label: "Chamber Management", icon: FiHome, id: "chamber-management" },
             { label: "Doctor Attendance", icon: FiCheckSquare, id: "doctor-attendance" },
             { label: "Commission Setup", icon: FiDollarSign, id: "commission-setup" },
-            { label: "Appointment Management", icon: FiCalendar },
+            { label: "Appointment Management", icon: FiCalendar, id: "appointment-management" },
             { label: "Doctor Performance Report", icon: FiBarChart2 },
         ]
     },
