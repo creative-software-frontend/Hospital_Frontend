@@ -2499,6 +2499,86 @@ export const doctorScheduleApi = {
     }),
 };
 
+export interface DoctorAttendanceRecord {
+  id: number;
+  branchId: number;
+  doctorId: number;
+  date: string;
+  status: "PRESENT" | "ABSENT" | "LATE" | "HALF_DAY" | "ON_LEAVE";
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  doctor?: { id: number; name: string; doctorCode: string };
+}
+
+export interface DoctorAttendanceListQuery {
+  page?: number;
+  limit?: number;
+  doctorId?: number;
+  date?: string;
+  from?: string;
+  to?: string;
+  status?: "PRESENT" | "ABSENT" | "LATE" | "HALF_DAY" | "ON_LEAVE";
+}
+
+export interface CreateDoctorAttendanceInput {
+  doctorId: number;
+  date: string;
+  status?: "PRESENT" | "ABSENT" | "LATE" | "HALF_DAY" | "ON_LEAVE";
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
+  notes?: string | null;
+}
+
+export interface UpdateDoctorAttendanceInput {
+  status?: "PRESENT" | "ABSENT" | "LATE" | "HALF_DAY" | "ON_LEAVE";
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
+  notes?: string | null;
+}
+
+export interface BulkDoctorAttendanceInput {
+  date: string;
+  entries: Array<{
+    doctorId: number;
+    status: "PRESENT" | "ABSENT" | "LATE" | "HALF_DAY" | "ON_LEAVE";
+    checkInTime?: string | null;
+    checkOutTime?: string | null;
+    notes?: string | null;
+  }>;
+}
+
+export const doctorAttendanceApi = {
+  list: (query: DoctorAttendanceListQuery = {}) =>
+    rawRequest<{ data: DoctorAttendanceRecord[]; pagination: PaginationMeta }>(
+      `/doctor-attendances${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+  get: (id: number) => request<DoctorAttendanceRecord>(`/doctor-attendances/${id}`),
+  forDate: (date: string) =>
+    request<Array<{ doctor: { id: number; name: string; doctorCode: string }; attendance: DoctorAttendanceRecord | null }>>(
+      `/doctor-attendances/for-date?date=${encodeURIComponent(date)}`,
+    ),
+  create: (input: CreateDoctorAttendanceInput) =>
+    request<DoctorAttendanceRecord>("/doctor-attendances", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  update: (id: number, input: UpdateDoctorAttendanceInput) =>
+    request<DoctorAttendanceRecord>(`/doctor-attendances/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  remove: (id: number) =>
+    request<{ message: string }>(`/doctor-attendances/${id}`, { method: "DELETE" }),
+  bulk: (input: BulkDoctorAttendanceInput) =>
+    request<DoctorAttendanceRecord[]>("/doctor-attendances/bulk", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+};
+
 export interface DoctorListQuery {
   page?: number;
   limit?: number;

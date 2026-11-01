@@ -180,6 +180,7 @@ model Branch {
   users                  User[]
   departments            Department[]
   chambers               Chamber[]
+  doctorAttendances      DoctorAttendance[]
   doctors                Doctor[]
   nurses                 Nurse[]
   patients               Patient[]
@@ -565,6 +566,7 @@ model Doctor {
   department     Department?      @relation(fields: [departmentId], references: [id])
   schedules      DoctorSchedule[]
   chambers       Chamber[]
+  attendances    DoctorAttendance[]
   appointments   Appointment[]
   admissions     Admission[]
   medicalRecords MedicalRecord[]
@@ -2298,4 +2300,24 @@ model Chamber {
   @@unique([branchId, code])
   @@index([branchId])
   @@index([doctorId])
+}
+model DoctorAttendance {
+  id           Int       @id @default(autoincrement())
+  branchId     Int
+  doctorId     Int
+  date         DateTime  @db.Date
+  status       String    @default("PRESENT")
+  checkInTime  String?
+  checkOutTime String?
+  notes        String?   @db.VarChar(500)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  branch Branch @relation(fields: [branchId], references: [id])
+  doctor Doctor @relation(fields: [doctorId], references: [id])
+
+  @@unique([branchId, doctorId, date])
+  @@index([branchId])
+  @@index([doctorId])
+  @@index([date])
 }
