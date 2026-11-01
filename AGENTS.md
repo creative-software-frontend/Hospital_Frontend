@@ -12,6 +12,14 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - `app/data/features.ts`: "Doctor Schedule Management" now carries `id: "doctor-schedule"`. `app/doctors/DoctorModule.tsx` early-returns "← Back to Doctors" + `<DoctorSchedulePage />` for that pageKey.
 - Verified live (super-admin): selected a doctor, set Monday 08:00–17:00, saved → PUT 200; re-opened the page and Monday still showed 08:00; then cleared the schedule (PUT with empty slots) to restore the probe state. No console errors; `tsc` + `next build` green.
 
+## Memory: Doctor Management — Doctor Performance Report page
+- User chose (via `question`): **per-doctor summary** over a date range (appointments total/completed/cancelled/no-show, consultations, revenue, commission earned) with CSV export.
+- Backend: `GET /api/doctors/performance-report?from=&to=` added to the doctors module (controller + `doctorPerformanceReport` in `doctor.service.ts`). Aggregates `Appointment` (grouped by doctorId+status, plus completed revenue sum) and `MedicalRecord` (consultations by doctorId) for the branch within the range; commission earned computed from each doctor's `commissionType`/`commissionValue`. Reuses `doctor:read`. No migration.
+- `app/lib/api.ts`: `DoctorPerformanceRow` interface + `doctorApi.performanceReport({from,to})`.
+- `app/doctors/DoctorPerformanceReportPage.tsx`: date range (defaults to current month) + Refresh + Export CSV, table with a Total row, status-colored counts.
+- `app/data/features.ts`: "Doctor Performance Report" now carries `id: "doctor-performance-report"`. `app/doctors/DoctorModule.tsx` early-returns "← Back to Doctors" + `<DoctorPerformanceReportPage />`.
+- Verified: `GET /api/doctors/performance-report?from=2026-10-01&to=2026-11-01` → 200 returning per-doctor rows; `tsc` + `next build` green.
+
 ## Memory: Doctor Management — Appointment Management (wired into sub-menu)
 - The top-level Appointment Management module (feature id 3) already existed. The doctor sub-feature "Appointment Management" now carries `id: "appointment-management"` and renders the same `<AppointmentModule>` inside Doctor Management with a "← Back to Doctors" link, via a branch in `app/dashboard/DashboardContent.tsx` (`selectedFeature.id === 2 && selectedSubFeatureId === "appointment-management"`). No new backend work.
 - Verified: `tsc` + `next build` green.

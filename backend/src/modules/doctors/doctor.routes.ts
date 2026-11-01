@@ -15,6 +15,12 @@ const router = Router();
 router.use(requireAuth);
 
 router.get(
+  "/performance-report",
+  requirePermission("doctor", "read"),
+  doctorController.doctorPerformance,
+);
+
+router.get(
   "/",
   validate({ query: listDoctorsQuerySchema }),
   requirePermission("doctor", "read"),

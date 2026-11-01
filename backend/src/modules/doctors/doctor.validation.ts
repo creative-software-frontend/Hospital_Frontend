@@ -123,6 +123,9 @@ export const createDoctorSchema = doctorFieldsSchema
 
 export const updateDoctorSchema = doctorFieldsSchema.partial();
 
-export type ListDoctorsQuery = z.infer<typeof listDoctorsQuerySchema>;
+export const doctorPerformanceQuerySchema = z.object({
+  from: z.string().trim().optional(),
+  to: z.string().trim().optional(),
+});
 export type CreateDoctorInput = z.infer<typeof createDoctorSchema>;
 export type UpdateDoctorInput = z.infer<typeof updateDoctorSchema>;

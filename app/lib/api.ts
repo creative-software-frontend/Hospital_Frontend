@@ -2417,6 +2417,24 @@ export interface DoctorRecord {
   department?: { id: number; name: string; code: string } | null;
 }
 
+export interface DoctorPerformanceRow {
+  doctorId: number;
+  doctorCode: string;
+  name: string;
+  specialization: string | null;
+  commissionType: string | null;
+  commissionValue: string | null;
+  appointmentsTotal: number;
+  completed: number;
+  cancelled: number;
+  noShow: number;
+  checkedIn: number;
+  inConsultation: number;
+  consultations: number;
+  revenue: number;
+  commissionEarned: number;
+}
+
 export interface DoctorListResult {
   data: DoctorRecord[];
   pagination: PaginationMeta;
@@ -2838,6 +2856,10 @@ export const doctorApi = {
       method: "PATCH",
       body: JSON.stringify(input),
     }),
+  performanceReport: (query: { from?: string; to?: string } = {}) =>
+    request<DoctorPerformanceRow[]>(
+      `/doctors/performance-report${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
 };
 
 export const nurseApi = {

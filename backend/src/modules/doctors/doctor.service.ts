@@ -15,7 +15,6 @@ import { parsePagination, buildPaginationMeta, type SortableField } from "../../
 import type { AuthUser } from "../../types/auth";
 import type {
   CreateDoctorInput,
-  ListDoctorsQuery,
   UpdateDoctorInput,
 } from "./doctor.validation";
 
@@ -111,7 +110,7 @@ const DOCTOR_SELECT: Prisma.DoctorSelect = {
   department: { select: { id: true, name: true, code: true } },
 };
 
-export async function listDoctors(actor: AuthUser, query: ListDoctorsQuery) {
+export async function listDoctors(actor: AuthUser, query: any) {
   const { page, limit, search, sortBy, sortOrder } = parsePagination(query as Record<string, unknown>);
   const branchId = actor.branchId;
 
@@ -269,4 +268,89 @@ export async function updateDoctor(actor: AuthUser, id: number, input: UpdateDoc
   });
 
   return updated;
+}export async function doctorPerformanceReport(actor: AuthUser, from?: string, to?: string) {
+  const branchId = actor.branchId;
+  const now = new Date();
+  const fromDate = from ? new Date(`${from}T00:00:00`) : new Date(now.getFullYear(), now.getMonth(), 1);
+  const toDate = to ? new Date(`${to}T23:59:59.999`) : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+  const doctors = await prisma.doctor.findMany({
+    where: { branchId, deletedAt: null },
+    select: { id: true, doctorCode: true, name: true, specialization: true, commissionType: true, commissionValue: true },
+    orderBy: { name: "asc" },
+  });
+
+  const countGroups = await prisma.appointment.groupBy({
+    by: ["doctorId", "status"],
+    where: { branchId, deletedAt: null, appointmentDate: { gte: fromDate, lte: toDate } },
+    _count: { _all: true },
+  });
+
+  const revenueGroups = await prisma.appointment.groupBy({
+    by: ["doctorId"],
+    where: { branchId, deletedAt: null, status: "COMPLETED", appointmentDate: { gte: fromDate, lte: toDate } },
+    _sum: { doctorFee: true },
+    _count: { _all: true },
+  });
+
+  const consultGroups = await prisma.medicalRecord.groupBy({
+    by: ["doctorId"],
+    where: { branchId, deletedAt: null, doctorId: { not: null }, createdAt: { gte: fromDate, lte: toDate } },
+    _count: { _all: true },
+  });
+
+  const countsByDoctor = new Map<number, Record<string, number>>();
+  for (const g of countGroups) {
+    if (g.doctorId == null) continue;
+    const m = countsByDoctor.get(g.doctorId) ?? {};
+    m[g.status] = (m[g.status] ?? 0) + g._count._all;
+    m.total = (m.total ?? 0) + g._count._all;
+    countsByDoctor.set(g.doctorId, m);
+  }
+  const revenueByDoctor = new Map<number, { revenue: number; completed: number }>();
+  for (const g of revenueGroups) {
+    if (g.doctorId == null) continue;
+    revenueByDoctor.set(g.doctorId, {
+      revenue: Number(g._sum.doctorFee ?? 0),
+      completed: g._count._all,
+    });
+  }
+  const consultByDoctor = new Map<number, number>();
+  for (const g of consultGroups) {
+    if (g.doctorId == null) continue;
+    consultByDoctor.set(g.doctorId, g._count._all);
+  }
+
+  return doctors.map((d) => {
+    const m = countsByDoctor.get(d.id) ?? { total: 0 };
+    const rev = revenueByDoctor.get(d.id) ?? { revenue: 0, completed: 0 };
+    const consultations = consultByDoctor.get(d.id) ?? 0;
+    const completed = m.COMPLETED ?? 0;
+    const cancelled = m.CANCELLED ?? 0;
+    const noShow = m.NO_SHOW ?? 0;
+    const revenue = rev.revenue;
+    let commissionEarned = 0;
+    if (d.commissionType === "PERCENT" && d.commissionValue) {
+      commissionEarned = (revenue * Number(d.commissionValue)) / 100;
+    } else if (d.commissionType === "FIXED" && d.commissionValue) {
+      commissionEarned = Number(d.commissionValue) * completed;
+    }
+    return {
+      doctorId: d.id,
+      doctorCode: d.doctorCode,
+      name: d.name,
+      specialization: d.specialization,
+      commissionType: d.commissionType,
+      commissionValue: d.commissionValue,
+      appointmentsTotal: m.total ?? 0,
+      completed,
+      cancelled,
+      noShow,
+      checkedIn: m.CHECKED_IN ?? 0,
+      inConsultation: m.IN_CONSULTATION ?? 0,
+      consultations,
+      revenue,
+      commissionEarned,
+    };
+  });
 }

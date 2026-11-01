@@ -22,3 +22,10 @@ export const updateDoctor = asyncHandler(async (req: Request, res: Response) => 
   const doctor = await doctorService.updateDoctor(req.user!, Number(req.params.id), req.body);
   success(res, { doctor });
 });
+
+export const doctorPerformance = asyncHandler(async (req: Request, res: Response) => {
+  const from = typeof req.query.from === "string" ? req.query.from : undefined;
+  const to = typeof req.query.to === "string" ? req.query.to : undefined;
+  const data = await doctorService.doctorPerformanceReport(req.user!, from, to);
+  success(res, data);
+});

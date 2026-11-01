@@ -52,7 +52,7 @@ export const keyFeatures: Feature[] = [
             { label: "Doctor Attendance", icon: FiCheckSquare, id: "doctor-attendance" },
             { label: "Commission Setup", icon: FiDollarSign, id: "commission-setup" },
             { label: "Appointment Management", icon: FiCalendar, id: "appointment-management" },
-            { label: "Doctor Performance Report", icon: FiBarChart2 },
+            { label: "Doctor Performance Report", icon: FiBarChart2, id: "doctor-performance-report" },
         ]
     },
     {
