@@ -52,6 +52,7 @@ export function ChamberManagementPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<ChamberRecord | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [doctorSearch, setDoctorSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [doctors, setDoctors] = useState<DoctorRecord[]>([]);
@@ -122,6 +123,7 @@ export function ChamberManagementPage() {
   const openCreate = () => {
     setEditing(null);
     setForm({ ...EMPTY_FORM, branchId: branches.length === 1 ? String(branches[0].id) : "" });
+    setDoctorSearch("");
     setFormError("");
     setFormOpen(true);
   };
@@ -134,6 +136,7 @@ export function ChamberManagementPage() {
       description: c.description ?? "",
       doctorId: c.doctorId ? String(c.doctorId) : "",
     });
+    setDoctorSearch(c.doctor?.name ?? "");
     setFormError("");
     setFormOpen(true);
   };
@@ -385,7 +388,10 @@ export function ChamberManagementPage() {
                 <select
                   className={INPUT_CLS}
                   value={form.branchId}
-                  onChange={(e) => setForm((f) => ({ ...f, branchId: e.target.value, doctorId: "" }))}
+                  onChange={(e) => {
+                    setForm((f) => ({ ...f, branchId: e.target.value, doctorId: "" }));
+                    setDoctorSearch("");
+                  }}
                   disabled={saving}
                 >
                   <option value="">Select branch</option>
@@ -408,21 +414,50 @@ export function ChamberManagementPage() {
               </div>
               <div>
                 <label className={LABEL_CLS}>Assigned doctor</label>
-                <select
+                <input
                   className={INPUT_CLS}
-                  value={form.doctorId}
-                  onChange={(e) => setForm((f) => ({ ...f, doctorId: e.target.value }))}
+                  value={doctorSearch}
+                  onChange={(e) => {
+                    setDoctorSearch(e.target.value);
+                    setForm((f) => ({ ...f, doctorId: "" }));
+                  }}
+                  placeholder="Search name, ID, or phone number"
                   disabled={saving}
-                >
-                  <option value="">Unassigned</option>
-                  {doctors
-                    .filter((d) => !form.branchId || d.branchId === Number(form.branchId))
-                    .map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name} ({d.doctorCode})
-                      </option>
-                    ))}
-                </select>
+                />
+                {doctorSearch.trim() && (
+                  <div className="mt-2 max-h-36 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--bg)] p-1.5 space-y-1">
+                    {doctors
+                      .filter((d) => !form.branchId || d.branchId === Number(form.branchId))
+                      .filter((d) => `${d.name} ${d.doctorCode} ${d.phone ?? ""} ${d.specialization ?? ""}`.toLowerCase().includes(doctorSearch.trim().toLowerCase()))
+                      .map((d) => (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => {
+                            setForm((f) => ({ ...f, doctorId: String(d.id) }));
+                            setDoctorSearch(d.name);
+                          }}
+                          className={`w-full rounded-lg px-2.5 py-2 text-left text-xs transition-colors cursor-pointer ${
+                            form.doctorId === String(d.id)
+                              ? "bg-[var(--primary)]/10 text-[var(--primary-dark)]"
+                              : "hover:bg-[var(--primary-soft)]/20 text-[var(--text)]"
+                          }`}
+                        >
+                          <span className="font-bold">{d.name}</span>
+                          <span className="block text-[10px] text-[var(--muted)]">{d.doctorCode}{d.specialization ? ` · ${d.specialization}` : ""}</span>
+                        </button>
+                      ))}
+                    {doctors
+                      .filter((d) => !form.branchId || d.branchId === Number(form.branchId))
+                      .filter((d) => `${d.name} ${d.doctorCode} ${d.phone ?? ""} ${d.specialization ?? ""}`.toLowerCase().includes(doctorSearch.trim().toLowerCase()))
+                      .length === 0 && (
+                      <p className="px-2.5 py-2 text-[11px] font-semibold text-[var(--muted)]">No doctors found.</p>
+                    )}
+                  </div>
+                )}
+                {!doctorSearch && (
+                  <p className="mt-1 text-[10px] font-semibold text-[var(--muted)]">Leave blank for unassigned.</p>
+                )}
               </div>
             </div>
 

@@ -582,7 +582,10 @@ ${tbody}
                 />
               )
             ) : selectedFeature.id === 13 ? (
-              <NurseModule />
+              <NurseModule
+                pageKey={selectedSubFeatureId ?? undefined}
+                onNavigate={setSelectedSubFeatureId}
+              />
             ) : selectedFeature.id === 16 ? (
               <EmployeeModule />
             ) : selectedFeature.id === 7 ? (
@@ -867,4 +870,3 @@ ${tbody}
     </div>
   );
 };
-

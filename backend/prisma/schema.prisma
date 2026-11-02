@@ -189,6 +189,7 @@ model Branch {
   appointments           Appointment[]
   admissions             Admission[]
   medicalRecords         MedicalRecord[]
+  nursingNotes           NursingNote[]
   prescriptions          Prescription[]
   bedAllocations         Bed[]
   rooms                  Room[]
@@ -282,6 +283,7 @@ model User {
   employee  Employee?
   uploadedDocuments PatientDocument[]
   registeredEmergencyCases EmergencyCase[]  @relation("EmergencyRegisteredBy")
+  createdNursingNotes NursingNote[] @relation("NursingNoteCreatedBy")
 
   @@index([branchId])
   @@index([email])
@@ -617,6 +619,7 @@ model Nurse {
   branch     Branch?     @relation(fields: [branchId], references: [id])
   department Department? @relation(fields: [departmentId], references: [id])
   shiftType  ShiftType?  @relation(fields: [shiftTypeId], references: [id])
+  nursingNotes NursingNote[]
 
   @@unique([branchId, nurseCode])
   @@index([branchId])
@@ -843,6 +846,7 @@ model Patient {
   appointments   Appointment[]
   admissions     Admission[]
   medicalRecords MedicalRecord[]
+  nursingNotes NursingNote[]
   prescriptions  Prescription[]
   labOrders      LabOrder[]
   invoices       Invoice[]
@@ -870,6 +874,31 @@ model PatientContact {
   patient Patient @relation(fields: [patientId], references: [id])
 
   @@index([patientId])
+}
+
+model NursingNote {
+  id              Int      @id @default(autoincrement())
+  branchId        Int
+  patientId       Int
+  nurseId         Int
+  admissionId     Int?
+  noteType        String   @default("GENERAL")
+  note            String   @db.VarChar(2000)
+  observedAt      DateTime @default(now())
+  createdByUserId Int?
+  deletedAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  branch       Branch    @relation(fields: [branchId], references: [id])
+  patient      Patient   @relation(fields: [patientId], references: [id])
+  nurse        Nurse     @relation(fields: [nurseId], references: [id])
+  admission    Admission? @relation(fields: [admissionId], references: [id])
+  createdBy    User?     @relation("NursingNoteCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@index([branchId, patientId, deletedAt])
+  @@index([nurseId])
+  @@index([observedAt])
 }
 
 /// Files attached to a patient (NID scan, referral letter, insurance card, ...).
@@ -1370,6 +1399,7 @@ model Admission {
   patient Patient? @relation(fields: [patientId], references: [id])
   doctor  Doctor?  @relation(fields: [doctorId], references: [id])
   bed     Bed?     @relation(fields: [bedId], references: [id])
+  nursingNotes NursingNote[]
 
   @@unique([branchId, admissionNumber])
   @@index([branchId])

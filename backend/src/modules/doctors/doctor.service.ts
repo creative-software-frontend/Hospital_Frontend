@@ -123,6 +123,7 @@ export async function listDoctors(actor: AuthUser, query: any) {
     where.OR = [
       { name: { contains: search } },
       { doctorCode: { contains: search } },
+      { phone: { contains: search } },
       { specialization: { contains: search } },
       { bmdcRegistrationNo: { contains: search } },
     ];

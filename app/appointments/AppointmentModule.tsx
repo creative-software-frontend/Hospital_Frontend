@@ -93,6 +93,7 @@ export function AppointmentModule({ role }: { role: string | null }) {
   // Filters — date defaults to today so the board opens on the live day.
   const [dateFilter, setDateFilter] = useState<string>(TODAY);
   const [doctorFilter, setDoctorFilter] = useState<string>("");
+  const [doctorSearch, setDoctorSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
 
   const [doctors, setDoctors] = useState<DoctorRecord[]>([]);
@@ -108,19 +109,28 @@ export function AppointmentModule({ role }: { role: string | null }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // Doctor filter options (best-effort).
+  // Doctor filter search options (best-effort).
   useEffect(() => {
+    const query = doctorSearch.trim();
     let active = true;
-    doctorApi
-      .list({ limit: 100, status: "active" })
-      .then((r) => {
-        if (active) setDoctors(r.data);
-      })
-      .catch(() => {});
+    const timer = setTimeout(() => {
+      if (!query) {
+        setDoctors([]);
+        return;
+      }
+
+      doctorApi
+        .list({ page: 1, limit: 100, status: "active", search: query })
+        .then((r) => {
+          if (active) setDoctors(r.data);
+        })
+        .catch(() => {});
+    }, 300);
     return () => {
       active = false;
+      clearTimeout(timer);
     };
-  }, []);
+  }, [doctorSearch]);
 
   const load = useCallback(async () => {
     try {
@@ -181,6 +191,7 @@ export function AppointmentModule({ role }: { role: string | null }) {
   const clearFilters = () => {
     setDateFilter("");
     setDoctorFilter("");
+    setDoctorSearch("");
     setStatusFilter("");
     setPage(1);
   };
@@ -245,7 +256,7 @@ export function AppointmentModule({ role }: { role: string | null }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-[9rem_10rem_9rem] gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-[9rem_minmax(0,20rem)_9rem] gap-3">
           <div>
             <label
               htmlFor="appt-filter-date"
@@ -266,27 +277,47 @@ export function AppointmentModule({ role }: { role: string | null }) {
           </div>
           <div>
             <label
-              htmlFor="appt-filter-doctor"
+              htmlFor="appt-filter-doctor-search"
               className="block text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)] mb-1.5"
             >
               Doctor
             </label>
-            <select
-              id="appt-filter-doctor"
-              value={doctorFilter}
+            <input
+              id="appt-filter-doctor-search"
+              value={doctorSearch}
               onChange={(e) => {
-                setDoctorFilter(e.target.value);
+                setDoctorSearch(e.target.value);
+                setDoctorFilter("");
                 setPage(1);
               }}
+              placeholder="Search name, ID, or phone number"
               className={`${INPUT_CLS} h-10`}
-            >
-              <option value="">All doctors</option>
-              {doctors.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
+            />
+            {doctorSearch.trim() && doctors.length > 0 && (
+              <div className="mt-1.5 max-h-40 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--card)] p-1.5 space-y-1">
+                {doctors.map((doctor) => (
+                  <button
+                    key={doctor.id}
+                    type="button"
+                    onClick={() => {
+                      setDoctorFilter(String(doctor.id));
+                      setDoctorSearch(doctor.name);
+                      setPage(1);
+                    }}
+                    className={`w-full rounded-lg px-2.5 py-2 text-left text-xs transition-colors cursor-pointer ${
+                      doctorFilter === String(doctor.id)
+                        ? "bg-[var(--primary)]/10 text-[var(--primary-dark)]"
+                        : "hover:bg-[var(--primary-soft)]/20 text-[var(--text)]"
+                    }`}
+                  >
+                    <span className="font-bold">{doctor.name}</span>
+                    <span className="block text-[10px] text-[var(--muted)]">
+                      {doctor.doctorCode}{doctor.phone ? ` · ${doctor.phone}` : ""}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div>
             <label

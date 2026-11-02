@@ -41,6 +41,7 @@ import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/To
 import { GENDER_OPTIONS, BLOOD_GROUP_OPTIONS, MARITAL_STATUS_OPTIONS } from "@/app/patients/constants";
 import { useMasterDataOptions } from "@/app/lib/useMasterData";
 import { FileUploadField } from "@/app/components/FileUploadField";
+import { NursingNotesPage } from "@/app/nurses/NursingNotesPage";
 
 const PAGE_SIZE = 10;
 
@@ -51,10 +52,16 @@ const STATUS_STYLES: Record<ActiveStatus, string> = {
   inactive: "bg-slate-100 text-slate-500 border-slate-200",
 };
 
-export function NurseModule() {
+export function NurseModule({
+  pageKey,
+  onNavigate,
+}: {
+  pageKey?: string;
+  onNavigate?: (key: string | null) => void;
+}) {
   const [rows, setRows] = useState<NurseRecord[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -73,6 +80,15 @@ export function NurseModule() {
   }, []);
 
   const load = useCallback(async () => {
+    if (!searchTerm) {
+      setRows([]);
+      setPagination(null);
+      setError("");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     try {
       const result = await nurseApi.list({
         page,
@@ -102,6 +118,10 @@ export function NurseModule() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
+  if (pageKey === "nursing-notes") {
+    return <NursingNotesPage onBack={() => onNavigate?.(null)} />;
+  }
+
   const totalPages = pagination?.totalPages ?? 1;
   const safePage = Math.min(page, Math.max(1, totalPages));
 
@@ -118,7 +138,14 @@ export function NurseModule() {
     }
     setFormMode("list");
     setEditing(null);
+    if (pageKey) onNavigate?.(null);
     setReloadKey((k) => k + 1);
+  };
+
+  const closeForm = () => {
+    setFormMode("list");
+    setEditing(null);
+    if (pageKey) onNavigate?.(null);
   };
 
   if (formMode === "form") {
@@ -137,7 +164,7 @@ export function NurseModule() {
         </div>
 
         <button
-          onClick={() => { setFormMode("list"); setEditing(null); }}
+          onClick={closeForm}
           className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] hover:text-[var(--primary-dark)] transition-colors cursor-pointer"
         >
           <span>{"\u2190"} Back to Nurses</span>
@@ -147,13 +174,15 @@ export function NurseModule() {
           key={editing?.id ?? "new"}
           nurse={editing}
           onSubmit={submit}
-          onCancel={() => { setFormMode("list"); setEditing(null); }}
+          onCancel={closeForm}
         />
 
         <ToastViewport toasts={toasts} onDismiss={dismissToast} />
       </div>
     );
   }
+
+  if (!pageKey) return null;
 
   return (
     <div className="space-y-6">
@@ -172,7 +201,7 @@ export function NurseModule() {
           <div>
             <h4 className="text-sm font-extrabold text-[var(--text)]">Nurses</h4>
             <p className="text-xs text-[var(--muted)]">
-              {pagination ? `${pagination.total} nurse(s) total` : "Loading…"}
+              {pagination ? `${pagination.total} nurse(s) total` : "Search to view nurses"}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -198,7 +227,7 @@ export function NurseModule() {
               style={{ background: "var(--primary)" }}
             >
               <FiPlus className="w-3.5 h-3.5" />
-              Add Nurse
+              Register New Nurse
             </button>
           </div>
         </div>
@@ -207,6 +236,7 @@ export function NurseModule() {
           <p className="text-sm alert-error">{error}</p>
         )}
 
+        {searchTerm ? (
         <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
           <table className="min-w-[900px] w-full">
             <thead>
@@ -248,7 +278,13 @@ export function NurseModule() {
             </tbody>
           </table>
         </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-[var(--border)] px-4 py-12 text-center">
+            <p className="text-xs font-bold text-[var(--muted)]">Search for a nurse to view the table.</p>
+          </div>
+        )}
 
+        {searchTerm && (
         <div className="flex items-center justify-between gap-3 pt-1">
           <div className="text-xs text-[var(--muted)]">Showing {rows.length} of {pagination?.total ?? 0} rows</div>
           <div className="flex items-center gap-2">
@@ -263,6 +299,7 @@ export function NurseModule() {
             </button>
           </div>
         </div>
+        )}
       </div>
 
       <ToastViewport toasts={toasts} onDismiss={dismissToast} />
@@ -418,11 +455,18 @@ function NurseFormPage({
 
   return (
     <form onSubmit={handleSubmit}
-      className="bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-sm w-full p-6 sm:p-8">
-        <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">Nursing</span>
-        <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">{editing ? "Edit Nurse" : "Add Nurse"}</h3>
+      className="bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-sm w-full flex flex-col">
+        <div className="px-6 py-4 border-b border-[var(--border)] shrink-0">
+          <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">
+            Nursing Management
+          </span>
+          <h3 className="font-black text-lg text-[var(--primary-dark)] mt-0.5">
+            {editing ? "Edit Nurse" : "Register New Nurse"}
+          </h3>
+        </div>
 
-        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
+        <div className="px-6 py-4 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 max-w-5xl">
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Joining Date</label>
             <input type="date" value={joiningDate} onChange={(e) => setJoiningDate(setField("joiningDate", e.target.value))} className={INPUT_CLS} />
@@ -518,7 +562,7 @@ function NurseFormPage({
             </>
           )}
 
-          <div className="sm:col-span-2 mt-1 border-t border-[var(--border)] pt-4">
+          <div className="sm:col-span-2 lg:col-span-4 mt-1 border-t border-[var(--border)] pt-4">
             <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">Attachments</span>
           </div>
           <FileUploadField label="Picture" kind="photo" value={photo} onChange={setPhoto} preview="image" hint="JPG, PNG or WebP up to 5 MB." />
@@ -526,9 +570,9 @@ function NurseFormPage({
           <FileUploadField label="CV / Résumé" kind="cv" value={cv} onChange={setCv} preview="file" hint="PDF, DOC or DOCX up to 10 MB." />
         </div>
 
-        {error && <p className="mt-4 text-sm alert-error">{error}</p>}
+        {error && <p className="text-sm alert-error">{error}</p>}
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-6">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
           <button type="submit" disabled={saving}
             className="w-full sm:w-56 px-6 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 active:scale-[0.98]"
             style={{ background: "var(--primary)" }}>
@@ -538,6 +582,7 @@ function NurseFormPage({
             className="px-4 py-3 rounded-xl text-sm font-bold text-[var(--muted)] hover:text-[var(--text)] border border-[var(--border)] disabled:opacity-60 disabled:cursor-not-allowed transition-colors">
             Cancel
           </button>
+        </div>
         </div>
       </form>
   );

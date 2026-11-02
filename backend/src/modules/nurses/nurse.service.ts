@@ -147,6 +147,7 @@ export async function listNurses(actor: AuthUser, query: ListNursesQuery) {
     where.OR = [
       { name: { contains: search } },
       { nurseCode: { contains: search } },
+      { phone: { contains: search } },
       { qualification: { contains: search } },
     ];
   }

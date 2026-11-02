@@ -1,0 +1,26 @@
+CREATE TABLE `NursingNote` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `branchId` INTEGER NOT NULL,
+    `patientId` INTEGER NOT NULL,
+    `nurseId` INTEGER NOT NULL,
+    `admissionId` INTEGER NULL,
+    `noteType` VARCHAR(191) NOT NULL DEFAULT 'GENERAL',
+    `note` VARCHAR(2000) NOT NULL,
+    `observedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `createdByUserId` INTEGER NULL,
+    `deletedAt` DATETIME(3) NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+
+    PRIMARY KEY (`id`),
+    INDEX `NursingNote_branchId_patientId_deletedAt_idx`(`branchId`, `patientId`, `deletedAt`),
+    INDEX `NursingNote_nurseId_idx`(`nurseId`),
+    INDEX `NursingNote_observedAt_idx`(`observedAt`),
+    INDEX `NursingNote_admissionId_idx`(`admissionId`),
+    INDEX `NursingNote_createdByUserId_idx`(`createdByUserId`),
+    CONSTRAINT `NursingNote_branchId_fkey` FOREIGN KEY (`branchId`) REFERENCES `Branch`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT `NursingNote_patientId_fkey` FOREIGN KEY (`patientId`) REFERENCES `Patient`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT `NursingNote_nurseId_fkey` FOREIGN KEY (`nurseId`) REFERENCES `Nurse`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT `NursingNote_admissionId_fkey` FOREIGN KEY (`admissionId`) REFERENCES `Admission`(`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT `NursingNote_createdByUserId_fkey` FOREIGN KEY (`createdByUserId`) REFERENCES `User`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

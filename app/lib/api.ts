@@ -2601,6 +2601,55 @@ export const doctorAttendanceApi = {
     }),
 };
 
+export interface NursingNoteRecord {
+  id: number;
+  branchId: number;
+  patientId: number;
+  nurseId: number;
+  admissionId: number | null;
+  noteType: string;
+  note: string;
+  observedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  patient: { id: number; name: string; patientCode: string };
+  nurse: { id: number; name: string; nurseCode: string };
+  admission: { id: number; admissionNumber: string; status: string } | null;
+}
+
+export interface NursingNoteListQuery {
+  page?: number;
+  limit?: number;
+  patientId?: number;
+  nurseId?: number;
+  search?: string;
+}
+
+export interface CreateNursingNoteInput {
+  patientId: number;
+  nurseId: number;
+  admissionId?: number | null;
+  noteType: string;
+  note: string;
+  observedAt?: string | null;
+}
+
+export type UpdateNursingNoteInput = Partial<Omit<CreateNursingNoteInput, "patientId" | "nurseId">>;
+
+export const nursingNoteApi = {
+  list: (query: NursingNoteListQuery = {}) =>
+    rawRequest<{ data: NursingNoteRecord[]; pagination: PaginationMeta }>(
+      `/nursing-notes${qs(query as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+  get: (id: number) => request<NursingNoteRecord>(`/nursing-notes/${id}`),
+  create: (input: CreateNursingNoteInput) =>
+    request<NursingNoteRecord>("/nursing-notes", { method: "POST", body: JSON.stringify(input) }),
+  update: (id: number, input: UpdateNursingNoteInput) =>
+    request<NursingNoteRecord>(`/nursing-notes/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+  remove: (id: number) =>
+    request<{ message: string }>(`/nursing-notes/${id}`, { method: "DELETE" }),
+};
+
 export interface DoctorListQuery {
   page?: number;
   limit?: number;
