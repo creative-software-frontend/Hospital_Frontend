@@ -4,7 +4,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { FiDownload, FiRefreshCcw } from "react-icons/fi";
+import { FiDownload, FiRefreshCcw, FiSearch } from "react-icons/fi";
 import {
   doctorApi,
   errorMessage,
@@ -29,8 +29,10 @@ export function DoctorPerformanceReportPage() {
   const [from, setFrom] = useState(monthStartIso());
   const [to, setTo] = useState(todayIso());
   const [rows, setRows] = useState<DoctorPerformanceRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const dismissToast = useCallback((id: number) => {
@@ -38,22 +40,40 @@ export function DoctorPerformanceReportPage() {
   }, []);
 
   const load = useCallback(async () => {
+    if (!searchTerm) {
+      setRows([]);
+      setError("");
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError("");
     try {
       const data = await doctorApi.performanceReport({ from, to });
-      setRows(Array.isArray(data) ? data : []);
+      const query = searchTerm.toLowerCase();
+      setRows(
+        (Array.isArray(data) ? data : []).filter((row) =>
+          [row.name, row.doctorCode, row.specialization ?? ""].some((value) =>
+            value.toLowerCase().includes(query),
+          ),
+        ),
+      );
     } catch (err) {
       setError(errorMessage(err));
     } finally {
       setLoading(false);
     }
-  }, [from, to]);
+  }, [from, searchTerm, to]);
 
   useEffect(() => {
     const timer = setTimeout(() => load(), 0);
     return () => clearTimeout(timer);
   }, [load]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchTerm(searchInput.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   const exportCsv = () => {
     const header = [
@@ -138,6 +158,21 @@ export function DoctorPerformanceReportPage() {
                 onChange={(e) => setFrom(e.target.value)}
                 className={INPUT_CLS}
               />
+            </div>
+            <div>
+              <label htmlFor="pr-search" className="block text-[9px] uppercase tracking-widest font-extrabold text-[var(--muted)] mb-1">
+                Search doctor
+              </label>
+              <div className="relative">
+                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--muted)]" />
+                <input
+                  id="pr-search"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="Name, ID or specialty"
+                  className={`${INPUT_CLS} pl-9 w-56`}
+                />
+              </div>
             </div>
             <div>
               <label htmlFor="pr-to" className="block text-[9px] uppercase tracking-widest font-extrabold text-[var(--muted)] mb-1">

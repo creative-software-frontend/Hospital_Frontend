@@ -33,7 +33,7 @@ const INPUT_CLS =
 export function DepartmentAssignmentPage() {
   const [doctors, setDoctors] = useState<DoctorRecord[]>([]);
   const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -55,6 +55,13 @@ export function DepartmentAssignmentPage() {
   // because the counters and the "Unassigned" filter need the full picture,
   // and the API has no "department is empty" filter.
   const load = useCallback(async () => {
+    if (!searchTerm) {
+      setDoctors([]);
+      setDepartments([]);
+      setError("");
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const [deptResult, firstPage] = await Promise.all([
@@ -75,7 +82,7 @@ export function DepartmentAssignmentPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [searchTerm]);
 
   useEffect(() => {
     const timer = setTimeout(() => load(), 0);
@@ -273,7 +280,7 @@ export function DepartmentAssignmentPage() {
             <p className="text-xs font-bold text-[var(--muted)]">
               {filtersActive
                 ? "No doctors match these filters."
-                : "No doctors registered yet. Add one from Doctor Profile Management."}
+                : "Search for a doctor to view the assignment table."}
             </p>
           </div>
         ) : (

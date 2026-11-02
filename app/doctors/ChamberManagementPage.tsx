@@ -43,7 +43,7 @@ const EMPTY_FORM: FormState = {
 export function ChamberManagementPage() {
   const [rows, setRows] = useState<ChamberRecord[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -67,6 +67,15 @@ export function ChamberManagementPage() {
   }, []);
 
   const load = useCallback(async () => {
+    if (!searchTerm) {
+      setRows([]);
+      setPagination(null);
+      setError("");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     try {
       const result = await chamberApi.list({
         page,
@@ -201,7 +210,7 @@ export function ChamberManagementPage() {
           <div>
             <h4 className="text-sm font-extrabold text-[var(--text)]">Chambers</h4>
             <p className="text-xs text-[var(--muted)]">
-              {pagination ? `${pagination.total} chamber(s) total` : "Loading…"}
+              {pagination ? `${pagination.total} chamber(s) total` : "Search to view chambers"}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -241,7 +250,7 @@ export function ChamberManagementPage() {
         ) : rows.length === 0 ? (
           <div className="rounded-xl border border-dashed border-[var(--border)] px-4 py-12 text-center">
             <p className="text-xs font-bold text-[var(--muted)]">
-              {searchTerm ? "No chambers match your search." : "No chambers registered yet."}
+              {searchTerm ? "No chambers match your search." : "Search for a chamber to view the table."}
             </p>
           </div>
         ) : (

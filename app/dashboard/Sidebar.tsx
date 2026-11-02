@@ -127,8 +127,12 @@ export const Sidebar = ({
                                             onClick={() => {
                                                 // Patient Management: only expand/collapse the submenu —
                                                 // do NOT auto-open the patient list.
-                                                if (feat.id !== 1) {
+                                                if (feat.id !== 1 && feat.id !== 2) {
                                                     handleSelectFeature(feat);
+                                                } else {
+                                                    setSelectedFeature(null);
+                                                    setSelectedSubFeatureId(null);
+                                                    setActiveSection("overview");
                                                 }
                                                 toggleFeature(feat.id);
                                             }}

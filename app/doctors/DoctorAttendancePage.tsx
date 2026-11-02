@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { FiSave } from "react-icons/fi";
 import {
+  doctorApi,
   doctorAttendanceApi,
   errorMessage,
 } from "@/app/lib/api";
@@ -52,8 +53,10 @@ const INPUT_CLS =
 
 export function DoctorAttendancePage() {
   const [date, setDate] = useState(todayIso());
+  const [searchInput, setSearchInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -66,11 +69,23 @@ export function DoctorAttendancePage() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const load = useCallback(async (d: string) => {
+  const load = useCallback(async (d: string, search: string) => {
+    const query = search.trim();
+    if (!query) {
+      setRows([]);
+      setError("");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError("");
     try {
-      const data = await doctorAttendanceApi.forDate(d);
+      const [data, doctors] = await Promise.all([
+        doctorAttendanceApi.forDate(d),
+        doctorApi.list({ page: 1, limit: 100, search: query }),
+      ]);
+      const doctorIds = new Set(doctors.data.map((doctor) => doctor.id));
       const list = Array.isArray(data) ? data : [];
       const next: Row[] = list.map((r) => ({
         doctorId: r.doctor.id,
@@ -82,7 +97,7 @@ export function DoctorAttendancePage() {
         checkOut: r.attendance?.checkOutTime ?? "",
         notes: r.attendance?.notes ?? "",
         dirty: false,
-      }));
+      })).filter((row) => doctorIds.has(row.doctorId));
       setRows(next);
     } catch (err) {
       setError(errorMessage(err));
@@ -92,9 +107,14 @@ export function DoctorAttendancePage() {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => load(date), 0);
+    const timer = setTimeout(() => load(date, searchTerm), 0);
     return () => clearTimeout(timer);
-  }, [date, load]);
+  }, [date, load, searchTerm]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchTerm(searchInput.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   const updateRow = (doctorId: number, patch: Partial<Row>) => {
     setRows((prev) => prev.map((r) => (r.doctorId === doctorId ? { ...r, ...patch, dirty: true } : r)));
@@ -112,7 +132,7 @@ export function DoctorAttendancePage() {
       }));
       await doctorAttendanceApi.bulk({ date, entries });
       notify("success", `Attendance saved for ${date}.`);
-      await load(date);
+      await load(date, searchTerm);
     } catch (err) {
       notify("error", errorMessage(err));
     } finally {
@@ -144,6 +164,18 @@ export function DoctorAttendancePage() {
 
       <div className="card p-5 rounded-2xl border border-[var(--border)] shadow-sm space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <label htmlFor="da-doctor-search" className="block text-[9px] uppercase tracking-widest font-extrabold text-[var(--muted)] mb-1">
+              Search doctor
+            </label>
+            <input
+              id="da-doctor-search"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search by name or doctor ID"
+              className="w-full sm:w-64 bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15"
+            />
+          </div>
           <div>
             <label htmlFor="da-date" className="block text-[9px] uppercase tracking-widest font-extrabold text-[var(--muted)] mb-1">
               Date
@@ -191,7 +223,7 @@ export function DoctorAttendancePage() {
         ) : rows.length === 0 ? (
           <div className="rounded-xl border border-dashed border-[var(--border)] px-4 py-12 text-center">
             <p className="text-xs font-bold text-[var(--muted)]">
-              No active doctors in this branch.
+              {searchTerm ? "No doctors match your search." : "Search for a doctor to view attendance."}
             </p>
           </div>
         ) : (

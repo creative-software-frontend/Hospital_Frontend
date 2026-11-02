@@ -58,6 +58,7 @@ export const listEmergencyCasesQuerySchema = z.object({
   date: isoDate,
   /** Only cases whose patient still misses gender / DOB / phone / address. */
   incomplete: booleanFlag.optional(),
+  search: z.string().trim().max(255).optional(),
   page: z.coerce.number().int().positive().optional(),
   limit: z.coerce.number().int().positive().max(100).optional(),
 });

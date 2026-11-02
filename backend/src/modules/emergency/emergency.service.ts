@@ -196,6 +196,23 @@ export async function listEmergencyCases(actor: AuthUser, query: ListEmergencyCa
   const where: Prisma.EmergencyCaseWhereInput = {
     ...dayWhere,
     ...(query.incomplete === true ? { patient: INCOMPLETE_PATIENT_FILTER } : {}),
+    ...(query.search
+      ? {
+          OR: [
+            { caseNumber: { contains: query.search } },
+            { chiefComplaint: { contains: query.search } },
+            {
+              patient: {
+                OR: [
+                  { name: { contains: query.search } },
+                  { patientCode: { contains: query.search } },
+                  { phone: { contains: query.search } },
+                ],
+              },
+            },
+          ],
+        }
+      : {}),
   };
 
   const [total, rows, dayTotal, needsInfo] = await Promise.all([

@@ -337,6 +337,22 @@ export function PatientModule({
     );
   }
 
+  if (!pageKey) {
+    return (
+      <div className="card p-6 rounded-2xl border border-[var(--border)] shadow-sm">
+        <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">
+          Patient Management
+        </span>
+        <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">
+          Select a patient module
+        </h3>
+        <p className="text-xs text-[var(--muted)] mt-1.5">
+          Choose a submenu item from the sidebar to continue.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Header + toolbar */}

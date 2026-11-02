@@ -1205,6 +1205,7 @@ export interface EmergencyCaseListQuery {
   date?: string;
   /** Only cases whose patient is still incomplete. */
   incomplete?: boolean;
+  search?: string;
   page?: number;
   limit?: number;
 }

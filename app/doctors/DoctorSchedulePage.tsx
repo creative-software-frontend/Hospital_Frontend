@@ -6,7 +6,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { FiSave } from "react-icons/fi";
+import { FiSearch, FiSave } from "react-icons/fi";
 import {
   doctorApi,
   doctorScheduleApi,
@@ -33,9 +33,10 @@ function buildInitial(): DaySlot[] {
 
 export function DoctorSchedulePage() {
   const [doctors, setDoctors] = useState<DoctorRecord[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [doctorId, setDoctorId] = useState<number | null>(null);
   const [slots, setSlots] = useState<DaySlot[]>(buildInitial());
-  const [loadingDoctors, setLoadingDoctors] = useState(true);
+  const [loadingDoctors, setLoadingDoctors] = useState(false);
   const [loadingSchedule, setLoadingSchedule] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -49,25 +50,33 @@ export function DoctorSchedulePage() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const loadDoctors = useCallback(async () => {
+  const loadDoctors = useCallback(async (term: string) => {
+    const query = term.trim();
+    if (!query) {
+      setDoctors([]);
+      setDoctorId(null);
+      setLoadingDoctors(false);
+      return;
+    }
+
     setLoadingDoctors(true);
+    setDoctorId(null);
     try {
-      const result = await doctorApi.list({ page: 1, limit: 100 });
+      const result = await doctorApi.list({ page: 1, limit: 100, search: query });
       const sorted = [...result.data].sort((a, b) => a.name.localeCompare(b.name));
       setDoctors(sorted);
-      if (sorted.length > 0 && doctorId === null) setDoctorId(sorted[0].id);
       setError("");
     } catch (err) {
       setError(errorMessage(err));
     } finally {
       setLoadingDoctors(false);
     }
-  }, [doctorId]);
+  }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => loadDoctors(), 0);
+    const timer = setTimeout(() => loadDoctors(searchTerm), 300);
     return () => clearTimeout(timer);
-  }, [loadDoctors]);
+  }, [loadDoctors, searchTerm]);
 
   const loadSchedule = useCallback(async (id: number) => {
     setLoadingSchedule(true);
@@ -145,7 +154,7 @@ export function DoctorSchedulePage() {
             {error}
             <button
               onClick={() => {
-                loadDoctors();
+                loadDoctors(searchTerm);
                 if (doctorId != null) loadSchedule(doctorId);
               }}
               className="text-xs font-bold underline cursor-pointer"
@@ -155,32 +164,56 @@ export function DoctorSchedulePage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,24rem)] gap-3 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,28rem)] gap-3 items-start">
           <div>
-            <label htmlFor="ds-doctor" className="block text-[9px] uppercase tracking-widest font-extrabold text-[var(--muted)] mb-1">
-              Doctor
+            <label htmlFor="ds-doctor-search" className="block text-[9px] uppercase tracking-widest font-extrabold text-[var(--muted)] mb-1">
+              Search doctor
             </label>
-            <select
-              id="ds-doctor"
-              value={doctorId ?? ""}
-              onChange={(e) => setDoctorId(e.target.value ? Number(e.target.value) : null)}
-              disabled={loadingDoctors}
-              className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15"
-            >
-              {loadingDoctors ? (
-                <option>Loading doctors…</option>
-              ) : doctors.length === 0 ? (
-                <option>No doctors registered</option>
-              ) : (
-                doctors.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name} ({d.doctorCode})
-                  </option>
-                ))
-              )}
-            </select>
+            <div className="relative">
+              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--muted)]" />
+              <input
+                id="ds-doctor-search"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by name or doctor ID"
+                className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl pl-9 pr-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15"
+              />
+            </div>
+            {loadingDoctors && (
+              <p className="text-[11px] font-semibold text-[var(--muted)] mt-2">Searching doctors…</p>
+            )}
+            {!loadingDoctors && doctors.length > 0 && (
+              <div className="mt-2 space-y-1.5">
+                {doctors.map((doctor) => (
+                  <button
+                    key={doctor.id}
+                    type="button"
+                    onClick={() => setDoctorId(doctor.id)}
+                    className={`w-full flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left transition-colors cursor-pointer ${
+                      doctor.id === doctorId
+                        ? "border-[var(--primary)] bg-[var(--primary)]/10"
+                        : "border-[var(--border)] bg-[var(--bg)] hover:border-[var(--primary)]/50"
+                    }`}
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-xs font-bold text-[var(--primary-dark)] truncate">{doctor.name}</span>
+                      <span className="block text-[10px] font-semibold text-[var(--muted)]">{doctor.doctorCode}</span>
+                    </span>
+                    <span className="text-[10px] font-extrabold text-[var(--primary)]">
+                      {doctor.id === doctorId ? "Selected" : "Set schedule"}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
+
+        {searchTerm.trim() && !loadingDoctors && doctors.length === 0 && !error && (
+          <p className="text-xs font-semibold text-[var(--muted)]">
+            No doctors match &quot;{searchTerm.trim()}&quot;.
+          </p>
+        )}
 
         {doctorId != null && (
           <>

@@ -35,7 +35,7 @@ const INPUT_CLS =
 
 export function CommissionSetupPage() {
   const [rows, setRows] = useState<Row[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -51,6 +51,12 @@ export function CommissionSetupPage() {
   }, []);
 
   const load = useCallback(async () => {
+    if (!searchTerm) {
+      setRows([]);
+      setError("");
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError("");
     try {
