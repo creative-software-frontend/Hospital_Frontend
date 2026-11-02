@@ -100,6 +100,18 @@ export async function registerEmergencyCase(
     name: quick.name,
     ...(quick.gender ? { gender: quick.gender } : {}),
     ...(dateOfBirth ? { dateOfBirth } : {}),
+    ...(quick.guardianName || quick.guardianPhone
+      ? {
+          contacts: [
+            {
+              name: quick.guardianName ?? "Emergency contact",
+              relationship: quick.guardianRelationship,
+              phone: quick.guardianPhone,
+              isPrimary: true,
+            },
+          ],
+        }
+      : {}),
   };
 
   const patient = await patientService.createPatient(actor, patientInput, {

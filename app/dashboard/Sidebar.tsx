@@ -125,7 +125,11 @@ export const Sidebar = ({
                                                     : "text-[var(--muted)] hover:bg-[var(--primary-soft)]/20"
                                             }`}
                                             onClick={() => {
-                                                handleSelectFeature(feat);
+                                                // Patient Management: only expand/collapse the submenu —
+                                                // do NOT auto-open the patient list.
+                                                if (feat.id !== 1) {
+                                                    handleSelectFeature(feat);
+                                                }
                                                 toggleFeature(feat.id);
                                             }}
                                         >

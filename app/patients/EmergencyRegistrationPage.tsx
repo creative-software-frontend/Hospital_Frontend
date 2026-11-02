@@ -78,11 +78,14 @@ function unknownName(gender: string, age: string): string {
 }
 
 export function EmergencyRegistrationPage() {
-  /* ---------------- quick intake (4 fields) ---------------- */
+  /* ---------------- quick intake ---------------- */
   const [name, setName] = useState("");
   const [gender, setGender] = useState("");
   const [approxAge, setApproxAge] = useState("");
   const [chiefComplaint, setChiefComplaint] = useState("");
+  const [guardianName, setGuardianName] = useState("");
+  const [guardianRelationship, setGuardianRelationship] = useState("");
+  const [guardianPhone, setGuardianPhone] = useState("");
   const [unidentified, setUnidentified] = useState(false);
   /** True while the name still mirrors the generated "Unknown …" label. */
   const [autoName, setAutoName] = useState(false);
@@ -145,6 +148,9 @@ export function EmergencyRegistrationPage() {
     setGender("");
     setApproxAge("");
     setChiefComplaint("");
+    setGuardianName("");
+    setGuardianRelationship("");
+    setGuardianPhone("");
     setUnidentified(false);
     setAutoName(false);
     setFieldErrors({});
@@ -184,6 +190,9 @@ export function EmergencyRegistrationPage() {
           name: resolvedName,
           gender: gender ? (gender as "MALE" | "FEMALE" | "OTHER") : undefined,
           approxAge: approxAge ? Number(approxAge) : undefined,
+          guardianName: guardianName.trim() || undefined,
+          guardianRelationship: guardianRelationship.trim() || undefined,
+          guardianPhone: guardianPhone.trim() || undefined,
         },
         // Not asked at the door: triage starts Urgent and can be raised later.
         priority: "URGENT",
@@ -236,7 +245,7 @@ export function EmergencyRegistrationPage() {
               Emergency Patient Registration
             </h4>
             <p className="text-[11px] text-[var(--muted)] font-semibold">
-              Four fields, nothing more — finish the paperwork once the patient is stable.
+              Capture the essentials now; finish the paperwork once the patient is stable.
             </p>
           </div>
         </div>
@@ -294,7 +303,7 @@ export function EmergencyRegistrationPage() {
             </span>
           </label>
 
-          <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,20rem)_9rem_9rem] gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,16rem)_8rem_9rem] gap-3">
             <div>
               <label htmlFor="er-name" className={LABEL_CLS}>
                 Patient name *
@@ -372,6 +381,46 @@ export function EmergencyRegistrationPage() {
               placeholder="What brought the patient in? e.g. chest pain since 30 minutes"
               className={`${INPUT_CLS} resize-none`}
             />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,16rem)_10rem_10rem] gap-3">
+            <div>
+              <label htmlFor="er-guardian-name" className={LABEL_CLS}>
+                Guardian name
+              </label>
+              <input
+                id="er-guardian-name"
+                value={guardianName}
+                onChange={(e) => setGuardianName(e.target.value)}
+                placeholder="Parent or guardian name"
+                className={INPUT_CLS}
+              />
+            </div>
+            <div>
+              <label htmlFor="er-guardian-relation" className={LABEL_CLS}>
+                Relation
+              </label>
+              <input
+                id="er-guardian-relation"
+                value={guardianRelationship}
+                onChange={(e) => setGuardianRelationship(e.target.value)}
+                placeholder="e.g. Father"
+                className={INPUT_CLS}
+              />
+            </div>
+            <div>
+              <label htmlFor="er-guardian-phone" className={LABEL_CLS}>
+                Guardian phone
+              </label>
+              <input
+                id="er-guardian-phone"
+                type="tel"
+                value={guardianPhone}
+                onChange={(e) => setGuardianPhone(e.target.value)}
+                placeholder="Phone number"
+                className={INPUT_CLS}
+              />
+            </div>
           </div>
 
           <div className="flex items-center justify-between gap-3 flex-wrap">

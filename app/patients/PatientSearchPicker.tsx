@@ -32,7 +32,7 @@ export function PatientSearchPicker({
   const [search, setSearch] = useState("");
   const [term, setTerm] = useState("");
   const [results, setResults] = useState<PatientListRecord[]>([]);
-  const [searching, setSearching] = useState(true);
+  const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
   const [nonce, setNonce] = useState(0);
 
@@ -47,9 +47,15 @@ export function PatientSearchPicker({
   useEffect(() => {
     let active = true;
     const timer = setTimeout(() => {
+      if (!term) {
+        setResults([]);
+        setSearchError("");
+        setSearching(false);
+        return;
+      }
       setSearching(true);
       patientApi
-        .list({ search: term || undefined, limit: 10 })
+        .list({ search: term, limit: 10 })
         .then((r) => {
           if (!active) return;
           setResults(r.data);
@@ -109,50 +115,52 @@ export function PatientSearchPicker({
         </div>
       )}
 
-      <div className="rounded-xl border border-[var(--border)] divide-y divide-[var(--border)] overflow-hidden">
-        {searching ? (
-          <div className="px-4 py-6 text-center">
-            <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-[var(--primary)]" />
-          </div>
-        ) : results.length === 0 ? (
-          <div className="px-4 py-8 text-center text-xs font-bold text-[var(--muted)]">
-            <FiUser className="w-5 h-5 mx-auto mb-2 opacity-50" />
-            No patients match “{search || "your search"}”.
-          </div>
-        ) : (
-          results.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => onPick(p)}
-              className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-left transition-colors cursor-pointer hover:bg-[var(--primary-soft)]/15 ${
-                selectedId === p.id ? "bg-[var(--primary-soft)]/20" : ""
-              }`}
-            >
-              <span className="flex items-center gap-3 min-w-0">
-                <span className="w-8 h-8 rounded-lg bg-[var(--primary-soft)]/30 text-[var(--primary-dark)] flex items-center justify-center shrink-0">
-                  <FiUser className="w-3.5 h-3.5" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-xs font-bold text-[var(--text)] truncate">{p.name}</span>
-                  <span className="block text-[10px] text-[var(--muted)] truncate">
-                    {[p.patientCode, genderLabel(p.gender), calcAge(p.dateOfBirth), p.phone]
-                      .filter(Boolean)
-                      .join(" · ")}
+      {term && (
+        <div className="rounded-xl border border-[var(--border)] divide-y divide-[var(--border)] overflow-hidden">
+          {searching ? (
+            <div className="px-4 py-6 text-center">
+              <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-[var(--primary)]" />
+            </div>
+          ) : results.length === 0 ? (
+            <div className="px-4 py-8 text-center text-xs font-bold text-[var(--muted)]">
+              <FiUser className="w-5 h-5 mx-auto mb-2 opacity-50" />
+              No patients match “{search || "your search"}”.
+            </div>
+          ) : (
+            results.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => onPick(p)}
+                className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-left transition-colors cursor-pointer hover:bg-[var(--primary-soft)]/15 ${
+                  selectedId === p.id ? "bg-[var(--primary-soft)]/20" : ""
+                }`}
+              >
+                <span className="flex items-center gap-3 min-w-0">
+                  <span className="w-8 h-8 rounded-lg bg-[var(--primary-soft)]/30 text-[var(--primary-dark)] flex items-center justify-center shrink-0">
+                    <FiUser className="w-3.5 h-3.5" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-xs font-bold text-[var(--text)] truncate">{p.name}</span>
+                    <span className="block text-[10px] text-[var(--muted)] truncate">
+                      {[p.patientCode, genderLabel(p.gender), calcAge(p.dateOfBirth), p.phone]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
                   </span>
                 </span>
-              </span>
-              <span className="flex items-center gap-2 shrink-0">
-                {p.status === "inactive" && (
-                  <span className="text-[10px] font-bold text-rose-500 border border-rose-200 bg-rose-50 rounded-full px-2 py-0.5">
-                    Inactive
-                  </span>
-                )}
-                <FiChevronRight className="w-3.5 h-3.5 text-[var(--muted)]" />
-              </span>
-            </button>
-          ))
-        )}
-      </div>
+                <span className="flex items-center gap-2 shrink-0">
+                  {p.status === "inactive" && (
+                    <span className="text-[10px] font-bold text-rose-500 border border-rose-200 bg-rose-50 rounded-full px-2 py-0.5">
+                      Inactive
+                    </span>
+                  )}
+                  <FiChevronRight className="w-3.5 h-3.5 text-[var(--muted)]" />
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

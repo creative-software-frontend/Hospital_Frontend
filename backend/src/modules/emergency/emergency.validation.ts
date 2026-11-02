@@ -4,7 +4,7 @@
 // Emergency intake is deliberately minimal: at the door staff often only have a
 // name, an approximate age and a complaint. Everything else — phone, address,
 // date of birth — is completed afterwards from the patient record, so the API
-// accepts exactly the four fields the intake form shows.
+// accepts the identity, complaint and optional guardian details the intake form shows.
 
 import { z } from "zod";
 import { GENDER_VALUES } from "../patients/patient.validation";
@@ -35,6 +35,9 @@ export const emergencyPatientSchema = z.object({
   gender: z.enum(GENDER_VALUES).optional(),
   /** Years, converted to an estimated 1 January date of birth. */
   approxAge: z.coerce.number().int().min(0).max(130).optional(),
+  guardianName: optionalText(255, "Guardian name"),
+  guardianRelationship: optionalText(255, "Guardian relationship"),
+  guardianPhone: optionalText(32, "Guardian phone"),
 });
 
 export const createEmergencyCaseSchema = z.object({

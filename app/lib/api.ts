@@ -1214,6 +1214,9 @@ export interface CreateEmergencyPatientInput {
   gender?: Gender;
   /** Years, converted to an estimated 1 January date of birth. */
   approxAge?: number;
+  guardianName?: string;
+  guardianRelationship?: string;
+  guardianPhone?: string;
 }
 
 export interface CreateEmergencyCaseInput {
