@@ -62,6 +62,12 @@ export async function createOpdAppointment(
   });
   if (!doctor) throw new NotFoundError("Doctor not found in this branch");
 
+  const chamber = await prisma.chamber.findFirst({
+    where: { id: input.chamberId, branchId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!chamber) throw new NotFoundError("Chamber not found in this branch");
+
   const configuredDoctorFee =
     input.visitType === "FOLLOWUP" ? doctor.followupFee : doctor.consultationFee;
   if (configuredDoctorFee === null) {
@@ -92,6 +98,7 @@ export async function createOpdAppointment(
       where: {
         branchId,
         doctorId: input.doctorId,
+        chamberId: input.chamberId,
         appointmentDate: { gte: dayStart, lt: dayEnd },
         deletedAt: null,
         status: { notIn: ["CANCELLED", "NO_SHOW"] },
@@ -142,6 +149,7 @@ export async function createOpdAppointment(
         branchId: true,
         patientId: true,
         doctorId: true,
+        chamberId: true,
         appointmentDate: true,
         startTime: true,
         endTime: true,

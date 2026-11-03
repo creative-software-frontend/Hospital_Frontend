@@ -11,6 +11,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { FiPlus, FiRefreshCcw, FiX, FiSearch } from "react-icons/fi";
 import {
   appointmentApi,
+  chamberApi,
+  chamberScheduleApi,
   doctorApi,
   patientApi,
   errorMessage,
@@ -19,6 +21,8 @@ import {
   type AppointmentStatus,
   type AppointmentVisitType,
   type DoctorRecord,
+  type ChamberRecord,
+  type ChamberScheduleRecord,
   type PaginationMeta,
 } from "@/app/lib/api";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
@@ -519,6 +523,9 @@ function ScheduleModal({
   const [doctorId, setDoctorId] = useState<number | null>(null);
   const [doctorLabel, setDoctorLabel] = useState("");
   const [selectedDoctor, setSelectedDoctor] = useState<DoctorRecord | null>(null);
+  const [chambers, setChambers] = useState<ChamberRecord[]>([]);
+  const [chamberSlots, setChamberSlots] = useState<ChamberScheduleRecord[]>([]);
+  const [chamberId, setChamberId] = useState<number | null>(null);
   const [date, setDate] = useState(TODAY);
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("09:30");
@@ -561,10 +568,57 @@ function ScheduleModal({
     }));
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    if (doctorId == null) {
+      setChambers([]);
+      setChamberSlots([]);
+      setChamberId(null);
+      return () => { active = false; };
+    }
+    void chamberApi.list({ limit: 100 }).then(async (result) => {
+      const schedules = await Promise.all(result.data.map(async (chamber) => ({
+        chamber,
+        slots: await chamberScheduleApi.list(chamber.id),
+      })));
+      if (!active) return;
+      const matching = schedules.flatMap(({ chamber, slots }) =>
+        slots.filter((slot) => slot.doctorId === doctorId).map((slot) => ({ chamber, slot })),
+      );
+      setChambers([...new Map(matching.map(({ chamber }) => [chamber.id, chamber])).values()]);
+      setChamberSlots(matching.map(({ slot }) => slot));
+      setChamberId((current) =>
+        current != null && matching.some(({ chamber }) => chamber.id === current)
+          ? current
+          : matching[0]?.chamber.id ?? null,
+      );
+    }).catch(() => {
+      if (active) {
+        setChambers([]);
+        setChamberSlots([]);
+        setChamberId(null);
+      }
+    });
+    return () => { active = false; };
+  }, [doctorId]);
+
+  const daySlots = chamberSlots.filter(
+    (slot) => slot.chamberId === chamberId && slot.dayOfWeek === new Date(`${date}T00:00:00`).getDay(),
+  );
+  const selectedSlot = daySlots[0] ?? null;
+
+  useEffect(() => {
+    if (selectedSlot) {
+      setStartTime(selectedSlot.startTime);
+      setEndTime(selectedSlot.endTime);
+    }
+  }, [selectedSlot?.id]);
+
   const validate = (): boolean => {
     const next: Record<string, string> = {};
     if (patientId == null) next.patientId = "Patient is required";
     if (doctorId == null) next.doctorId = "Doctor is required";
+    if (chamberId == null) next.chamberId = "Chamber is required";
     if (!doctorFee) {
       next.doctorFee =
         visitType === "FOLLOWUP"
@@ -582,6 +636,9 @@ function ScheduleModal({
     }
     if (startTime && endTime && endTime <= startTime)
       next.endTime = "End time must be after start time";
+    if (chamberId != null && !selectedSlot) {
+      next.chamberId = "No chamber schedule is available for this date";
+    }
     setFieldErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -595,6 +652,7 @@ function ScheduleModal({
       await appointmentApi.create({
         patientId: patientId as number,
         doctorId: doctorId as number,
+        chamberId: chamberId as number,
         appointmentDate: date,
         startTime,
         endTime,
@@ -691,6 +749,26 @@ function ScheduleModal({
               {fieldError("doctorId")}
             </div>
             <div>
+              <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Chamber *</label>
+              <select
+                className={INPUT_CLS}
+                value={chamberId ?? ""}
+                onChange={(event) => {
+                  setChamberId(event.target.value ? Number(event.target.value) : null);
+                  setFieldErrors((p) => ({ ...p, chamberId: "" }));
+                }}
+                disabled={doctorId == null || chambers.length === 0}
+              >
+                <option value="">
+                  {doctorId == null ? "Select a doctor first" : chambers.length === 0 ? "No scheduled chamber" : "Select chamber"}
+                </option>
+                {chambers.map((chamber) => (
+                  <option key={chamber.id} value={chamber.id}>{chamber.name}</option>
+                ))}
+              </select>
+              {fieldError("chamberId")}
+            </div>
+            <div>
               <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">
                 {visitType === "FOLLOWUP" ? "Follow-up Fee" : "Consultation Fee"} *
               </label>
@@ -747,6 +825,7 @@ function ScheduleModal({
                   setStartTime(e.target.value);
                   setFieldErrors((p) => ({ ...p, startTime: "", endTime: "" }));
                 }}
+                disabled={daySlots.length > 0}
                 className={INPUT_CLS}
               />
               {fieldError("startTime")}
@@ -760,9 +839,31 @@ function ScheduleModal({
                   setEndTime(e.target.value);
                   setFieldErrors((p) => ({ ...p, endTime: "" }));
                 }}
+                disabled={daySlots.length > 0}
                 className={INPUT_CLS}
               />
               {fieldError("endTime")}
+            </div>
+            <div className="sm:col-span-2 lg:col-span-4">
+              <label className="block text-[11px] font-bold text-[var(--muted)] mb-1">Available chamber time *</label>
+              <select
+                className={INPUT_CLS}
+                value={selectedSlot?.id ?? ""}
+                onChange={(event) => {
+                  const slot = daySlots.find((item) => item.id === Number(event.target.value));
+                  if (slot) {
+                    setStartTime(slot.startTime);
+                    setEndTime(slot.endTime);
+                    setFieldErrors((p) => ({ ...p, chamberId: "", startTime: "", endTime: "" }));
+                  }
+                }}
+                disabled={daySlots.length === 0}
+              >
+                <option value="">{daySlots.length ? "Select available time" : "No scheduled time for this date"}</option>
+                {daySlots.map((slot) => (
+                  <option key={slot.id} value={slot.id}>{slot.startTime} – {slot.endTime}</option>
+                ))}
+              </select>
             </div>
           </div>
 

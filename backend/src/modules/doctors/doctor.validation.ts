@@ -82,6 +82,8 @@ const doctorFieldsSchema = z.object({
   specialization: optionalString(255),
   qualification: optionalString(255),
   bmdcRegistrationNo: optionalString(64),
+  nationalId: optionalString(64),
+  whatsapp: phoneSchema,
   joiningDate: optionalDate,
   gender: optionalEnum(GENDER_VALUES),
   dateOfBirth: optionalDate,

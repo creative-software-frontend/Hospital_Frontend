@@ -7,6 +7,7 @@ import { z } from "zod";
 export const createOpdAppointmentSchema = z.object({
   patientId: z.number().int().positive(),
   doctorId: z.number().int().positive(),
+  chamberId: z.number().int().positive(),
   appointmentDate: z.string().datetime({ offset: true }).or(z.string().date()),
   startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Invalid start time"),
   endTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Invalid end time"),

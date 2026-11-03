@@ -1,23 +1,26 @@
 // app/doctors/ChamberManagementPage.tsx
-// Sub-feature "Chamber Management": CRUD for consultation chambers, with an
-// optional doctor assignment. Backed by /api/chambers.
+// Sub-feature "Chamber Management": CRUD for consultation chambers and their
+// weekly doctor time slots. Backed by /api/chambers.
 
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { FiPlus, FiRefreshCcw, FiSearch, FiEdit2, FiX } from "react-icons/fi";
+import { FiPlus, FiRefreshCcw, FiSearch, FiEdit2, FiX, FiClock, FiTrash2 } from "react-icons/fi";
 import {
   branchApi,
   chamberApi,
+  chamberScheduleApi,
   doctorApi,
   errorMessage,
   type BranchRecord,
   type ChamberRecord,
+  type ChamberScheduleRecord,
   type CreateChamberInput,
   type DoctorRecord,
   type PaginationMeta,
 } from "@/app/lib/api";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
+import { ChamberScheduleModal } from "./ChamberScheduleModal";
 
 const PAGE_SIZE = 10;
 
@@ -58,6 +61,11 @@ export function ChamberManagementPage() {
   const [doctors, setDoctors] = useState<DoctorRecord[]>([]);
   const [branches, setBranches] = useState<BranchRecord[]>([]);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [scheduleChamber, setScheduleChamber] = useState<ChamberRecord | null>(null);
+  const [scheduleRows, setScheduleRows] = useState<ChamberScheduleRecord[]>([]);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [scheduleError, setScheduleError] = useState("");
 
   const notify = useCallback((kind: ToastKind, message: string) => {
     const id = Date.now() + Math.random();
@@ -68,14 +76,6 @@ export function ChamberManagementPage() {
   }, []);
 
   const load = useCallback(async () => {
-    if (!searchTerm) {
-      setRows([]);
-      setPagination(null);
-      setError("");
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
       const result = await chamberApi.list({
@@ -196,6 +196,42 @@ export function ChamberManagementPage() {
     }
   };
 
+  const openSchedule = async (chamber: ChamberRecord) => {
+    setScheduleChamber(chamber);
+    setScheduleLoading(true);
+    setScheduleError("");
+    try {
+      setScheduleRows(await chamberScheduleApi.list(chamber.id));
+    } catch (err) {
+      setScheduleError(errorMessage(err));
+    } finally {
+      setScheduleLoading(false);
+    }
+  };
+
+  const saveSchedule = async () => {
+    if (!scheduleChamber) return;
+    setScheduleSaving(true);
+    setScheduleError("");
+    try {
+      await chamberScheduleApi.replace(scheduleChamber.id, {
+        slots: scheduleRows.map((row) => ({
+          doctorId: row.doctorId,
+          dayOfWeek: row.dayOfWeek,
+          startTime: row.startTime,
+          endTime: row.endTime,
+        })),
+      });
+      notify("success", `Schedule for "${scheduleChamber.name}" saved.`);
+      setScheduleChamber(null);
+      setReloadKey((k) => k + 1);
+    } catch (err) {
+      setScheduleError(errorMessage(err));
+    } finally {
+      setScheduleSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="card p-5 rounded-2xl border border-[var(--border)] shadow-sm">
@@ -253,7 +289,7 @@ export function ChamberManagementPage() {
         ) : rows.length === 0 ? (
           <div className="rounded-xl border border-dashed border-[var(--border)] px-4 py-12 text-center">
             <p className="text-xs font-bold text-[var(--muted)]">
-              {searchTerm ? "No chambers match your search." : "Search for a chamber to view the table."}
+              {searchTerm ? "No chambers match your search." : "No chambers have been added yet."}
             </p>
           </div>
         ) : (
@@ -261,7 +297,7 @@ export function ChamberManagementPage() {
             <table className="min-w-[640px] w-full">
               <thead>
                 <tr className="bg-[var(--bg)]">
-                  {["Name", "Branch", "Assigned Doctor", "Actions"].map((col) => (
+                  {["Name", "Branch", "Doctors", "Actions"].map((col) => (
                     <th
                       key={col}
                       className="text-left text-[11px] font-bold text-[var(--muted)] px-4 py-3 border-b border-[var(--border)]"
@@ -285,13 +321,17 @@ export function ChamberManagementPage() {
                       ) : null}
                     </td>
                     <td className="text-[12px] text-[var(--text)] px-4 py-3 border-b border-[var(--border)]">
-                      {c.doctor?.name ?? "Unassigned"}
-                      {c.doctor?.doctorCode ? (
-                        <span className="block text-[10px] text-[var(--muted)]">{c.doctor.doctorCode}</span>
-                      ) : null}
+                      {c._count?.schedules ?? 0} scheduled doctor(s)
                     </td>
                     <td className="px-4 py-3 border-b border-[var(--border)]">
                       <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => openSchedule(c)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-[var(--primary)]/30 bg-[var(--primary-soft)]/20 text-[var(--primary-dark)] hover:bg-[var(--primary-soft)]/40 transition-colors text-[11px] font-bold"
+                          title="Manage weekly schedule"
+                        >
+                          <FiClock className="w-3.5 h-3.5" /> Schedule
+                        </button>
                         <button
                           onClick={() => openEdit(c)}
                           className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--primary-dark)] hover:border-[var(--primary)] transition-colors"
@@ -413,7 +453,7 @@ export function ChamberManagementPage() {
                 />
               </div>
               <div>
-                <label className={LABEL_CLS}>Assigned doctor</label>
+                <label className={LABEL_CLS}>Legacy doctor assignment</label>
                 <input
                   className={INPUT_CLS}
                   value={doctorSearch}
@@ -453,6 +493,55 @@ export function ChamberManagementPage() {
                       .length === 0 && (
                       <p className="px-2.5 py-2 text-[11px] font-semibold text-[var(--muted)]">No doctors found.</p>
                     )}
+
+                    {false && scheduleChamber && (
+                      <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 sm:p-6" onClick={() => !scheduleSaving && setScheduleChamber(null)}>
+                        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+                        <div className="relative bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-between gap-3 mb-4">
+                            <div>
+                              <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">Weekly recurring schedule</span>
+                              <h3 className="font-black text-xl text-[var(--primary-dark)]">{scheduleChamber!.name}</h3>
+                            </div>
+                            <button onClick={() => setScheduleChamber(null)} disabled={scheduleSaving} className="p-2 rounded-xl text-[var(--muted)] hover:bg-[var(--bg)]"><FiX /></button>
+                          </div>
+                          {scheduleError && <p className="alert-error text-xs mb-3">{scheduleError}</p>}
+                          {scheduleLoading ? (
+                            <div className="py-10 text-center text-xs text-[var(--muted)]">Loading schedule…</div>
+                          ) : (
+                            <>
+                              <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+                                <table className="min-w-[760px] w-full">
+                                  <thead><tr className="bg-[var(--bg)]">{["Doctor", "Day", "Start", "End", ""].map((label) => <th key={label} className="text-left text-[11px] font-bold text-[var(--muted)] px-3 py-2 border-b border-[var(--border)]">{label}</th>)}</tr></thead>
+                                  <tbody>
+                                    {scheduleRows.map((row, index) => (
+                                      <tr key={row.id} className="border-b border-[var(--border)]">
+                                        <td className="px-3 py-2"><select className={INPUT_CLS} value={row.doctorId} onChange={(e) => setScheduleRows((prev) => prev.map((item, i) => i === index ? { ...item, doctorId: Number(e.target.value) } : item))}>{doctors.filter((doctor) => doctor.branchId === scheduleChamber!.branchId).map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.name} ({doctor.doctorCode})</option>)}</select></td>
+                                        <td className="px-3 py-2"><select className={INPUT_CLS} value={row.dayOfWeek} onChange={(e) => setScheduleRows((prev) => prev.map((item, i) => i === index ? { ...item, dayOfWeek: Number(e.target.value) } : item))}>{["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day, value) => <option key={day} value={value}>{day}</option>)}</select></td>
+                                        <td className="px-3 py-2"><input type="time" className={INPUT_CLS} value={row.startTime} onChange={(e) => setScheduleRows((prev) => prev.map((item, i) => i === index ? { ...item, startTime: e.target.value } : item))} /></td>
+                                        <td className="px-3 py-2"><input type="time" className={INPUT_CLS} value={row.endTime} onChange={(e) => setScheduleRows((prev) => prev.map((item, i) => i === index ? { ...item, endTime: e.target.value } : item))} /></td>
+                                        <td className="px-3 py-2"><button onClick={() => setScheduleRows((prev) => prev.filter((_, i) => i !== index))} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg" title="Remove slot"><FiTrash2 /></button></td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                              <div className="flex items-center justify-between gap-3 mt-4">
+                                <button
+                                  onClick={() => {
+                                    const chamberDoctors = doctors.filter((doctor) => doctor.branchId === scheduleChamber!.branchId);
+                                    if (chamberDoctors.length === 0) return;
+                                    setScheduleRows((prev) => [...prev, { id: -Date.now(), chamberId: scheduleChamber!.id, branchId: scheduleChamber!.branchId, doctorId: chamberDoctors[0].id, dayOfWeek: 0, startTime: "09:00", endTime: "17:00", status: "active", doctor: { id: chamberDoctors[0].id, name: chamberDoctors[0].name, doctorCode: chamberDoctors[0].doctorCode } }]);
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-xs font-bold hover:bg-[var(--bg)]"
+                                ><FiPlus /> Add doctor slot</button>
+                                <button onClick={saveSchedule} disabled={scheduleSaving} className="px-4 py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-50" style={{ background: "var(--primary)" }}>{scheduleSaving ? "Saving…" : "Save schedule"}</button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
                 {!doctorSearch && (
@@ -482,6 +571,20 @@ export function ChamberManagementPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {scheduleChamber && (
+        <ChamberScheduleModal
+          chamber={scheduleChamber}
+          rows={scheduleRows}
+          doctors={doctors}
+          loading={scheduleLoading}
+          saving={scheduleSaving}
+          error={scheduleError}
+          onRowsChange={setScheduleRows}
+          onSave={saveSchedule}
+          onClose={() => setScheduleChamber(null)}
+        />
       )}
 
       <ToastViewport toasts={toasts} onDismiss={dismissToast} />

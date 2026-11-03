@@ -2405,6 +2405,8 @@ export interface DoctorRecord {
   specialization: string | null;
   qualification: string | null;
   bmdcRegistrationNo: string | null;
+  nationalId: string | null;
+  whatsapp: string | null;
   joiningDate: string | null;
   gender: Gender | null;
   dateOfBirth: string | null;
@@ -2671,6 +2673,8 @@ export interface CreateDoctorInput {
   specialization?: string | null;
   qualification?: string | null;
   bmdcRegistrationNo?: string | null;
+  nationalId?: string | null;
+  whatsapp?: string | null;
   joiningDate?: string | null;
   gender?: Gender | null;
   dateOfBirth?: string | null;
@@ -2836,6 +2840,7 @@ export interface ChamberRecord {
   updatedAt: string;
   branch?: { id: number; name: string; code: string; city: string | null } | null;
   doctor?: { id: number; name: string; doctorCode: string } | null;
+  _count?: { schedules: number };
 }
 
 export interface ChamberListQuery {
@@ -2881,6 +2886,37 @@ export interface ChamberListResult {
   data: ChamberRecord[];
   pagination: PaginationMeta;
 }
+
+export interface ChamberScheduleRecord {
+  id: number;
+  chamberId: number;
+  branchId: number;
+  doctorId: number;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  status: ActiveStatus;
+  doctor: { id: number; name: string; doctorCode: string };
+}
+
+export interface ReplaceChamberScheduleInput {
+  slots: Array<{
+    doctorId: number;
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
+  }>;
+}
+
+export const chamberScheduleApi = {
+  list: (chamberId: number) =>
+    request<ChamberScheduleRecord[]>(`/chambers/${chamberId}/schedules`),
+  replace: (chamberId: number, input: ReplaceChamberScheduleInput) =>
+    request<ChamberScheduleRecord[]>(`/chambers/${chamberId}/schedules`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
+};
 
 export const departmentApi = {
   list: (query: DepartmentListQuery = {}) =>
@@ -3246,6 +3282,7 @@ export interface AppointmentRecord {
   branchId: number;
   patientId: number;
   doctorId: number;
+  chamberId: number | null;
   /** ISO timestamp; render with `formatDate()`. */
   appointmentDate: string;
   /** "HH:MM" string. */
@@ -3286,6 +3323,7 @@ export interface AppointmentListQuery {
 export interface CreateAppointmentInput {
   patientId: number;
   doctorId: number;
+  chamberId: number;
   /** `YYYY-MM-DD` (date) or ISO datetime. */
   appointmentDate: string;
   startTime: string;

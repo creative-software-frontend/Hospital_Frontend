@@ -241,50 +241,51 @@ model Branch {
   bedStatuses            BedStatus[]
   bedDefinitions         BedDefinition[]
   emergencyCases         EmergencyCase[]
+  chamberSchedules       ChamberSchedule[]
 
   @@index([code])
 }
 
 model User {
-  id          Int        @id @default(autoincrement())
-  branchId    Int
-  name        String
-  email       String     @unique
-  phone       String?
-  username    String     @unique
-  password    String
-  status      UserStatus @default(ACTIVE)
-  lastLoginAt DateTime?
+  id                  Int        @id @default(autoincrement())
+  branchId            Int
+  name                String
+  email               String     @unique
+  phone               String?
+  username            String     @unique
+  password            String
+  status              UserStatus @default(ACTIVE)
+  lastLoginAt         DateTime?
   // Brute-force protection state
-  failedLoginAttempts Int       @default(0)
-  lockedUntil        DateTime?
-  lastFailedLoginAt  DateTime?
+  failedLoginAttempts Int        @default(0)
+  lockedUntil         DateTime?
+  lastFailedLoginAt   DateTime?
   // Password lifecycle
-  passwordChangedAt DateTime?
-  mustChangePassword Boolean   @default(false)
+  passwordChangedAt   DateTime?
+  mustChangePassword  Boolean    @default(false)
   /// Previous password hashes (newest first) used to enforce password history.
-  passwordHistory    Json?
+  passwordHistory     Json?
   // Two-factor authentication
-  twoFactorSecret      String?
-  twoFactorEnabled     Boolean   @default(false)
+  twoFactorSecret     String?
+  twoFactorEnabled    Boolean    @default(false)
   /// Bcrypt hashes of single-use recovery codes.
-  twoFactorRecovery    Json?
+  twoFactorRecovery   Json?
   /// Bumped to revoke every issued session/token at once.
-  tokenVersion         Int       @default(0)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  tokenVersion        Int        @default(0)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
 
-  branch    Branch?    @relation(fields: [branchId], references: [id])
-  userRoles UserRole[]
-  auditLogs AuditLog[]
-  loginAttempts LoginAttempt[]
-  sessions     UserSession[]
-  doctor    Doctor?
-  nurse     Nurse?
-  employee  Employee?
-  uploadedDocuments PatientDocument[]
-  registeredEmergencyCases EmergencyCase[]  @relation("EmergencyRegisteredBy")
-  createdNursingNotes NursingNote[] @relation("NursingNoteCreatedBy")
+  branch                   Branch?           @relation(fields: [branchId], references: [id])
+  userRoles                UserRole[]
+  auditLogs                AuditLog[]
+  loginAttempts            LoginAttempt[]
+  sessions                 UserSession[]
+  doctor                   Doctor?
+  nurse                    Nurse?
+  employee                 Employee?
+  uploadedDocuments        PatientDocument[]
+  registeredEmergencyCases EmergencyCase[]   @relation("EmergencyRegisteredBy")
+  createdNursingNotes      NursingNote[]     @relation("NursingNoteCreatedBy")
 
   @@index([branchId])
   @@index([email])
@@ -418,16 +419,16 @@ model SecuritySetting {
 
 /// Every authentication attempt (success and failure) for security review.
 model LoginAttempt {
-  id        Int      @id @default(autoincrement())
-  userId    Int?
+  id         Int      @id @default(autoincrement())
+  userId     Int?
   /// The identifier that was submitted (email or username), even when unknown.
   identifier String
-  success   Boolean  @default(false)
+  success    Boolean  @default(false)
   /// Why the attempt failed: OK, BAD_PASSWORD, LOCKED, IP_BLOCKED, DEVICE_BLOCKED, TWO_FACTOR_FAILED, DISABLED
-  reason    String   @default("OK")
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime @default(now())
+  reason     String   @default("OK")
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id])
 
@@ -439,19 +440,19 @@ model LoginAttempt {
 /// Server-side session record so that the configured session timeout, device
 /// limits and logout actually revoke access (a JWT alone cannot be revoked).
 model UserSession {
-  id           Int       @id @default(autoincrement())
-  userId       Int
+  id            Int       @id @default(autoincrement())
+  userId        Int
   /// JWT id claim, ties the HTTP-only cookie to this row.
-  tokenId      String    @unique
-  ipAddress    String?
-  userAgent    String?
+  tokenId       String    @unique
+  ipAddress     String?
+  userAgent     String?
   /// Stable hash of the device fingerprint; used for device accounting.
-  deviceId     String?
-  createdAt    DateTime  @default(now())
-  lastSeenAt   DateTime  @default(now())
+  deviceId      String?
+  createdAt     DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
   /// Hard expiry = sessionTimeout minutes from login.
-  expiresAt    DateTime
-  revokedAt    DateTime?
+  expiresAt     DateTime
+  revokedAt     DateTime?
   revokedReason String?
 
   user User @relation(fields: [userId], references: [id])
@@ -531,52 +532,55 @@ model Service {
 // ============================================================
 
 model Doctor {
-  id              Int       @id @default(autoincrement())
-  userId          Int?      @unique
-  branchId        Int
-  departmentId    Int?
-  doctorCode      String
-  name            String
-  specialization  String?
-  qualification   String?
+  id                 Int             @id @default(autoincrement())
+  userId             Int?            @unique
+  branchId           Int
+  departmentId       Int?
+  doctorCode         String
+  name               String
+  specialization     String?
+  qualification      String?
   bmdcRegistrationNo String?
-  joiningDate     DateTime?
-  gender          Gender?
-  dateOfBirth     DateTime?
-  maritalStatus   MaritalStatus?
-  bloodGroup      BloodGroupCode?
-  photo           String?
-  signature       String?
-  cv              String?
-  phone           String?
-  email           String?
-  permanentAddress String?  @db.VarChar(500)
-  presentAddress   String?  @db.VarChar(500)
-  consultationFee Decimal?  @db.Decimal(12, 2)
-  followupFee     Decimal?  @db.Decimal(12, 2)
-  emergencyFee    Decimal?  @db.Decimal(12, 2)
-  commissionType  String?
-  commissionValue Decimal?  @db.Decimal(12, 2)
-  status          String    @default("active")
-  deletedAt       DateTime?
-  createdById     Int?
-  updatedById     Int?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  nationalId         String?
+  whatsapp           String?
+  joiningDate        DateTime?
+  gender             Gender?
+  dateOfBirth        DateTime?
+  maritalStatus      MaritalStatus?
+  bloodGroup         BloodGroupCode?
+  photo              String?
+  signature          String?
+  cv                 String?
+  phone              String?
+  email              String?
+  permanentAddress   String?         @db.VarChar(500)
+  presentAddress     String?         @db.VarChar(500)
+  consultationFee    Decimal?        @db.Decimal(12, 2)
+  followupFee        Decimal?        @db.Decimal(12, 2)
+  emergencyFee       Decimal?        @db.Decimal(12, 2)
+  commissionType     String?
+  commissionValue    Decimal?        @db.Decimal(12, 2)
+  status             String          @default("active")
+  deletedAt          DateTime?
+  createdById        Int?
+  updatedById        Int?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
-  user           User?            @relation(fields: [userId], references: [id])
-  branch         Branch?          @relation(fields: [branchId], references: [id])
-  department     Department?      @relation(fields: [departmentId], references: [id])
-  schedules      DoctorSchedule[]
-  chambers       Chamber[]
-  attendances    DoctorAttendance[]
-  appointments   Appointment[]
-  admissions     Admission[]
-  medicalRecords MedicalRecord[]
-  prescriptions  Prescription[]
-  labOrders      LabOrder[]
-  labResults     LabResult[]
-  emergencyCases EmergencyCase[]
+  user             User?              @relation(fields: [userId], references: [id])
+  branch           Branch?            @relation(fields: [branchId], references: [id])
+  department       Department?        @relation(fields: [departmentId], references: [id])
+  schedules        DoctorSchedule[]
+  chambers         Chamber[]
+  attendances      DoctorAttendance[]
+  appointments     Appointment[]
+  admissions       Admission[]
+  medicalRecords   MedicalRecord[]
+  prescriptions    Prescription[]
+  labOrders        LabOrder[]
+  labResults       LabResult[]
+  emergencyCases   EmergencyCase[]
+  chamberSchedules ChamberSchedule[]
 
   @@unique([branchId, doctorCode])
   @@index([branchId])
@@ -589,37 +593,37 @@ model Doctor {
 /// scoped code and nursing specific fields, and can optionally be linked to a
 /// login user and a shift type.
 model Nurse {
-  id             Int       @id @default(autoincrement())
-  userId         Int?      @unique
-  branchId       Int
-  departmentId   Int?
-  shiftTypeId    Int?
-  nurseCode      String
-  name           String
-  qualification  String?
-  joiningDate    DateTime?
-  gender         Gender?
-  dateOfBirth    DateTime?
-  maritalStatus  MaritalStatus?
-  bloodGroup     BloodGroupCode?
-  photo          String?
-  signature      String?
-  cv             String?
-  phone          String?
-  email          String?
-  permanentAddress String? @db.VarChar(500)
-  presentAddress   String? @db.VarChar(500)
-  status         String    @default("active")
-  deletedAt      DateTime?
-  createdById    Int?
-  updatedById    Int?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id               Int             @id @default(autoincrement())
+  userId           Int?            @unique
+  branchId         Int
+  departmentId     Int?
+  shiftTypeId      Int?
+  nurseCode        String
+  name             String
+  qualification    String?
+  joiningDate      DateTime?
+  gender           Gender?
+  dateOfBirth      DateTime?
+  maritalStatus    MaritalStatus?
+  bloodGroup       BloodGroupCode?
+  photo            String?
+  signature        String?
+  cv               String?
+  phone            String?
+  email            String?
+  permanentAddress String?         @db.VarChar(500)
+  presentAddress   String?         @db.VarChar(500)
+  status           String          @default("active")
+  deletedAt        DateTime?
+  createdById      Int?
+  updatedById      Int?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
-  user       User?       @relation(fields: [userId], references: [id])
-  branch     Branch?     @relation(fields: [branchId], references: [id])
-  department Department? @relation(fields: [departmentId], references: [id])
-  shiftType  ShiftType?  @relation(fields: [shiftTypeId], references: [id])
+  user         User?         @relation(fields: [userId], references: [id])
+  branch       Branch?       @relation(fields: [branchId], references: [id])
+  department   Department?   @relation(fields: [departmentId], references: [id])
+  shiftType    ShiftType?    @relation(fields: [shiftTypeId], references: [id])
   nursingNotes NursingNote[]
 
   @@unique([branchId, nurseCode])
@@ -659,7 +663,7 @@ model Floor {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  branch    Branch?     @relation(fields: [branchId], references: [id])
+  branch    Branch?    @relation(fields: [branchId], references: [id])
   wards     Ward[]
   bedGroups BedGroup[]
 
@@ -788,14 +792,14 @@ enum BedOccupancyStatus {
 
 /// Bed master created in Bed & Ward Setup: a named bed with a type and group.
 model BedDefinition {
-  id                 Int                @id @default(autoincrement())
-  branchId           Int
-  bedTypeId          Int
-  bedGroupId         Int
-  name               String
-  status             BedOccupancyStatus @default(AVAILABLE)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id         Int                @id @default(autoincrement())
+  branchId   Int
+  bedTypeId  Int
+  bedGroupId Int
+  name       String
+  status     BedOccupancyStatus @default(AVAILABLE)
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
 
   branch   Branch   @relation(fields: [branchId], references: [id])
   bedType  BedType  @relation(fields: [bedTypeId], references: [id])
@@ -842,12 +846,12 @@ model Patient {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
-  branch         Branch?          @relation(fields: [branchId], references: [id])
+  branch         Branch?           @relation(fields: [branchId], references: [id])
   contacts       PatientContact[]
   appointments   Appointment[]
   admissions     Admission[]
   medicalRecords MedicalRecord[]
-  nursingNotes NursingNote[]
+  nursingNotes   NursingNote[]
   prescriptions  Prescription[]
   labOrders      LabOrder[]
   invoices       Invoice[]
@@ -878,24 +882,24 @@ model PatientContact {
 }
 
 model NursingNote {
-  id              Int      @id @default(autoincrement())
+  id              Int       @id @default(autoincrement())
   branchId        Int
   patientId       Int
   nurseId         Int
   admissionId     Int?
-  noteType        String   @default("GENERAL")
-  note            String   @db.VarChar(2000)
-  observedAt      DateTime @default(now())
+  noteType        String    @default("GENERAL")
+  note            String    @db.VarChar(2000)
+  observedAt      DateTime  @default(now())
   createdByUserId Int?
   deletedAt       DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  branch       Branch    @relation(fields: [branchId], references: [id])
-  patient      Patient   @relation(fields: [patientId], references: [id])
-  nurse        Nurse     @relation(fields: [nurseId], references: [id])
-  admission    Admission? @relation(fields: [admissionId], references: [id])
-  createdBy    User?     @relation("NursingNoteCreatedBy", fields: [createdByUserId], references: [id])
+  branch    Branch     @relation(fields: [branchId], references: [id])
+  patient   Patient    @relation(fields: [patientId], references: [id])
+  nurse     Nurse      @relation(fields: [nurseId], references: [id])
+  admission Admission? @relation(fields: [admissionId], references: [id])
+  createdBy User?      @relation("NursingNoteCreatedBy", fields: [createdByUserId], references: [id])
 
   @@index([branchId, patientId, deletedAt])
   @@index([nurseId])
@@ -922,8 +926,8 @@ model PatientDocument {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  branch       Branch       @relation(fields: [branchId], references: [id])
-  patient      Patient      @relation(fields: [patientId], references: [id])
+  branch       Branch        @relation(fields: [branchId], references: [id])
+  patient      Patient       @relation(fields: [patientId], references: [id])
   documentType DocumentType? @relation(fields: [documentTypeId], references: [id])
   uploadedBy   User?         @relation(fields: [uploadedByUserId], references: [id])
 
@@ -956,27 +960,27 @@ enum EmergencyArrivalMode {
 }
 
 model EmergencyCase {
-  id             Int                 @id @default(autoincrement())
+  id             Int                  @id @default(autoincrement())
   branchId       Int
   patientId      Int
   doctorId       Int?
   caseNumber     String
-  priority       EmergencyPriority   @default(URGENT)
+  priority       EmergencyPriority    @default(URGENT)
   arrivalMode    EmergencyArrivalMode @default(WALK_IN)
-  chiefComplaint String?             @db.VarChar(500)
-  triageNotes    String?             @db.VarChar(500)
+  chiefComplaint String?              @db.VarChar(500)
+  triageNotes    String?              @db.VarChar(500)
   /// Registered without a confirmed identity; rename when the patient is known.
-  unidentified   Boolean             @default(false)
-  arrivedAt      DateTime            @default(now())
+  unidentified   Boolean              @default(false)
+  arrivedAt      DateTime             @default(now())
   registeredById Int?
   deletedAt      DateTime?
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
 
-  branch       Branch   @relation(fields: [branchId], references: [id])
-  patient      Patient  @relation(fields: [patientId], references: [id])
-  doctor       Doctor?  @relation(fields: [doctorId], references: [id])
-  registeredBy User?    @relation("EmergencyRegisteredBy", fields: [registeredById], references: [id])
+  branch       Branch  @relation(fields: [branchId], references: [id])
+  patient      Patient @relation(fields: [patientId], references: [id])
+  doctor       Doctor? @relation(fields: [doctorId], references: [id])
+  registeredBy User?   @relation("EmergencyRegisteredBy", fields: [registeredById], references: [id])
 
   @@unique([branchId, caseNumber])
   @@index([branchId])
@@ -984,6 +988,27 @@ model EmergencyCase {
   @@index([doctorId])
   @@index([arrivedAt])
   @@index([deletedAt])
+}
+
+model ChamberSchedule {
+  id               Int      @id @default(autoincrement())
+  chamberId        Int
+  branchId         Int
+  doctorId         Int
+  dayOfWeek        Int
+  startTime        String
+  endTime          String
+  status           String   @default("active")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  chamber Chamber @relation(fields: [chamberId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  doctor  Doctor  @relation(fields: [doctorId], references: [id])
+
+  @@unique([chamberId, doctorId, dayOfWeek])
+  @@index([branchId, chamberId, dayOfWeek])
+  @@index([branchId, doctorId, dayOfWeek])
 }
 
 // ============================================================
@@ -1396,10 +1421,10 @@ model Admission {
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
 
-  branch  Branch?  @relation(fields: [branchId], references: [id])
-  patient Patient? @relation(fields: [patientId], references: [id])
-  doctor  Doctor?  @relation(fields: [doctorId], references: [id])
-  bed     Bed?     @relation(fields: [bedId], references: [id])
+  branch       Branch?       @relation(fields: [branchId], references: [id])
+  patient      Patient?      @relation(fields: [patientId], references: [id])
+  doctor       Doctor?       @relation(fields: [doctorId], references: [id])
+  bed          Bed?          @relation(fields: [bedId], references: [id])
   nursingNotes NursingNote[]
 
   @@unique([branchId, admissionNumber])
@@ -1415,43 +1440,46 @@ model Admission {
 // ============================================================
 
 model Appointment {
-  id              Int               @id @default(autoincrement())
-  appointmentNumber String
-  branchId        Int
-  patientId       Int
-  doctorId        Int
-  appointmentDate DateTime
-  startTime       String
-  endTime         String
-  status          AppointmentStatus @default(SCHEDULED)
-  doctorFee       Decimal?          @db.Decimal(12, 2)
-  shift           String?
-  appointmentPriority String        @default("NORMAL")
-  discountPercentage Decimal?       @db.Decimal(5, 2)
-  liveConsultant  Boolean            @default(false)
-  paymentMode     String?
-  message         String?
-  alternateAddress String?
-  reason          String?
-  notes           String?
-  cancelledById   Int?
-  cancelledAt     DateTime?
-  deletedAt       DateTime?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  id                  Int               @id @default(autoincrement())
+  appointmentNumber   String
+  branchId            Int
+  patientId           Int
+  doctorId            Int
+  chamberId           Int?
+  appointmentDate     DateTime
+  startTime           String
+  endTime             String
+  status              AppointmentStatus @default(SCHEDULED)
+  doctorFee           Decimal?          @db.Decimal(12, 2)
+  shift               String?
+  appointmentPriority String            @default("NORMAL")
+  discountPercentage  Decimal?          @db.Decimal(5, 2)
+  liveConsultant      Boolean           @default(false)
+  paymentMode         String?
+  message             String?
+  alternateAddress    String?
+  reason              String?
+  notes               String?
+  cancelledById       Int?
+  cancelledAt         DateTime?
+  deletedAt           DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
 
   patient       Patient?       @relation(fields: [patientId], references: [id])
   doctor        Doctor?        @relation(fields: [doctorId], references: [id])
+  chamber        Chamber?      @relation(fields: [chamberId], references: [id])
   branch        Branch?        @relation(fields: [branchId], references: [id])
   medicalRecord MedicalRecord?
 
+  @@unique([branchId, appointmentNumber])
   @@index([branchId])
   @@index([doctorId, appointmentDate])
+  @@index([chamberId])
   @@index([patientId])
   @@index([appointmentDate])
   @@index([status])
   @@index([deletedAt])
-  @@unique([branchId, appointmentNumber])
 }
 
 // ============================================================
@@ -1684,30 +1712,30 @@ model ShiftType {
 }
 
 model Employee {
-  id             Int       @id @default(autoincrement())
-  userId         Int?      @unique
-  branchId       Int
-  employeeTypeId Int?
-  designationId  Int?
-  departmentId   Int?
-  name           String
-  employeeCode   String
-  phone          String?
-  email          String?
-  gender          Gender?
-  dateOfBirth     DateTime?
-  maritalStatus   MaritalStatus?
-  bloodGroup      BloodGroupCode?
-  photo           String?        @db.VarChar(500)
-  permanentAddress String?       @db.VarChar(500)
-  presentAddress  String?        @db.VarChar(500)
-  hireDate       DateTime?
-  basicSalary    Decimal?  @db.Decimal(12, 2)
-  status         String    @default("active")
-  deletedAt      DateTime?
-  updatedById    Int?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id               Int             @id @default(autoincrement())
+  userId           Int?            @unique
+  branchId         Int
+  employeeTypeId   Int?
+  designationId    Int?
+  departmentId     Int?
+  name             String
+  employeeCode     String
+  phone            String?
+  email            String?
+  gender           Gender?
+  dateOfBirth      DateTime?
+  maritalStatus    MaritalStatus?
+  bloodGroup       BloodGroupCode?
+  photo            String?         @db.VarChar(500)
+  permanentAddress String?         @db.VarChar(500)
+  presentAddress   String?         @db.VarChar(500)
+  hireDate         DateTime?
+  basicSalary      Decimal?        @db.Decimal(12, 2)
+  status           String          @default("active")
+  deletedAt        DateTime?
+  updatedById      Int?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
   user              User?         @relation(fields: [userId], references: [id])
   branch            Branch?       @relation(fields: [branchId], references: [id])
@@ -2058,15 +2086,15 @@ model Integration {
 }
 
 model BackupSetting {
-  id                Int     @id @default(autoincrement())
-  backupType        String
-  frequency         String?
-  storageType       String?
-  storagePath       String?
-  retentionDays     Int     @default(30)
-  encryptionEnabled Boolean @default(true)
+  id                 Int       @id @default(autoincrement())
+  backupType         String
+  frequency          String?
+  storageType        String?
+  storagePath        String?
+  retentionDays      Int       @default(30)
+  encryptionEnabled  Boolean   @default(true)
   lastScheduledRunAt DateTime?
-  status            String  @default("active")
+  status             String    @default("active")
 }
 
 model BackupLog {
@@ -2283,7 +2311,7 @@ model DocumentType {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  branch Branch @relation(fields: [branchId], references: [id])
+  branch    Branch            @relation(fields: [branchId], references: [id])
   documents PatientDocument[]
 
   @@unique([branchId, code])
@@ -2342,24 +2370,27 @@ model Chamber {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  branch Branch  @relation(fields: [branchId], references: [id])
-  doctor Doctor? @relation(fields: [doctorId], references: [id])
+  branch    Branch            @relation(fields: [branchId], references: [id])
+  doctor    Doctor?           @relation(fields: [doctorId], references: [id])
+  appointments Appointment[]
+  schedules ChamberSchedule[]
 
   @@unique([branchId, code])
   @@index([branchId])
   @@index([doctorId])
 }
+
 model DoctorAttendance {
-  id           Int       @id @default(autoincrement())
+  id           Int      @id @default(autoincrement())
   branchId     Int
   doctorId     Int
-  date         DateTime  @db.Date
-  status       String    @default("PRESENT")
+  date         DateTime @db.Date
+  status       String   @default("PRESENT")
   checkInTime  String?
   checkOutTime String?
-  notes        String?   @db.VarChar(500)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  notes        String?  @db.VarChar(500)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   branch Branch @relation(fields: [branchId], references: [id])
   doctor Doctor @relation(fields: [doctorId], references: [id])

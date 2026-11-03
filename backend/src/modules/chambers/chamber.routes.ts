@@ -8,6 +8,7 @@ import {
   createChamberSchema,
   listChambersQuerySchema,
   updateChamberSchema,
+  replaceChamberScheduleSchema,
 } from "./chamber.validation";
 
 const router = Router();
@@ -18,5 +19,7 @@ router.get("/:id", validate({ params: chamberIdParamSchema }), requirePermission
 router.post("/", validate({ body: createChamberSchema }), requirePermission("doctor", "create"), ctrl.createChamber);
 router.patch("/:id", validate({ params: chamberIdParamSchema, body: updateChamberSchema }), requirePermission("doctor", "update"), ctrl.updateChamber);
 router.delete("/:id", validate({ params: chamberIdParamSchema }), requirePermission("doctor", "update"), ctrl.deleteChamber);
+router.get("/:id/schedules", validate({ params: chamberIdParamSchema }), requirePermission("doctor", "read"), ctrl.listChamberSchedules);
+router.put("/:id/schedules", validate({ params: chamberIdParamSchema, body: replaceChamberScheduleSchema }), requirePermission("doctor", "update"), ctrl.replaceChamberSchedules);
 
 export default router;

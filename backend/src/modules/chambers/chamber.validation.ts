@@ -39,6 +39,20 @@ export const updateChamberSchema = createChamberSchema
   .omit({ code: true })
   .partial();
 
+const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Time must use HH:MM format");
+const chamberScheduleSlotSchema = z.object({
+  doctorId: z.coerce.number().int().positive(),
+  dayOfWeek: z.coerce.number().int().min(0).max(6),
+  startTime: timeSchema,
+  endTime: timeSchema,
+});
+
+export const chamberScheduleParamSchema = chamberIdParamSchema;
+export const replaceChamberScheduleSchema = z.object({
+  slots: z.array(chamberScheduleSlotSchema).max(100),
+});
+
 export type ListChambersQuery = z.infer<typeof listChambersQuerySchema>;
 export type CreateChamberInput = z.infer<typeof createChamberSchema>;
 export type UpdateChamberInput = z.infer<typeof updateChamberSchema>;
+export type ReplaceChamberScheduleInput = z.infer<typeof replaceChamberScheduleSchema>;

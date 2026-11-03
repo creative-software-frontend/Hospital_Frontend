@@ -5,7 +5,7 @@ import { writeAuditLog } from "../../utils/audit";
 import { generateBusinessCode, CODE_ENTITIES } from "../../utils/codeGenerator";
 import { parsePagination, buildPaginationMeta, type SortableField } from "../../utils/pagination";
 import type { AuthUser } from "../../types/auth";
-import type { CreateChamberInput, ListChambersQuery, UpdateChamberInput } from "./chamber.validation";
+import type { CreateChamberInput, ListChambersQuery, ReplaceChamberScheduleInput, UpdateChamberInput } from "./chamber.validation";
 
 function isSuperAdmin(user: AuthUser): boolean {
   return user.roles.some((r) => r.seederKey === "SUPER_ADMIN");
@@ -51,6 +51,19 @@ const CHAMBER_SELECT: Prisma.ChamberSelect = {
   createdAt: true,
   updatedAt: true,
   branch: { select: { id: true, name: true, code: true, city: true } },
+  doctor: { select: { id: true, name: true, doctorCode: true } },
+  _count: { select: { schedules: true } },
+};
+
+const CHAMBER_SCHEDULE_SELECT: Prisma.ChamberScheduleSelect = {
+  id: true,
+  chamberId: true,
+  branchId: true,
+  doctorId: true,
+  dayOfWeek: true,
+  startTime: true,
+  endTime: true,
+  status: true,
   doctor: { select: { id: true, name: true, doctorCode: true } },
 };
 
@@ -172,4 +185,97 @@ export async function deleteChamber(actor: AuthUser, id: number) {
     user: actor,
     branchId: access.branchId,
   });
+}
+
+function timeToMinutes(value: string): number {
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function overlaps(start: string, end: string, otherStart: string, otherEnd: string): boolean {
+  return timeToMinutes(start) < timeToMinutes(otherEnd) && timeToMinutes(otherStart) < timeToMinutes(end);
+}
+
+export async function listChamberSchedules(actor: AuthUser, chamberId: number) {
+  const chamber = await getAccessibleChamber(actor, chamberId);
+  return prisma.chamberSchedule.findMany({
+    where: { chamberId, branchId: chamber.branchId, status: "active" },
+    select: CHAMBER_SCHEDULE_SELECT,
+    orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
+  });
+}
+
+export async function replaceChamberSchedules(
+  actor: AuthUser,
+  chamberId: number,
+  input: ReplaceChamberScheduleInput,
+) {
+  const chamber = await getAccessibleChamber(actor, chamberId);
+  const doctorIds = [...new Set(input.slots.map((slot) => slot.doctorId))];
+  const doctors = await prisma.doctor.findMany({
+    where: { id: { in: doctorIds }, branchId: chamber.branchId, deletedAt: null },
+    select: { id: true },
+  });
+  if (doctors.length !== doctorIds.length) {
+    throw new NotFoundError("One or more doctors were not found in this branch");
+  }
+
+  for (const slot of input.slots) {
+    if (timeToMinutes(slot.startTime) >= timeToMinutes(slot.endTime)) {
+      throw new ConflictError("Each chamber slot must end after it starts");
+    }
+  }
+
+  for (let index = 0; index < input.slots.length; index += 1) {
+    const slot = input.slots[index];
+    for (let otherIndex = index + 1; otherIndex < input.slots.length; otherIndex += 1) {
+      const other = input.slots[otherIndex];
+      if (
+        slot.dayOfWeek === other.dayOfWeek &&
+        overlaps(slot.startTime, slot.endTime, other.startTime, other.endTime)
+      ) {
+        throw new ConflictError("Chamber doctors cannot have overlapping slots on the same day");
+      }
+    }
+  }
+  const duplicateDoctorDay = input.slots.some((slot, index) =>
+    input.slots.slice(index + 1).some((other) =>
+      slot.doctorId === other.doctorId && slot.dayOfWeek === other.dayOfWeek,
+    ),
+  );
+  if (duplicateDoctorDay) {
+    throw new ConflictError("A doctor can have only one slot per day in this chamber");
+  }
+
+  const existing = await prisma.chamberSchedule.findMany({
+    where: { branchId: chamber.branchId, status: "active", chamberId: { not: chamberId } },
+    select: { doctorId: true, dayOfWeek: true, startTime: true, endTime: true },
+  });
+  for (const slot of input.slots) {
+    if (existing.some((other) =>
+      other.doctorId === slot.doctorId &&
+      other.dayOfWeek === slot.dayOfWeek &&
+      overlaps(slot.startTime, slot.endTime, other.startTime, other.endTime),
+    )) {
+      throw new ConflictError("This doctor already has an overlapping slot in another chamber");
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.chamberSchedule.deleteMany({ where: { chamberId, branchId: chamber.branchId } });
+    if (input.slots.length > 0) {
+      await tx.chamberSchedule.createMany({
+        data: input.slots.map((slot) => ({
+          chamberId,
+          branchId: chamber.branchId,
+          doctorId: slot.doctorId,
+          dayOfWeek: slot.dayOfWeek,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+        })),
+      });
+    }
+  });
+
+  return listChamberSchedules(actor, chamberId);
 }

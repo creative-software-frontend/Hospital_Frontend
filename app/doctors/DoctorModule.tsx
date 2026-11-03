@@ -35,6 +35,7 @@ import {
   checkOptionalId,
   checkPhone,
   checkText,
+  NATIONAL_ID_MAX,
   REGISTRATION_NO_MAX,
   SHORT_TEXT_MAX,
 } from "@/app/lib/formValidation";
@@ -483,6 +484,8 @@ function DoctorFormPage({
   const [specialization, setSpecialization] = useState(doctor?.specialization ?? "");
   const [qualification, setQualification] = useState(doctor?.qualification ?? "");
   const [bmdcRegistrationNo, setBmdcRegistrationNo] = useState(doctor?.bmdcRegistrationNo ?? "");
+  const [nationalId, setNationalId] = useState(doctor?.nationalId ?? "");
+  const [whatsapp, setWhatsapp] = useState(doctor?.whatsapp ?? "");
   const [joiningDate, setJoiningDate] = useState(doctor?.joiningDate ? toDateInput(doctor.joiningDate) : "");
   const [gender, setGender] = useState<string>(doctor?.gender ?? "");
   const [dateOfBirth, setDateOfBirth] = useState(doctor?.dateOfBirth ? toDateInput(doctor.dateOfBirth) : "");
@@ -536,6 +539,8 @@ function DoctorFormPage({
       addError(next, "name", checkName(name));
       addError(next, "email", checkEmail(email));
       addError(next, "phone", checkPhone(phone));
+      addError(next, "nationalId", checkText(nationalId, NATIONAL_ID_MAX, "National ID"));
+      addError(next, "whatsapp", checkPhone(whatsapp));
       addError(next, "permanentAddress", checkText(permanentAddress, ADDRESS_MAX, "Permanent address"));
       addError(next, "presentAddress", checkText(presentAddress, ADDRESS_MAX, "Present address"));
       addError(next, "departmentId", checkOptionalId(departmentId, "department"));
@@ -587,6 +592,8 @@ function DoctorFormPage({
         specialization: specialization.trim() || null,
         qualification: qualification.trim() || null,
         bmdcRegistrationNo: bmdcRegistrationNo.trim() || null,
+        nationalId: nationalId.trim() || null,
+        whatsapp: whatsapp.trim() || null,
         joiningDate: joiningDate || null,
         gender: gender ? (gender as Gender) : null,
         dateOfBirth: dateOfBirth || null,
@@ -687,6 +694,16 @@ function DoctorFormPage({
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Phone</label>
             <input value={phone} inputMode="tel" onChange={(e) => setPhone(setField("phone", sanitizePhone(e.target.value)))} className={INPUT_CLS} />
             {fieldError("phone")}
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">WhatsApp Number</label>
+            <input value={whatsapp} inputMode="tel" onChange={(e) => setWhatsapp(setField("whatsapp", sanitizePhone(e.target.value)))} className={INPUT_CLS} />
+            {fieldError("whatsapp")}
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">National ID</label>
+            <input value={nationalId} onChange={(e) => setNationalId(setField("nationalId", e.target.value))} className={INPUT_CLS} />
+            {fieldError("nationalId")}
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Permanent Address</label>
