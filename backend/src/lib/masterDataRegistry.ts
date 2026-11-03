@@ -19,6 +19,7 @@ export const MASTER_DATA_CATEGORIES = [
   "visit_types",
   "blood_groups",
   "document_types",
+  "relationships",
   "payment_methods",
   "divisions",
   "districts",
@@ -33,6 +34,7 @@ export type LookupModelName =
   | "visitType"
   | "bloodGroup"
   | "documentType"
+  | "patientRelationship"
   | "paymentMethod"
   | "division"
   | "district"
@@ -79,6 +81,7 @@ export const LOOKUP_SPECS: Record<MasterDataCategory, LookupSpec> = {
   visit_types: flat("visitType"),
   blood_groups: flat("bloodGroup"),
   document_types: flat("documentType"),
+  relationships: flat("patientRelationship"),
   payment_methods: {
     model: "paymentMethod",
     branchScoped: false,

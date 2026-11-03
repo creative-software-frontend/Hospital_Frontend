@@ -496,6 +496,26 @@ function buildListWhere(actor: AuthUser, query: ListPatientsQuery): Prisma.Patie
     where.gender = query.gender;
   }
 
+  if (query.bloodGroup) {
+    where.bloodGroup = query.bloodGroup;
+  }
+
+  const today = new Date();
+  if (query.minAge !== undefined || query.maxAge !== undefined) {
+    const dateOfBirth: Prisma.DateTimeFilter = {};
+    if (query.minAge !== undefined) {
+      const latestBirthDate = new Date(today);
+      latestBirthDate.setFullYear(latestBirthDate.getFullYear() - query.minAge);
+      dateOfBirth.lte = latestBirthDate;
+    }
+    if (query.maxAge !== undefined) {
+      const earliestBirthDate = new Date(today);
+      earliestBirthDate.setFullYear(earliestBirthDate.getFullYear() - query.maxAge - 1);
+      dateOfBirth.gte = earliestBirthDate;
+    }
+    where.dateOfBirth = dateOfBirth;
+  }
+
   if (query.patientCode) {
     where.patientCode = { contains: query.patientCode };
   }

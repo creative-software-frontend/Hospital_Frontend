@@ -78,6 +78,7 @@ export function MasterDataView() {
       blood_groups: 0,
       payment_methods: 0,
       document_types: 0,
+      relationships: 0,
       divisions: 0,
       districts: 0,
       upazilas: 0,

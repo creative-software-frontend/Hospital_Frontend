@@ -1046,6 +1046,16 @@ async function seed() {
     { category: "document_types", label: "Driving License", code: "DL" },
     { category: "document_types", label: "TIN Certificate", code: "TIN" },
     { category: "document_types", label: "Smart Card ID", code: "SC" },
+    // Patient emergency/contact relationships
+    { category: "relationships", label: "Father", code: "FATHER" },
+    { category: "relationships", label: "Mother", code: "MOTHER" },
+    { category: "relationships", label: "Spouse", code: "SPOUSE" },
+    { category: "relationships", label: "Son", code: "SON" },
+    { category: "relationships", label: "Daughter", code: "DAUGHTER" },
+    { category: "relationships", label: "Brother", code: "BROTHER" },
+    { category: "relationships", label: "Sister", code: "SISTER" },
+    { category: "relationships", label: "Guardian", code: "GUARDIAN" },
+    { category: "relationships", label: "Other", code: "OTHER" },
   ];
 
   for (const item of DEFAULT_LOOKUPS) {

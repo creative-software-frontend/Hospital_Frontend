@@ -7,7 +7,7 @@
 import { useEffect, useState } from "react";
 import {
   FiX, FiUser, FiActivity, FiDroplet,
-  FiTag, FiEdit2, FiTrash2, FiPlus, FiCheck, FiStar,
+  FiTag, FiEdit2, FiTrash2, FiPlus, FiCheck, FiStar, FiPrinter,
 } from "react-icons/fi";
 import {
   patientApi,
@@ -19,9 +19,9 @@ import {
   calcAge,
 } from "@/app/lib/api";
 import {
-  genderLabel, maritalStatusLabel, occupationLabel,
+  genderLabel, maritalStatusLabel, occupationLabel, RELATIONSHIP_OPTIONS,
 } from "@/app/patients/constants";
-import { useMasterDataLabels } from "@/app/lib/useMasterData";
+import { useMasterDataLabels, useMasterDataOptions } from "@/app/lib/useMasterData";
 import { useLocalization } from "@/app/hooks/useCurrency";
 import type { PatientCapabilities } from "@/app/lib/roles";
 import type { ToastKind } from "@/app/patients/Toast";
@@ -39,6 +39,15 @@ const EMPTY_CONTACT: ContactFormState = { name: "", relationship: "", phone: "",
 const inputCls =
   "w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15";
 const labelCls = "block text-[11px] font-bold text-[var(--muted)] mb-1.5 uppercase tracking-wider";
+
+function printValue(value: unknown): string {
+  return String(value ?? "—")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
 export function PatientProfileModal({
   patient,
@@ -75,6 +84,7 @@ export function PatientProfileModal({
   const [editingContactId, setEditingContactId] = useState<number | null>(null);
   const [contactForm, setContactForm] = useState<ContactFormState>(EMPTY_CONTACT);
   const [contactBusy, setContactBusy] = useState(false);
+  const { options: relationshipOptions } = useMasterDataOptions("relationships", RELATIONSHIP_OPTIONS.map((item) => item.value));
   const [contactError, setContactError] = useState<string>("");
 
   useEffect(() => {
@@ -121,6 +131,87 @@ export function PatientProfileModal({
     setEditingContactId(null);
     setContactForm(EMPTY_CONTACT);
     setContactError("");
+  };
+
+  const printPatient = () => {
+    if (!p) return;
+
+    const rows = [
+      ["Patient Code", p.patientCode],
+      ["Name", p.name],
+      ["Date of Birth", p.dateOfBirth ? formatDate(p.dateOfBirth) : "—"],
+      ["Age", calcAge(p.dateOfBirth)],
+      ["Gender", p.gender ? genderLabel(p.gender) : "—"],
+      ["Blood Group", p.bloodGroup ? bloodGroup(p.bloodGroup) : "—"],
+      ["Marital Status", maritalStatusLabel(p.maritalStatus)],
+      ["National ID", p.nationalId],
+      ["Occupation", occupationLabel(p.occupation)],
+      ["Status", p.status === "active" ? "Active" : "Inactive"],
+      ["Phone", p.phone],
+      ["Email", p.email],
+      ["WhatsApp", p.whatsapp],
+      ["Address", p.address],
+      ["Division", p.division],
+      ["District", p.district],
+      ["Thana / Upazila", p.thana || p.upazila],
+    ];
+    const photo = p.photo
+      ? `<img class="photo" src="${printValue(p.photo)}" alt="Patient photo" />`
+      : "";
+    const contactRows = contacts.length
+      ? contacts
+          .map(
+            (contact) => `<tr>
+              <td>${printValue(contact.name)}</td>
+              <td>${printValue(contact.relationship)}</td>
+              <td>${printValue(contact.phone)}</td>
+              <td>${printValue(contact.address)}</td>
+              <td>${contact.isPrimary ? "Yes" : "No"}</td>
+            </tr>`,
+          )
+          .join("")
+      : `<tr><td colspan="5" class="muted">No emergency contacts recorded.</td></tr>`;
+
+    const popup = window.open("", "_blank");
+    if (!popup) {
+      notify("error", "Printing was blocked. Please allow pop-ups for this site and try again.");
+      return;
+    }
+    popup.document.open();
+    popup.document.write(`<!doctype html>
+      <html><head><meta charset="utf-8" /><title>Patient - ${printValue(p.name)}</title>
+      <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; color: #17212b; font: 12px Arial, sans-serif; }
+        .page { max-width: 820px; margin: 0 auto; padding: 28px; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #13795b; padding-bottom: 14px; margin-bottom: 18px; }
+        h1 { margin: 0 0 5px; font-size: 22px; color: #0b5d46; }
+        .subtitle { color: #64748b; font-size: 11px; }
+        .photo { width: 82px; height: 96px; object-fit: cover; border: 1px solid #cbd5e1; border-radius: 6px; }
+        h2 { margin: 20px 0 8px; padding-bottom: 5px; border-bottom: 1px solid #cbd5e1; color: #0b5d46; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        td, th { border: 1px solid #dbe3ea; padding: 7px 8px; text-align: left; vertical-align: top; word-wrap: break-word; }
+        .details td:first-child { width: 24%; color: #64748b; font-weight: bold; background: #f8fafc; }
+        th { background: #eef7f3; color: #0b5d46; font-size: 11px; }
+        .muted { color: #64748b; text-align: center; }
+        .footer { margin-top: 24px; color: #64748b; font-size: 10px; text-align: right; }
+        @media print { .page { padding: 0; } @page { margin: 14mm; } }
+      </style></head><body><main class="page">
+        <header class="header"><div><h1>Patient Information</h1>
+          <div class="subtitle">Generated ${printValue(new Date().toLocaleString())}</div>
+          <div class="subtitle">Patient Code: ${printValue(p.patientCode)}</div>
+        </div>${photo}</header>
+        <table class="details"><tbody>${rows
+          .map((row) => `<tr><td>${printValue(row[0])}</td><td>${printValue(row[1])}</td></tr>`)
+          .join("")}</tbody></table>
+        <h2>Emergency Contacts</h2>
+        <table><thead><tr><th>Name</th><th>Relationship</th><th>Phone</th><th>Address</th><th>Primary</th></tr></thead>
+        <tbody>${contactRows}</tbody></table>
+        <div class="footer">Hospital Management System</div>
+      </main></body></html>`);
+    popup.document.close();
+    popup.focus();
+    window.setTimeout(() => popup.print(), 250);
   };
 
   const submitContact = async (e: React.FormEvent) => {
@@ -214,6 +305,16 @@ export function PatientProfileModal({
               >
                 <FiEdit2 className="w-3.5 h-3.5" />
                 Edit
+              </button>
+            )}
+            {p && (
+              <button
+                onClick={printPatient}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-[var(--border)] bg-[var(--bg)] hover:bg-[var(--primary-soft)]/20 text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer"
+                title="Print patient information or save as PDF"
+              >
+                <FiPrinter className="w-3.5 h-3.5" />
+                Print / PDF
               </button>
             )}
             {caps.edit && p && (
@@ -425,13 +526,19 @@ export function PatientProfileModal({
                       </div>
                       <div>
                         <label className={labelCls}>Relationship</label>
-                        <input
+                        <select
                           className={inputCls}
                           value={contactForm.relationship}
                           onChange={(e) => setContactForm((f) => ({ ...f, relationship: e.target.value }))}
-                          placeholder="e.g. Spouse"
                           disabled={contactBusy}
-                        />
+                        >
+                          <option value="">Select relationship</option>
+                          {relationshipOptions.map((relationship) => (
+                            <option key={relationship.value} value={relationship.value}>
+                              {relationship.label}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                       <div>
                         <label className={labelCls}>Phone</label>

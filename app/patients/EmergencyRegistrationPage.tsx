@@ -21,6 +21,8 @@ import {
   FiRefreshCcw,
   FiUser,
 } from "react-icons/fi";
+import { RELATIONSHIP_OPTIONS } from "@/app/patients/constants";
+import { useMasterDataOptions } from "@/app/lib/useMasterData";
 import {
   calcAge,
   emergencyApi,
@@ -89,6 +91,10 @@ export function EmergencyRegistrationPage() {
   const [unidentified, setUnidentified] = useState(false);
   /** True while the name still mirrors the generated "Unknown …" label. */
   const [autoName, setAutoName] = useState(false);
+  const { options: relationshipOptions } = useMasterDataOptions(
+    "relationships",
+    RELATIONSHIP_OPTIONS.map((item) => item.value),
+  );
 
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
@@ -400,13 +406,19 @@ export function EmergencyRegistrationPage() {
               <label htmlFor="er-guardian-relation" className={LABEL_CLS}>
                 Relation
               </label>
-              <input
+              <select
                 id="er-guardian-relation"
                 value={guardianRelationship}
                 onChange={(e) => setGuardianRelationship(e.target.value)}
-                placeholder="e.g. Father"
                 className={INPUT_CLS}
-              />
+              >
+                <option value="">Select relationship</option>
+                {relationshipOptions.map((relationship) => (
+                  <option key={relationship.value} value={relationship.value}>
+                    {relationship.label}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label htmlFor="er-guardian-phone" className={LABEL_CLS}>

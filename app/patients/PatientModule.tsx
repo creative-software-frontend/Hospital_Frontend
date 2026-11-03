@@ -19,9 +19,9 @@ import {
 } from "@/app/lib/api";
 import type { UserRole } from "@/app/config/roleConfig";
 import { patientCapabilities } from "@/app/lib/roles";
-import { genderLabel } from "@/app/patients/constants";
+import { BLOOD_GROUP_OPTIONS, genderLabel } from "@/app/patients/constants";
 import { formatAddress } from "@/app/lib/api";
-import { useMasterDataLabels } from "@/app/lib/useMasterData";
+import { useMasterDataLabels, useMasterDataOptions } from "@/app/lib/useMasterData";
 import { useLocalization } from "@/app/hooks/useCurrency";
 import { PatientFormModal } from "@/app/patients/PatientFormModal";
 import { PatientProfileModal } from "@/app/patients/PatientProfileModal";
@@ -62,10 +62,14 @@ export function PatientModule({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const bloodGroup = useMasterDataLabels("blood_groups");
+  const { options: bloodGroupOptions } = useMasterDataOptions("blood_groups", BLOOD_GROUP_OPTIONS);
 
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [genderFilter, setGenderFilter] = useState("");
+  const [bloodGroupFilter, setBloodGroupFilter] = useState("");
+  const [minAgeFilter, setMinAgeFilter] = useState("");
+  const [maxAgeFilter, setMaxAgeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
   const [reloadKey, setReloadKey] = useState(0);
@@ -103,20 +107,15 @@ export function PatientModule({
   }, [searchInput]);
 
   const load = useCallback(async () => {
-    // Don't list patients until the user searches — the page starts empty.
-    if (!searchTerm) {
-      setRows([]);
-      setPagination(null);
-      setError("");
-      setLoading(false);
-      return;
-    }
     try {
       const result = await patientApi.list({
         page,
         limit: PAGE_SIZE,
         search: searchTerm || undefined,
         gender: (genderFilter as "MALE" | "FEMALE" | "OTHER") || undefined,
+        bloodGroup: bloodGroupFilter as "A_POS" | "A_NEG" | "B_POS" | "B_NEG" | "AB_POS" | "AB_NEG" | "O_POS" | "O_NEG" || undefined,
+        minAge: minAgeFilter ? Number(minAgeFilter) : undefined,
+        maxAge: maxAgeFilter ? Number(maxAgeFilter) : undefined,
         status: statusFilter ? (statusFilter as PatientStatus) : undefined,
       });
       setRows(result.data);
@@ -127,7 +126,7 @@ export function PatientModule({
     } finally {
       setLoading(false);
     }
-  }, [page, searchTerm, genderFilter, statusFilter]);
+  }, [page, searchTerm, genderFilter, bloodGroupFilter, minAgeFilter, maxAgeFilter, statusFilter]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -404,6 +403,45 @@ export function PatientModule({
             </select>
             <select
               className={SELECT_CLS}
+              value={bloodGroupFilter}
+              onChange={(e) => {
+                setBloodGroupFilter(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">All Blood Groups</option>
+              {bloodGroupOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <input
+              type="number"
+              min="0"
+              max="150"
+              value={minAgeFilter}
+              onChange={(e) => {
+                setMinAgeFilter(e.target.value);
+                setPage(1);
+              }}
+              placeholder="Min age"
+              aria-label="Minimum age"
+              className={`${SELECT_CLS} w-24`}
+            />
+            <input
+              type="number"
+              min="0"
+              max="150"
+              value={maxAgeFilter}
+              onChange={(e) => {
+                setMaxAgeFilter(e.target.value);
+                setPage(1);
+              }}
+              placeholder="Max age"
+              aria-label="Maximum age"
+              className={`${SELECT_CLS} w-24`}
+            />
+            <select
+              className={SELECT_CLS}
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value);
@@ -419,6 +457,9 @@ export function PatientModule({
                 setSearchInput("");
                 setSearchTerm("");
                 setGenderFilter("");
+                setBloodGroupFilter("");
+                setMinAgeFilter("");
+                setMaxAgeFilter("");
                 setStatusFilter("");
                 setPage(1);
                 refreshList();

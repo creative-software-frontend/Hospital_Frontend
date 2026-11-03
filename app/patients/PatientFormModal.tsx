@@ -26,6 +26,7 @@ import {
   BLOOD_GROUP_OPTIONS,
   MARITAL_STATUS_OPTIONS,
   OCCUPATION_OPTIONS,
+  RELATIONSHIP_OPTIONS,
 } from "@/app/patients/constants";
 import { useMasterDataOptions } from "@/app/lib/useMasterData";
 import { useAddressCascade } from "@/app/lib/useAddressCascade";
@@ -168,6 +169,16 @@ export function PatientFormModal({
   // Master Data is authoritative for these lists; the hardcoded constants are
   // only a fallback for when the category has not been configured yet.
   const { options: masterBloodGroups } = useMasterDataOptions("blood_groups", BLOOD_GROUP_OPTIONS);
+  const { options: relationshipOptions, loading: relationshipsLoading } = useMasterDataOptions("relationships");
+  const availableRelationshipOptions =
+    relationshipOptions.length > 0
+      ? relationshipOptions
+      : RELATIONSHIP_OPTIONS.map((relationship, index) => ({
+          ...relationship,
+          code: relationship.value,
+          sortOrder: index,
+          fallback: true,
+        }));
 
   const {
     divisions,
@@ -641,11 +652,6 @@ export function PatientFormModal({
                   {fieldError("maritalStatus")}
                 </div>
                 <div>
-                  <label className={labelCls}>National ID</label>
-                  <input className={inputCls} value={form.nationalId} onChange={set("nationalId")} placeholder="National ID / NID" disabled={submitting} />
-                  {fieldError("nationalId")}
-                </div>
-                <div>
                   <label className={labelCls}>Occupation</label>
                   <select className={selectCls} value={form.occupation} onChange={set("occupation")} disabled={submitting}>
                     <option value="">Select occupation</option>
@@ -770,20 +776,27 @@ export function PatientFormModal({
                   </select>
                   {fieldError("upazila")}
                 </div>
+              </div>
+            </div>
 
-                <div>
-                  <FileUploadField
-                    label="Photo"
-                    kind="photo"
-                    value={form.photo}
-                    onChange={(url) => {
-                      setFieldErrors((prev) => ({ ...prev, photo: "" }));
-                      setForm((prev) => ({ ...prev, photo: url }));
-                    }}
-                    hint="PNG, JPG, WEBP or GIF up to 5MB."
-                  />
-                  {fieldError("photo")}
-                </div>
+            <div className={sectionGridCls}>
+              <div>
+                <label className={labelCls}>National ID</label>
+                <input className={inputCls} value={form.nationalId} onChange={set("nationalId")} placeholder="National ID / NID" disabled={submitting} />
+                {fieldError("nationalId")}
+              </div>
+              <div>
+                <FileUploadField
+                  label="Photo"
+                  kind="photo"
+                  value={form.photo}
+                  onChange={(url) => {
+                    setFieldErrors((prev) => ({ ...prev, photo: "" }));
+                    setForm((prev) => ({ ...prev, photo: url }));
+                  }}
+                  hint="PNG, JPG, WEBP or GIF up to 5MB."
+                />
+                {fieldError("photo")}
               </div>
             </div>
 
@@ -838,7 +851,21 @@ export function PatientFormModal({
                           </div>
                           <div>
                             <label className={labelCls}>Relationship</label>
-                            <input className={inputCls} value={c.relationship} onChange={(e) => updateContact(idx, "relationship", e.target.value)} placeholder="e.g. Spouse" disabled={submitting} />
+                            <select
+                              className={selectCls}
+                              value={c.relationship}
+                              onChange={(e) => updateContact(idx, "relationship", e.target.value)}
+                              disabled={submitting}
+                            >
+                              <option value="">
+                                {relationshipsLoading ? "Loading relationships..." : "Select relationship"}
+                              </option>
+                              {availableRelationshipOptions.map((relationship) => (
+                                <option key={relationship.value} value={relationship.value}>
+                                  {relationship.label}
+                                </option>
+                              ))}
+                            </select>
                             {fieldError(`contacts.${idx}.relationship`)}
                           </div>
                           <div>

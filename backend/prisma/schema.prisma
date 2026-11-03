@@ -235,6 +235,7 @@ model Branch {
   visitTypes             VisitType[]
   bloodGroups            BloodGroup[]
   documentTypes          DocumentType[]
+  patientRelationships   PatientRelationship[]
   bedTypes               BedType[]
   bedGroups              BedGroup[]
   bedStatuses            BedStatus[]
@@ -2284,6 +2285,23 @@ model DocumentType {
 
   branch Branch @relation(fields: [branchId], references: [id])
   documents PatientDocument[]
+
+  @@unique([branchId, code])
+  @@unique([branchId, name])
+  @@index([branchId])
+}
+
+model PatientRelationship {
+  id        Int      @id @default(autoincrement())
+  branchId  Int
+  name      String
+  code      String
+  sortOrder Int      @default(0)
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch Branch @relation(fields: [branchId], references: [id])
 
   @@unique([branchId, code])
   @@unique([branchId, name])

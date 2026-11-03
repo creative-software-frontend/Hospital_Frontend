@@ -185,6 +185,9 @@ export interface PatientListQuery {
   email?: string;
   whatsapp?: string;
   gender?: Gender;
+  bloodGroup?: BloodGroup;
+  minAge?: number;
+  maxAge?: number;
   status?: PatientStatus;
   branchId?: number;
 }
@@ -1871,6 +1874,7 @@ export const MASTER_DATA_CATEGORIES = [
   "blood_groups",
   "payment_methods",
   "document_types",
+  "relationships",
   "divisions",
   "districts",
   "upazilas",
@@ -1884,6 +1888,7 @@ export const MASTER_DATA_CATEGORY_LABELS: Record<MasterDataCategory, string> = {
   blood_groups: "Blood Groups",
   payment_methods: "Payment Methods",
   document_types: "Document Types",
+  relationships: "Relationships",
   divisions: "Divisions",
   districts: "Districts",
   upazilas: "Upazilas",
@@ -1895,6 +1900,7 @@ export const MASTER_DATA_CATEGORY_EXAMPLES: Record<MasterDataCategory, string> =
   blood_groups: "A+, B-, O+, AB+",
   payment_methods: "Cash, Card, bKash, Rocket",
   document_types: "NID, Passport, Birth Cert",
+  relationships: "Father, Mother, Spouse",
   divisions: "Dhaka, Chattogram, Rajshahi",
   districts: "Dhaka, Gazipur, Narayanganj",
   upazilas: "Savar, Dhamrai, Rupganj",
@@ -1927,6 +1933,7 @@ export const MASTER_DATA_CATEGORY_PARENT: Record<MasterDataCategory, MasterDataC
   blood_groups: null,
   payment_methods: null,
   document_types: null,
+  relationships: null,
   divisions: null,
   districts: "divisions",
   upazilas: "districts",

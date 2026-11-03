@@ -62,6 +62,18 @@ export const GUARDIAN_REQUIREMENT_OPTIONS: { value: GuardianRequirement; label: 
   { value: "ALWAYS", label: "Everyone", hint: "Every registration needs a reachable emergency contact." },
 ];
 
+export const RELATIONSHIP_OPTIONS = [
+  { value: "FATHER", label: "Father" },
+  { value: "MOTHER", label: "Mother" },
+  { value: "SPOUSE", label: "Spouse" },
+  { value: "SON", label: "Son" },
+  { value: "DAUGHTER", label: "Daughter" },
+  { value: "BROTHER", label: "Brother" },
+  { value: "SISTER", label: "Sister" },
+  { value: "GUARDIAN", label: "Guardian" },
+  { value: "OTHER", label: "Other" },
+] as const;
+
 export function patientTypeLabel(value: PatientType | null | undefined): string {
   if (!value) return "—";
   return PATIENT_TYPE_OPTIONS.find((o) => o.value === value)?.label ?? value;
