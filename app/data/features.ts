@@ -62,7 +62,7 @@ export const keyFeatures: Feature[] = [
         subFeatures: [
             { label: "Nurse Registration", icon: FiUser, id: "nurse-registration" },
             { label: "Nursing Notes", icon: FiEdit, id: "nursing-notes" },
-            { label: "Patient Monitoring", icon: FiThermometer },
+            { label: "Patient Monitoring", icon: FiThermometer, id: "patient-monitoring" },
             { label: "Medication Tracking", icon: FiBriefcase },
             { label: "Shift Management", icon: FiClock },
         ]

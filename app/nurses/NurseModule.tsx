@@ -42,6 +42,7 @@ import { GENDER_OPTIONS, BLOOD_GROUP_OPTIONS, MARITAL_STATUS_OPTIONS } from "@/a
 import { useMasterDataOptions } from "@/app/lib/useMasterData";
 import { FileUploadField } from "@/app/components/FileUploadField";
 import { NursingNotesPage } from "@/app/nurses/NursingNotesPage";
+import { PatientVitalsPage } from "@/app/nurses/PatientVitalsPage";
 
 const PAGE_SIZE = 10;
 
@@ -120,6 +121,10 @@ export function NurseModule({
 
   if (pageKey === "nursing-notes") {
     return <NursingNotesPage onBack={() => onNavigate?.(null)} />;
+  }
+
+  if (pageKey === "patient-monitoring") {
+    return <PatientVitalsPage onBack={() => onNavigate?.(null)} />;
   }
 
   const totalPages = pagination?.totalPages ?? 1;

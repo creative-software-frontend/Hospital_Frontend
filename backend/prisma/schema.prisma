@@ -190,6 +190,7 @@ model Branch {
   admissions             Admission[]
   medicalRecords         MedicalRecord[]
   nursingNotes           NursingNote[]
+  patientVitals          PatientVital[]
   prescriptions          Prescription[]
   bedAllocations         Bed[]
   rooms                  Room[]
@@ -286,6 +287,7 @@ model User {
   uploadedDocuments        PatientDocument[]
   registeredEmergencyCases EmergencyCase[]   @relation("EmergencyRegisteredBy")
   createdNursingNotes      NursingNote[]     @relation("NursingNoteCreatedBy")
+  recordedPatientVitals    PatientVital[]    @relation("PatientVitalRecordedBy")
 
   @@index([branchId])
   @@index([email])
@@ -625,6 +627,7 @@ model Nurse {
   department   Department?   @relation(fields: [departmentId], references: [id])
   shiftType    ShiftType?    @relation(fields: [shiftTypeId], references: [id])
   nursingNotes NursingNote[]
+  patientVitals PatientVital[]
 
   @@unique([branchId, nurseCode])
   @@index([branchId])
@@ -852,6 +855,7 @@ model Patient {
   admissions     Admission[]
   medicalRecords MedicalRecord[]
   nursingNotes   NursingNote[]
+  vitals         PatientVital[]
   prescriptions  Prescription[]
   labOrders      LabOrder[]
   invoices       Invoice[]
@@ -904,6 +908,41 @@ model NursingNote {
   @@index([branchId, patientId, deletedAt])
   @@index([nurseId])
   @@index([observedAt])
+}
+
+/// Bedside vitals recorded by nursing staff during "Patient Monitoring".
+/// Every row is one observation; the UI derives abnormal flags from these
+/// numbers, so no derived status is stored.
+model PatientVital {
+  id              Int      @id @default(autoincrement())
+  branchId        Int
+  patientId       Int
+  nurseId         Int?
+  admissionId     Int?
+  recordedAt      DateTime @default(now())
+  temperature     Decimal? @db.Decimal(5, 2)
+  pulse           Int?
+  systolic        Int?
+  diastolic       Int?
+  respiratoryRate Int?
+  spo2            Int?
+  bloodSugar      Decimal? @db.Decimal(6, 2)
+  weight          Decimal? @db.Decimal(6, 2)
+  notes           String?  @db.VarChar(500)
+  createdByUserId Int?
+  deletedAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  branch    Branch     @relation(fields: [branchId], references: [id])
+  patient   Patient    @relation(fields: [patientId], references: [id])
+  nurse     Nurse?     @relation(fields: [nurseId], references: [id])
+  admission Admission? @relation(fields: [admissionId], references: [id])
+  createdBy User?      @relation("PatientVitalRecordedBy", fields: [createdByUserId], references: [id])
+
+  @@index([branchId, patientId, deletedAt])
+  @@index([recordedAt])
+  @@index([nurseId])
 }
 
 /// Files attached to a patient (NID scan, referral letter, insurance card, ...).
@@ -1426,6 +1465,7 @@ model Admission {
   doctor       Doctor?       @relation(fields: [doctorId], references: [id])
   bed          Bed?          @relation(fields: [bedId], references: [id])
   nursingNotes NursingNote[]
+  vitals       PatientVital[]
 
   @@unique([branchId, admissionNumber])
   @@index([branchId])

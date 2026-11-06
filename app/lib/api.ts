@@ -2659,6 +2659,93 @@ export const nursingNoteApi = {
     request<{ message: string }>(`/nursing-notes/${id}`, { method: "DELETE" }),
 };
 
+/* ---------------------------------------------------------------------------
+ * Patient Monitoring — bedside vitals (Nursing Management)
+ * ------------------------------------------------------------------------- */
+
+export interface PatientVitalRecord {
+  id: number;
+  branchId: number;
+  patientId: number;
+  nurseId: number | null;
+  admissionId: number | null;
+  recordedAt: string;
+  temperature: string | null;
+  pulse: number | null;
+  systolic: number | null;
+  diastolic: number | null;
+  respiratoryRate: number | null;
+  spo2: number | null;
+  bloodSugar: string | null;
+  weight: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  patient: { id: number; name: string; patientCode: string };
+  nurse: { id: number; name: string; nurseCode: string } | null;
+  admission: { id: number; admissionNumber: string; status: string } | null;
+  createdBy: { id: number; name: string } | null;
+  /** Human-readable out-of-range labels, e.g. ["Temperature high", "SpO2 low"]. */
+  flags: string[];
+  abnormal: boolean;
+}
+
+export interface PatientVitalSummary {
+  total: number;
+  abnormalCount: number;
+  latest: PatientVitalRecord | null;
+}
+
+export interface PatientVitalListResult {
+  data: PatientVitalRecord[];
+  pagination: PaginationMeta;
+  summary: PatientVitalSummary | null;
+}
+
+export interface PatientVitalListQuery {
+  page?: number;
+  limit?: number;
+  patientId?: number;
+  /** YYYY-MM-DD (local day bounds). */
+  from?: string;
+  to?: string;
+}
+
+export interface CreatePatientVitalInput {
+  patientId: number;
+  nurseId?: number | null;
+  admissionId?: number | null;
+  recordedAt?: string | null;
+  temperature?: number;
+  pulse?: number;
+  systolic?: number;
+  diastolic?: number;
+  respiratoryRate?: number;
+  spo2?: number;
+  bloodSugar?: number;
+  weight?: number;
+  notes?: string | null;
+}
+
+export type UpdatePatientVitalInput = Partial<Omit<CreatePatientVitalInput, "patientId">>;
+
+export const patientVitalApi = {
+  list: (query: PatientVitalListQuery = {}) =>
+    rawRequest<PatientVitalListResult>(
+      `/patient-vitals${qs(query as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+  get: (id: number) => request<PatientVitalRecord>(`/patient-vitals/${id}`),
+  create: (input: CreatePatientVitalInput) =>
+    request<PatientVitalRecord>("/patient-vitals", { method: "POST", body: JSON.stringify(input) }),
+  update: (id: number, input: UpdatePatientVitalInput) =>
+    request<PatientVitalRecord>(`/patient-vitals/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  remove: (id: number) =>
+    request<{ message: string }>(`/patient-vitals/${id}`, { method: "DELETE" }),
+};
+
 export interface DoctorListQuery {
   page?: number;
   limit?: number;
@@ -2666,7 +2753,6 @@ export interface DoctorListQuery {
   status?: ActiveStatus;
   departmentId?: number;
 }
-
 export interface CreateDoctorInput {
   name: string;
   departmentId?: number | null;
