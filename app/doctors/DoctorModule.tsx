@@ -102,13 +102,7 @@ export function DoctorModule({
   }, []);
 
   const load = useCallback(async () => {
-    if (!searchTerm) {
-      setRows([]);
-      setPagination(null);
-      setError("");
-      setLoading(false);
-      return;
-    }
+    setLoading(true);
     try {
       const result = await doctorApi.list({
         page,
@@ -370,10 +364,9 @@ export function DoctorModule({
           <p className="text-sm alert-error">{error}</p>
         )}
 
-        {searchTerm ? (
-          <>
-            <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
-              <table className="min-w-[950px] w-full">
+        <>
+          <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+            <table className="min-w-[950px] w-full">
             <thead>
               <tr className="bg-[var(--bg)]">
                 {["ID", "Name", "Specialty", "Department", "Consultation Fee", "Phone", "Status", "Actions"].map((col) => (
@@ -434,26 +427,21 @@ export function DoctorModule({
               </table>
             </div>
 
-            <div className="flex items-center justify-between gap-3 pt-1">
-              <div className="text-xs text-[var(--muted)]">Showing {rows.length} of {pagination?.total ?? 0} rows</div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage <= 1}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors ${safePage <= 1 ? "bg-[var(--bg)] text-[var(--muted)] border-[var(--border)] cursor-not-allowed" : "bg-[var(--bg)] hover:bg-[var(--primary-soft)]/20 text-[var(--muted)] hover:text-[var(--text)] border-[var(--border)] cursor-pointer"}`}>
-                  Previous
-                </button>
-                <span className="text-xs font-bold text-[var(--muted)]">Page {safePage} / {totalPages}</span>
-                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors ${safePage >= totalPages ? "bg-[var(--bg)] text-[var(--muted)] border-[var(--border)] cursor-not-allowed" : "bg-[var(--bg)] hover:bg-[var(--primary-soft)]/20 text-[var(--muted)] hover:text-[var(--text)] border-[var(--border)] cursor-pointer"}`}>
-                  Next
-                </button>
-              </div>
+          <div className="flex items-center justify-between gap-3 pt-1">
+            <div className="text-xs text-[var(--muted)]">Showing {rows.length} of {pagination?.total ?? 0} rows</div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage <= 1}
+                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors ${safePage <= 1 ? "bg-[var(--bg)] text-[var(--muted)] border-[var(--border)] cursor-not-allowed" : "bg-[var(--bg)] hover:bg-[var(--primary-soft)]/20 text-[var(--muted)] hover:text-[var(--text)] border-[var(--border)] cursor-pointer"}`}>
+                Previous
+              </button>
+              <span className="text-xs font-bold text-[var(--muted)]">Page {safePage} / {totalPages}</span>
+              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages}
+                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors ${safePage >= totalPages ? "bg-[var(--bg)] text-[var(--muted)] border-[var(--border)] cursor-not-allowed" : "bg-[var(--bg)] hover:bg-[var(--primary-soft)]/20 text-[var(--muted)] hover:text-[var(--text)] border-[var(--border)] cursor-pointer"}`}>
+                Next
+              </button>
             </div>
-          </>
-        ) : (
-          <div className="rounded-xl border border-dashed border-[var(--border)] px-4 py-10 text-center text-xs font-bold text-[var(--muted)]">
-            Search for a doctor to view the table.
           </div>
-        )}
+        </>
       </div>
 
       {viewing && (
