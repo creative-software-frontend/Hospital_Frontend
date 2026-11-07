@@ -26,6 +26,8 @@ import chamberRoutes from "../modules/chambers/chamber.routes";
 import doctorScheduleRoutes from "../modules/doctor-schedules/doctor-schedule.routes";
 import nursingNoteRoutes from "../modules/nursing-notes/nursing-note.routes";
 import patientVitalRoutes from "../modules/patient-vitals/patient-vital.routes";
+import medicationAdministrationRoutes from "../modules/medication-administrations/medication-administration.routes";
+import shiftTypeRoutes from "../modules/shift-types/shift-type.routes";
 
 const router = Router();
 
@@ -57,5 +59,7 @@ router.use("/chambers", chamberRoutes);
 router.use("/doctor-schedules", doctorScheduleRoutes);
 router.use("/nursing-notes", nursingNoteRoutes);
 router.use("/patient-vitals", patientVitalRoutes);
+router.use("/medication-administrations", medicationAdministrationRoutes);
+router.use("/shift-types", shiftTypeRoutes);
 
 export default router;

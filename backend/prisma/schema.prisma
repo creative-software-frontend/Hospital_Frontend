@@ -128,6 +128,14 @@ enum PrescriptionStatus {
   CANCELLED
 }
 
+/// Outcome of a nursing medication round for one prescribed medicine.
+enum MedicationAdministrationStatus {
+  GIVEN
+  HELD
+  REFUSED
+  MISSED
+}
+
 enum LabResultStatus {
   PENDING
   COLLECTED
@@ -191,6 +199,7 @@ model Branch {
   medicalRecords         MedicalRecord[]
   nursingNotes           NursingNote[]
   patientVitals          PatientVital[]
+  medicationAdministrations MedicationAdministration[]
   prescriptions          Prescription[]
   bedAllocations         Bed[]
   rooms                  Room[]
@@ -288,6 +297,7 @@ model User {
   registeredEmergencyCases EmergencyCase[]   @relation("EmergencyRegisteredBy")
   createdNursingNotes      NursingNote[]     @relation("NursingNoteCreatedBy")
   recordedPatientVitals    PatientVital[]    @relation("PatientVitalRecordedBy")
+  recordedMedications      MedicationAdministration[] @relation("MedicationAdministrationRecordedBy")
 
   @@index([branchId])
   @@index([email])
@@ -628,6 +638,7 @@ model Nurse {
   shiftType    ShiftType?    @relation(fields: [shiftTypeId], references: [id])
   nursingNotes NursingNote[]
   patientVitals PatientVital[]
+  medicationAdministrations MedicationAdministration[]
 
   @@unique([branchId, nurseCode])
   @@index([branchId])
@@ -856,6 +867,7 @@ model Patient {
   medicalRecords MedicalRecord[]
   nursingNotes   NursingNote[]
   vitals         PatientVital[]
+  medicationAdministrations MedicationAdministration[]
   prescriptions  Prescription[]
   labOrders      LabOrder[]
   invoices       Invoice[]
@@ -943,6 +955,42 @@ model PatientVital {
   @@index([branchId, patientId, deletedAt])
   @@index([recordedAt])
   @@index([nurseId])
+}
+
+/// One nursing medication round: what was (or was not) given to a patient for a
+/// prescribed medicine. The medicine name / dosage / route are snapshotted so the
+/// history stays readable even if the prescription is later edited or removed.
+model MedicationAdministration {
+  id                 Int                           @id @default(autoincrement())
+  branchId           Int
+  patientId          Int
+  prescriptionItemId Int?
+  medicineId         Int?
+  nurseId            Int?
+  admissionId        Int?
+  medicineName       String
+  dosage             String?
+  route              String?
+  administeredAt     DateTime                      @default(now())
+  status             MedicationAdministrationStatus @default(GIVEN)
+  notes              String?                       @db.VarChar(500)
+  createdByUserId    Int?
+  deletedAt          DateTime?
+  createdAt          DateTime                      @default(now())
+  updatedAt          DateTime                      @updatedAt
+
+  branch           Branch            @relation(fields: [branchId], references: [id])
+  patient          Patient           @relation(fields: [patientId], references: [id])
+  prescriptionItem PrescriptionItem? @relation(fields: [prescriptionItemId], references: [id])
+  medicine         Medicine?         @relation(fields: [medicineId], references: [id])
+  nurse            Nurse?            @relation(fields: [nurseId], references: [id])
+  admission        Admission?        @relation(fields: [admissionId], references: [id])
+  createdBy        User?             @relation("MedicationAdministrationRecordedBy", fields: [createdByUserId], references: [id])
+
+  @@index([branchId, patientId, deletedAt])
+  @@index([administeredAt])
+  @@index([nurseId])
+  @@index([prescriptionItemId])
 }
 
 /// Files attached to a patient (NID scan, referral letter, insurance card, ...).
@@ -1167,6 +1215,7 @@ model PrescriptionItem {
 
   prescription Prescription @relation(fields: [prescriptionId], references: [id])
   medicine     Medicine     @relation(fields: [medicineId], references: [id])
+  administrations MedicationAdministration[]
 
   @@index([prescriptionId])
   @@index([medicineId])
@@ -1219,6 +1268,7 @@ model Medicine {
   batches           MedicineBatch[]
   stockMovements    StockMovement[]
   prescriptionItems PrescriptionItem[]
+  administrations   MedicationAdministration[]
 
   @@unique([branchId, medicineCode])
   @@index([branchId])
@@ -1466,6 +1516,7 @@ model Admission {
   bed          Bed?          @relation(fields: [bedId], references: [id])
   nursingNotes NursingNote[]
   vitals       PatientVital[]
+  medicationAdministrations MedicationAdministration[]
 
   @@unique([branchId, admissionNumber])
   @@index([branchId])

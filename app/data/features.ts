@@ -63,8 +63,8 @@ export const keyFeatures: Feature[] = [
             { label: "Nurse Registration", icon: FiUser, id: "nurse-registration" },
             { label: "Nursing Notes", icon: FiEdit, id: "nursing-notes" },
             { label: "Patient Monitoring", icon: FiThermometer, id: "patient-monitoring" },
-            { label: "Medication Tracking", icon: FiBriefcase },
-            { label: "Shift Management", icon: FiClock },
+            { label: "Medication Tracking", icon: FiBriefcase, id: "medication-tracking" },
+            { label: "Shift Management", icon: FiClock, id: "shift-management" },
         ]
     },
     {
@@ -89,7 +89,7 @@ export const keyFeatures: Feature[] = [
             { label: "Attendance Management", icon: FiCheckSquare },
             { label: "Payroll Management", icon: FiDollarSign },
             { label: "Leave Management", icon: FiCalendar },
-            { label: "Shift Management", icon: FiClock },
+            { label: "Shift Management", icon: FiClock, id: "shift-management" },
             { label: "Employee Evaluation", icon: FiStar },
         ]
     },

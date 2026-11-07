@@ -34,6 +34,7 @@ import { SettingsPageView } from "@/app/dashboard/settings/SettingsPageView";
 import { PatientModule } from "@/app/patients/PatientModule";
 import { NurseModule } from "@/app/nurses/NurseModule";
 import { EmployeeModule } from "@/app/employees/EmployeeModule";
+import { ShiftManagementPage } from "@/app/employees/ShiftManagementPage";
 import { DoctorModule } from "@/app/doctors/DoctorModule";
 import { AppointmentModule } from "@/app/appointments/AppointmentModule";
 import { BedWardModule } from "@/app/bedward/BedWardModule";
@@ -587,7 +588,16 @@ ${tbody}
                 onNavigate={setSelectedSubFeatureId}
               />
             ) : selectedFeature.id === 16 ? (
-              <EmployeeModule />
+              selectedSubFeatureId === "shift-management" ? (
+                <div className="space-y-4">
+                  <ShiftManagementPage onBack={() => setSelectedSubFeatureId(null)} />
+                </div>
+              ) : (
+                <EmployeeModule
+                  pageKey={selectedSubFeatureId ?? undefined}
+                  onNavigate={setSelectedSubFeatureId}
+                />
+              )
             ) : selectedFeature.id === 7 ? (
               <BedWardModule role={permissions?.role ?? null} defaultBranchId={branchId} />
             ) : (

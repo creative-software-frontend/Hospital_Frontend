@@ -40,6 +40,7 @@ import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/To
 import { GENDER_OPTIONS, BLOOD_GROUP_OPTIONS, MARITAL_STATUS_OPTIONS } from "@/app/patients/constants";
 import { useMasterDataOptions } from "@/app/lib/useMasterData";
 import { FileUploadField } from "@/app/components/FileUploadField";
+import { ShiftManagementPage } from "@/app/employees/ShiftManagementPage";
 
 const PAGE_SIZE = 10;
 
@@ -55,7 +56,13 @@ const STATUS_STYLES: Record<ActiveStatus, string> = {
   inactive: "bg-slate-100 text-slate-500 border-slate-200",
 };
 
-export function EmployeeModule() {
+export function EmployeeModule({
+  pageKey,
+  onNavigate,
+}: {
+  pageKey?: string;
+  onNavigate?: (key: string | null) => void;
+}) {
   const [rows, setRows] = useState<EmployeeRecord[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [loading, setLoading] = useState(true);
@@ -105,6 +112,10 @@ export function EmployeeModule() {
     }, 350);
     return () => clearTimeout(timer);
   }, [searchInput]);
+
+  if (pageKey === "shift-management") {
+    return <ShiftManagementPage onBack={() => onNavigate?.(null)} />;
+  }
 
   const totalPages = pagination?.totalPages ?? 1;
   const safePage = Math.min(page, Math.max(1, totalPages));

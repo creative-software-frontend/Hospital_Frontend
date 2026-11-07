@@ -2746,6 +2746,121 @@ export const patientVitalApi = {
     request<{ message: string }>(`/patient-vitals/${id}`, { method: "DELETE" }),
 };
 
+/* ---------------------------------------------------------------------------
+ * Medication Tracking — nursing dose log (Nursing Management)
+ * ------------------------------------------------------------------------- */
+
+export const MEDICATION_ADMINISTRATION_STATUSES = ["GIVEN", "HELD", "REFUSED", "MISSED"] as const;
+export type MedicationAdministrationStatusValue = (typeof MEDICATION_ADMINISTRATION_STATUSES)[number];
+
+export interface MedicationAdministrationPrescribedMedicine {
+  prescriptionId: number;
+  prescriptionNumber: string;
+  prescriptionStatus: string;
+  itemId: number;
+  medicineId: number;
+  medicineName: string;
+  medicineCode: string | null;
+  dosage: string | null;
+  frequency: string | null;
+  duration: string | null;
+  instruction: string | null;
+  route: string | null;
+  quantity: number | null;
+}
+
+export interface MedicationAdministrationRecord {
+  id: number;
+  branchId: number;
+  patientId: number;
+  prescriptionItemId: number | null;
+  medicineId: number | null;
+  nurseId: number | null;
+  admissionId: number | null;
+  medicineName: string;
+  dosage: string | null;
+  route: string | null;
+  administeredAt: string;
+  status: MedicationAdministrationStatusValue;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: { id: number; name: string } | null;
+  patient: { id: number; name: string; patientCode: string };
+  nurse: { id: number; name: string; nurseCode: string } | null;
+  admission: { id: number; admissionNumber: string; status: string } | null;
+  prescriptionItem: {
+    id: number;
+    medicineId: number;
+    medicine: { id: number; genericName: string; brandName: string | null; medicineCode: string };
+  } | null;
+}
+
+export interface MedicationAdministrationSummary {
+  total: number;
+  given: number;
+  held: number;
+  refused: number;
+  missed: number;
+  lastGivenAt: string | null;
+}
+
+export interface MedicationAdministrationListResult {
+  data: MedicationAdministrationRecord[];
+  pagination: PaginationMeta;
+  summary: MedicationAdministrationSummary | null;
+}
+
+export interface MedicationAdministrationListQuery {
+  page?: number;
+  limit?: number;
+  patientId?: number;
+  status?: MedicationAdministrationStatusValue;
+  from?: string;
+  to?: string;
+}
+
+export interface CreateMedicationAdministrationInput {
+  patientId: number;
+  nurseId?: number | null;
+  admissionId?: number | null;
+  prescriptionItemId?: number | null;
+  medicineId?: number | null;
+  medicineName?: string | null;
+  dosage?: string | null;
+  route?: string | null;
+  status?: MedicationAdministrationStatusValue;
+  administeredAt?: string | null;
+  notes?: string | null;
+}
+
+export type UpdateMedicationAdministrationInput = Partial<Omit<CreateMedicationAdministrationInput, "patientId">>;
+
+export const medicationAdministrationApi = {
+  list: (query: MedicationAdministrationListQuery = {}) =>
+    rawRequest<MedicationAdministrationListResult>(
+      `/medication-administrations${qs(query as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+  prescribed: (patientId: number, status?: string) =>
+    rawRequest<MedicationAdministrationPrescribedListResult>(`/medication-administrations/prescribed${qs({ patientId, status })}`),
+  get: (id: number) => request<MedicationAdministrationRecord>(`/medication-administrations/${id}`),
+  create: (input: CreateMedicationAdministrationInput) =>
+    request<MedicationAdministrationRecord>("/medication-administrations", { method: "POST", body: JSON.stringify(input) }),
+  update: (id: number, input: UpdateMedicationAdministrationInput) =>
+    request<MedicationAdministrationRecord>(`/medication-administrations/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  remove: (id: number) =>
+    request<{ message: string }>(`/medication-administrations/${id}`, { method: "DELETE" }),
+};
+
+export interface MedicationAdministrationPrescribedListResult {
+  success: boolean;
+  data: MedicationAdministrationPrescribedMedicine[];
+  patient: { id: number; name: string; patientCode: string };
+}
+
 export interface DoctorListQuery {
   page?: number;
   limit?: number;
@@ -2860,6 +2975,33 @@ export interface ShiftTypeRecord {
   graceMinutes: number;
   status: string;
 }
+
+export interface CreateShiftTypeInput {
+  name: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  graceMinutes?: number;
+  status?: ActiveStatus;
+}
+
+export type UpdateShiftTypeInput = Partial<CreateShiftTypeInput>;
+
+export const shiftTypeApi = {
+  list: (query: { search?: string; status?: ActiveStatus } = {}) =>
+    request<{ shiftTypes: ShiftTypeRecord[] }>(
+      `/shift-types${qs(query as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+  create: (input: CreateShiftTypeInput) =>
+    request<{ shiftType: ShiftTypeRecord }>("/shift-types", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  update: (id: number, input: UpdateShiftTypeInput) =>
+    request<{ shiftType: ShiftTypeRecord }>(`/shift-types/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+};
 
 export interface ServiceCategoryRecord {
   id: number;

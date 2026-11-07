@@ -43,6 +43,8 @@ import { useMasterDataOptions } from "@/app/lib/useMasterData";
 import { FileUploadField } from "@/app/components/FileUploadField";
 import { NursingNotesPage } from "@/app/nurses/NursingNotesPage";
 import { PatientVitalsPage } from "@/app/nurses/PatientVitalsPage";
+import { MedicationTrackingPage } from "@/app/nurses/MedicationTrackingPage";
+import { ShiftManagementPage } from "@/app/employees/ShiftManagementPage";
 
 const PAGE_SIZE = 10;
 
@@ -125,6 +127,14 @@ export function NurseModule({
 
   if (pageKey === "patient-monitoring") {
     return <PatientVitalsPage onBack={() => onNavigate?.(null)} />;
+  }
+
+  if (pageKey === "medication-tracking") {
+    return <MedicationTrackingPage onBack={() => onNavigate?.(null)} />;
+  }
+
+  if (pageKey === "shift-management") {
+    return <ShiftManagementPage onBack={() => onNavigate?.(null)} />;
   }
 
   const totalPages = pagination?.totalPages ?? 1;
