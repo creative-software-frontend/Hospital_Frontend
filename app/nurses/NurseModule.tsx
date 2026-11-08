@@ -134,7 +134,7 @@ export function NurseModule({
   }
 
   if (pageKey === "shift-management") {
-    return <ShiftManagementPage onBack={() => onNavigate?.(null)} />;
+    return <ShiftManagementPage onBack={() => onNavigate?.(null)} module="Nursing Management" />;
   }
 
   const totalPages = pagination?.totalPages ?? 1;

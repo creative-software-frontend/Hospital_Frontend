@@ -19,7 +19,7 @@ const EMPTY_FORM: CreateShiftTypeInput = {
   status: "active",
 };
 
-export function ShiftManagementPage({ onBack }: { onBack?: () => void }) {
+export function ShiftManagementPage({ onBack, module = "Human Resource" }: { onBack?: () => void; module?: string }) {
   const [rows, setRows] = useState<ShiftTypeRecord[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -103,7 +103,7 @@ export function ShiftManagementPage({ onBack }: { onBack?: () => void }) {
             {"\u2190"} Back
           </button>
         )}
-        <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">Human Resource</span>
+        <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">{module}</span>
         <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">Shift Management</h3>
         <p className="text-xs text-[var(--muted)] mt-1.5">Create and maintain reusable work shifts for staff scheduling.</p>
       </div>
@@ -113,7 +113,7 @@ export function ShiftManagementPage({ onBack }: { onBack?: () => void }) {
           <h4 className="text-sm font-extrabold">{editing ? "Edit shift" : "Add shift"}</h4>
           {editing && <button onClick={reset} className="text-xs font-bold text-[var(--muted)] cursor-pointer">Cancel</button>}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,20rem)_9rem_9rem_8rem_8rem_auto] gap-3 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,20rem)_9rem_9rem_8rem_8rem_10rem] gap-3 items-end max-w-3xl">
           <label className="text-xs font-semibold text-[var(--muted)]">Shift name *
             <input className={`${INPUT} mt-1`} value={form.name} onChange={(e) => setForm((v) => ({ ...v, name: e.target.value }))} placeholder="Morning Shift" />
           </label>
@@ -133,7 +133,7 @@ export function ShiftManagementPage({ onBack }: { onBack?: () => void }) {
             </select>
           </label>
           <button onClick={submit} disabled={saving} className="h-10 rounded-xl px-4 text-xs font-bold text-white disabled:opacity-60 cursor-pointer" style={{ background: "var(--primary)" }}>
-            {saving ? "Saving..." : editing ? "Save" : "Add shift"}
+            {saving ? "Saving…" : editing ? "Save" : "Add shift"}
           </button>
         </div>
       </div>

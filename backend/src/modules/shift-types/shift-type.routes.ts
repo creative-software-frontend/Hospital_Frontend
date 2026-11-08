@@ -17,25 +17,25 @@ router.use(requireAuth);
 router.get(
   "/",
   validate({ query: listShiftTypesQuerySchema }),
-  requirePermission("employee", "read"),
+  requirePermission("nursingNote", "read"),
   shiftTypeController.listShiftTypes,
 );
 router.get(
   "/:id",
   validate({ params: shiftTypeIdParamSchema }),
-  requirePermission("employee", "read"),
+  requirePermission("nursingNote", "read"),
   shiftTypeController.getShiftType,
 );
 router.post(
   "/",
   validate({ body: createShiftTypeSchema }),
-  requirePermission("employee", "create"),
+  requirePermission("nursingNote", "create"),
   shiftTypeController.createShiftType,
 );
 router.patch(
   "/:id",
   validate({ params: shiftTypeIdParamSchema, body: updateShiftTypeSchema }),
-  requirePermission("employee", "update"),
+  requirePermission("nursingNote", "update"),
   shiftTypeController.updateShiftType,
 );
 
