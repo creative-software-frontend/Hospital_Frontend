@@ -86,6 +86,9 @@ export async function getDoctorSchedule(actor: AuthUser, id: number) {
 export async function createDoctorSchedule(actor: AuthUser, input: CreateDoctorScheduleInput) {
   const doctor = await getAccessibleDoctor(actor, input.doctorId);
   const branchId = doctor.branchId;
+  if (input.startTime && input.endTime && input.startTime >= input.endTime) {
+    throw new ConflictError("Schedule must end after it starts");
+  }
 
   const existing = await prisma.doctorSchedule.findFirst({
     where: { branchId, doctorId: input.doctorId, dayOfWeek: input.dayOfWeek },
@@ -125,6 +128,23 @@ export async function createDoctorSchedule(actor: AuthUser, input: CreateDoctorS
 export async function updateDoctorSchedule(actor: AuthUser, id: number, input: UpdateDoctorScheduleInput) {
   const access = await getAccessibleSchedule(actor, id);
   const current = await prisma.doctorSchedule.findUnique({ where: { id } });
+  const startTime = input.startTime !== undefined ? input.startTime : current?.startTime;
+  const endTime = input.endTime !== undefined ? input.endTime : current?.endTime;
+  if (startTime && endTime && startTime >= endTime) {
+    throw new ConflictError("Schedule must end after it starts");
+  }
+  if (input.dayOfWeek !== undefined && input.dayOfWeek !== current?.dayOfWeek) {
+    const duplicate = await prisma.doctorSchedule.findFirst({
+      where: {
+        branchId: access.branchId,
+        doctorId: access.doctorId,
+        dayOfWeek: input.dayOfWeek,
+        id: { not: id },
+      },
+      select: { id: true },
+    });
+    if (duplicate) throw new ConflictError("A schedule already exists for this doctor on that day");
+  }
 
   const updated = await prisma.doctorSchedule.update({
     where: { id },
@@ -179,6 +199,16 @@ export async function getDoctorScheduleByDoctor(actor: AuthUser, doctorId: numbe
 export async function replaceDoctorSchedule(actor: AuthUser, doctorId: number, input: ReplaceDoctorScheduleInput) {
   const doctor = await getAccessibleDoctor(actor, doctorId);
   const branchId = doctor.branchId;
+  const seenDays = new Set<number>();
+  for (const slot of input.slots) {
+    if (seenDays.has(slot.dayOfWeek)) {
+      throw new ConflictError("Only one schedule slot is allowed per doctor per day");
+    }
+    seenDays.add(slot.dayOfWeek);
+    if (slot.startTime && slot.endTime && slot.startTime >= slot.endTime) {
+      throw new ConflictError("Schedule must end after it starts");
+    }
+  }
 
   await prisma.$transaction(async (tx) => {
     await tx.doctorSchedule.deleteMany({ where: { doctorId, branchId } });

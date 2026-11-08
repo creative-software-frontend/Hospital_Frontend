@@ -660,6 +660,7 @@ model DoctorSchedule {
   @@index([doctorId])
   @@index([branchId])
   @@index([roomId])
+  @@unique([branchId, doctorId, dayOfWeek])
 }
 
 // ============================================================

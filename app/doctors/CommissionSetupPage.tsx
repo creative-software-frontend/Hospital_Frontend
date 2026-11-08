@@ -51,12 +51,6 @@ export function CommissionSetupPage() {
   }, []);
 
   const load = useCallback(async () => {
-    if (!searchTerm) {
-      setRows([]);
-      setError("");
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     setError("");
     try {

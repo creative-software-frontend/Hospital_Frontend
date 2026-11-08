@@ -52,13 +52,6 @@ export function DoctorSchedulePage() {
 
   const loadDoctors = useCallback(async (term: string) => {
     const query = term.trim();
-    if (!query) {
-      setDoctors([]);
-      setDoctorId(null);
-      setLoadingDoctors(false);
-      return;
-    }
-
     setLoadingDoctors(true);
     setDoctorId(null);
     try {

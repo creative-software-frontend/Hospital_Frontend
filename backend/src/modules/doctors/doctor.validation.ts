@@ -126,8 +126,22 @@ export const createDoctorSchema = doctorFieldsSchema
 export const updateDoctorSchema = doctorFieldsSchema.partial();
 
 export const doctorPerformanceQuerySchema = z.object({
-  from: z.string().trim().optional(),
-  to: z.string().trim().optional(),
+  from: z.string().trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD")
+    .refine((value) => !Number.isNaN(new Date(`${value}T00:00:00`).getTime()), "Invalid date")
+    .optional(),
+  to: z.string().trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD")
+    .refine((value) => !Number.isNaN(new Date(`${value}T00:00:00`).getTime()), "Invalid date")
+    .optional(),
+}).superRefine((data, ctx) => {
+  if (data.from && data.to && data.from > data.to) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["to"],
+      message: "`from` must be on or before `to`",
+    });
+  }
 });
 export type CreateDoctorInput = z.infer<typeof createDoctorSchema>;
 export type UpdateDoctorInput = z.infer<typeof updateDoctorSchema>;

@@ -71,21 +71,22 @@ export function DoctorAttendancePage() {
 
   const load = useCallback(async (d: string, search: string) => {
     const query = search.trim();
-    if (!query) {
-      setRows([]);
-      setError("");
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     setError("");
     try {
       const [data, doctors] = await Promise.all([
         doctorAttendanceApi.forDate(d),
-        doctorApi.list({ page: 1, limit: 100, search: query }),
+        doctorApi.list({ page: 1, limit: 100 }),
       ]);
-      const doctorIds = new Set(doctors.data.map((doctor) => doctor.id));
+      const doctorIds = new Set(
+        doctors.data
+          .filter((doctor) =>
+            !query ||
+            [doctor.name, doctor.doctorCode, doctor.specialization ?? ""]
+              .some((value) => value.toLowerCase().includes(query.toLowerCase())),
+          )
+          .map((doctor) => doctor.id),
+      );
       const list = Array.isArray(data) ? data : [];
       const next: Row[] = list.map((r) => ({
         doctorId: r.doctor.id,

@@ -55,13 +55,6 @@ export function DepartmentAssignmentPage() {
   // because the counters and the "Unassigned" filter need the full picture,
   // and the API has no "department is empty" filter.
   const load = useCallback(async () => {
-    if (!searchTerm) {
-      setDoctors([]);
-      setDepartments([]);
-      setError("");
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     try {
       const [deptResult, firstPage] = await Promise.all([

@@ -6,6 +6,7 @@ import * as doctorController from "./doctor.controller";
 import {
   createDoctorSchema,
   doctorIdParamSchema,
+  doctorPerformanceQuerySchema,
   listDoctorsQuerySchema,
   updateDoctorSchema,
 } from "./doctor.validation";
@@ -16,6 +17,7 @@ router.use(requireAuth);
 
 router.get(
   "/performance-report",
+  validate({ query: doctorPerformanceQuerySchema }),
   requirePermission("doctor", "read"),
   doctorController.doctorPerformance,
 );

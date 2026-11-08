@@ -150,13 +150,20 @@ export async function createChamber(actor: AuthUser, input: CreateChamberInput) 
 
 export async function updateChamber(actor: AuthUser, id: number, input: UpdateChamberInput) {
   const access = await getAccessibleChamber(actor, id);
+  const targetBranchId = input.branchId ?? access.branchId;
+  if (targetBranchId !== access.branchId) {
+    if (!isSuperAdmin(actor)) {
+      throw new AuthorizationError("You do not have permission to move this chamber to another branch");
+    }
+    await ensureBranch(targetBranchId);
+  }
   if (input.doctorId !== undefined) {
-    await ensureDoctor(actor, input.doctorId, access.branchId);
+    await ensureDoctor(actor, input.doctorId, targetBranchId);
   }
 
   const updated = await prisma.chamber.update({
     where: { id },
-    data: { ...input },
+    data: { ...input, branchId: targetBranchId },
     select: CHAMBER_SELECT,
   });
 
