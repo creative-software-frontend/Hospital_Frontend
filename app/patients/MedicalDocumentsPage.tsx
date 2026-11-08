@@ -1,7 +1,8 @@
 // app/patients/MedicalDocumentsPage.tsx
 // "Medical Documents Upload" sub-feature of the Patient Management module.
-// Pick a patient, attach scans (NID, passport, referral letter, insurance ...)
-// with a type, title and optional notes, then browse / open / remove them.
+// Pick a patient, attach scans (prescription, lab report, X-Ray, discharge
+// summary, referral ...) with a medical document type, title and optional
+// notes, then browse / open / remove them.
 // Files are uploaded to /api/uploads (kind `document`); the row stores the URL
 // plus the metadata this page renders.
 
@@ -32,7 +33,16 @@ import { FileUploadField } from "@/app/components/FileUploadField";
 import { ConfirmDialog } from "@/app/patients/ConfirmDialog";
 
 /** Shipped Master Data seeds, used only if Settings → Master Data is empty. */
-const DOCUMENT_TYPE_FALLBACK = ["NID", "PP", "BC", "DL", "TIN", "SC"];
+const DOCUMENT_TYPE_FALLBACK = [
+  "Prescription",
+  "Lab Report",
+  "X-Ray",
+  "MRI Scan",
+  "CT Scan",
+  "Discharge Summary",
+  "Referral Letter",
+  "Medical Certificate",
+];
 
 const INPUT_CLS =
   "w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15 text-[var(--text)]";

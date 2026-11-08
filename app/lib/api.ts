@@ -52,7 +52,7 @@ export type MaritalStatus = "SINGLE" | "MARRIED" | "DIVORCED" | "WIDOWED";
 export type PatientStatus = "active" | "inactive";
 
 /** Mirrors backend `PATIENT_TYPE_VALUES` (patient.policy.ts). */
-export type PatientType = "NEW" | "FOLLOWUP" | "REFERRAL";
+export type PatientType = "NEW" | "FOLLOWUP" | "REFERRAL" | "EMERGENCY";
 
 /** Mirrors backend `GUARDIAN_REQUIREMENT_VALUES` (patient.policy.ts). */
 export type GuardianRequirement = "NEVER" | "MINORS_ONLY" | "ALWAYS";
@@ -147,6 +147,8 @@ export interface PatientContactInput {
 
 export interface CreatePatientInput {
   name: string;
+  /** When true, skips the branch's required contact / guardian rules for a minimal emergency intake. */
+  forEmergency?: boolean;
   dateOfBirth?: string | null;
   gender?: Gender | null;
   bloodGroup?: BloodGroup | null;
@@ -190,6 +192,7 @@ export interface PatientListQuery {
   maxAge?: number;
   status?: PatientStatus;
   branchId?: number;
+  patientType?: string;
 }
 
 /* ---------------------------------------------------------------------------
@@ -1090,6 +1093,7 @@ export const patientApi = {
         branchId: number;
         patientCode: string;
         patientType: PatientType;
+        name: string;
         /** Advisory matches the user acknowledged before saving. */
         duplicateWarnings: DuplicateMatch[];
       };
@@ -1158,94 +1162,6 @@ export const patientDocumentApi = {
   remove: (patientId: number, documentId: number) =>
     request<{ message: string }>(`/patients/${patientId}/documents/${documentId}`, {
       method: "DELETE",
-    }),
-};
-
-/* ---------------------------------------------------------------------------
- * Emergency desk (fast intake + "needs completing" queue)
- * ------------------------------------------------------------------------- */
-
-export type EmergencyPriority = "CRITICAL" | "URGENT" | "NON_URGENT";
-
-export interface EmergencyPatientRef {
-  id: number;
-  patientCode: string;
-  name: string;
-  gender: Gender | null;
-  dateOfBirth: string | null;
-  phone: string | null;
-  address: string | null;
-  /** Human labels of the demographics still missing (empty = complete). */
-  missing: string[];
-}
-
-export interface EmergencyCaseRecord {
-  id: number;
-  caseNumber: string;
-  priority: EmergencyPriority;
-  chiefComplaint: string | null;
-  unidentified: boolean;
-  arrivedAt: string;
-  createdAt: string;
-  patient: EmergencyPatientRef;
-}
-
-export interface EmergencySummary {
-  /** The calendar day the summary covers (`YYYY-MM-DD`). */
-  date: string;
-  total: number;
-  /** Cases whose patient still misses a core demographic. */
-  needsInfo: number;
-}
-
-export interface EmergencyCaseListResult {
-  data: EmergencyCaseRecord[];
-  pagination: PaginationMeta;
-  summary: EmergencySummary;
-}
-
-export interface EmergencyCaseListQuery {
-  date?: string;
-  /** Only cases whose patient is still incomplete. */
-  incomplete?: boolean;
-  search?: string;
-  page?: number;
-  limit?: number;
-}
-
-export interface CreateEmergencyPatientInput {
-  name: string;
-  gender?: Gender;
-  /** Years, converted to an estimated 1 January date of birth. */
-  approxAge?: number;
-  guardianName?: string;
-  guardianRelationship?: string;
-  guardianPhone?: string;
-}
-
-export interface CreateEmergencyCaseInput {
-  patient: CreateEmergencyPatientInput;
-  /** Defaults to `URGENT` server-side; triage can raise it later. */
-  priority?: EmergencyPriority;
-  chiefComplaint?: string;
-  unidentified?: boolean;
-}
-
-export interface RegisterEmergencyResult {
-  emergencyCase: EmergencyCaseRecord;
-  duplicateWarnings: DuplicateMatch[];
-}
-
-export const emergencyApi = {
-  list: (query: EmergencyCaseListQuery = {}) =>
-    rawRequest<EmergencyCaseListResult>(
-      `/emergency/cases${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
-    ),
-
-  register: (input: CreateEmergencyCaseInput) =>
-    request<RegisterEmergencyResult>("/emergency/cases", {
-      method: "POST",
-      body: JSON.stringify(input),
     }),
 };
 
@@ -1899,7 +1815,7 @@ export const MASTER_DATA_CATEGORY_EXAMPLES: Record<MasterDataCategory, string> =
   visit_types: "New, Follow-up, Emergency",
   blood_groups: "A+, B-, O+, AB+",
   payment_methods: "Cash, Card, bKash, Rocket",
-  document_types: "NID, Passport, Birth Cert",
+  document_types: "Prescription, Lab Report, X-Ray",
   relationships: "Father, Mother, Spouse",
   divisions: "Dhaka, Chattogram, Rajshahi",
   districts: "Dhaka, Gazipur, Narayanganj",

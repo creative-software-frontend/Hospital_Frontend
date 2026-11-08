@@ -500,6 +500,10 @@ function buildListWhere(actor: AuthUser, query: ListPatientsQuery): Prisma.Patie
     where.bloodGroup = query.bloodGroup;
   }
 
+  if (query.patientType) {
+    where.patientType = query.patientType;
+  }
+
   const today = new Date();
   if (query.minAge !== undefined || query.maxAge !== undefined) {
     const dateOfBirth: Prisma.DateTimeFilter = {};
@@ -587,6 +591,10 @@ export async function createPatient(
   input: CreatePatientInput,
   options: CreatePatientOptions = {},
 ): Promise<CreatedPatient> {
+  // Allow callers to opt into relaxed validation via the body field so a
+  // minimal emergency intake can skip required contact / guardian rules.
+  if (input.forEmergency) options.forEmergency = true;
+
   // Normal users are always bound to their own branch; SUPER_ADMIN may choose.
   let targetBranchId: number;
   if (isSuperAdmin(actor)) {

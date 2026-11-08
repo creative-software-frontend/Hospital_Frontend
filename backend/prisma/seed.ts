@@ -1039,13 +1039,15 @@ async function seed() {
     { category: "blood_groups", label: "AB-", code: "AB_NEG" },
     { category: "blood_groups", label: "O+", code: "O_POS" },
     { category: "blood_groups", label: "O-", code: "O_NEG" },
-    // Document types
-    { category: "document_types", label: "National ID", code: "NID" },
-    { category: "document_types", label: "Passport", code: "PP" },
-    { category: "document_types", label: "Birth Certificate", code: "BC" },
-    { category: "document_types", label: "Driving License", code: "DL" },
-    { category: "document_types", label: "TIN Certificate", code: "TIN" },
-    { category: "document_types", label: "Smart Card ID", code: "SC" },
+    // Document types (medical)
+    { category: "document_types", label: "Prescription", code: "PRESCRIPTION" },
+    { category: "document_types", label: "Lab Report", code: "LAB_REPORT" },
+    { category: "document_types", label: "X-Ray", code: "X_RAY" },
+    { category: "document_types", label: "MRI Scan", code: "MRI_SCAN" },
+    { category: "document_types", label: "CT Scan", code: "CT_SCAN" },
+    { category: "document_types", label: "Discharge Summary", code: "DISCHARGE_SUMMARY" },
+    { category: "document_types", label: "Referral Letter", code: "REFERRAL_LETTER" },
+    { category: "document_types", label: "Medical Certificate", code: "MEDICAL_CERTIFICATE" },
     // Patient emergency/contact relationships
     { category: "relationships", label: "Father", code: "FATHER" },
     { category: "relationships", label: "Mother", code: "MOTHER" },

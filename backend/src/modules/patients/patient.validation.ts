@@ -72,6 +72,7 @@ export const listPatientsQuerySchema = z.object({
   maxAge: z.coerce.number().int().min(0).max(150).optional(),
   status: z.enum(PATIENT_STATUS_VALUES).optional(),
   branchId: z.coerce.number().int().positive().optional(),
+  patientType: z.enum(PATIENT_TYPE_VALUES).optional(),
   sortBy: z.string().optional(),
   sortOrder: z.enum(["asc", "desc"]).optional(),
 });
@@ -137,6 +138,11 @@ export type CreatePatientDocumentInput = z.infer<typeof createPatientDocumentSch
 
 export const createPatientSchema = z.object({
   name: z.string().trim().min(1, "name is required").max(255),
+  /**
+   * When true, skips the branch's required contact / guardian rules so a
+   * minimal emergency intake can be completed first and finished later.
+   */
+  forEmergency: z.boolean().optional(),
   /**
    * Only honoured when the branch has autoGenerateId disabled. When generation
    * is on, sending a code is rejected rather than silently ignored so a caller

@@ -1,39 +1,23 @@
 // app/patients/EmergencyRegistrationPage.tsx
 // "Emergency Patient Registration" sub-feature of the Patient Management module.
 //
-// Speed first: the form asks for four things only — who the patient is (a name,
-// or an "Unknown …" label), sex, an approximate age and what happened. Priority
-// defaults to Urgent and the arrival mode to Walk-in, and every optional
-// demographic (phone, address, …) is deliberately absent: treatment starts now,
-// the record is completed afterwards.
-//
-// The list underneath is the way that "afterwards" happens: today's arrivals
-// that still miss a core demographic, each row opening the full patient form.
+// Speed first: the form asks for a name (or an "Unknown …" label), sex and an
+// approximate age. Everything else — phone, address, date of birth — is
+// completed afterwards from the patient record. Emergency patients are ordinary
+// Patient rows with `patientType = "EMERGENCY`; the separate triage-case table
+// was removed so nothing is split across two tables.
 
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  FiAlertCircle,
-  FiCheckCircle,
-  FiClock,
-  FiEdit3,
-  FiRefreshCcw,
-  FiUser,
-} from "react-icons/fi";
-import { RELATIONSHIP_OPTIONS } from "@/app/patients/constants";
-import { useMasterDataOptions } from "@/app/lib/useMasterData";
+import { FiAlertCircle, FiCheckCircle, FiClock, FiEdit3, FiRefreshCcw, FiUser } from "react-icons/fi";
 import {
   calcAge,
-  emergencyApi,
   errorMessage,
   formatDate,
   patientApi,
   type DuplicateMatch,
-  type EmergencyCaseRecord,
-  type EmergencyPriority,
-  type EmergencySummary,
-  type PaginationMeta,
+  type PatientListRecord,
   type PatientDetail,
 } from "@/app/lib/api";
 import { genderLabel } from "@/app/patients/constants";
@@ -46,18 +30,6 @@ const INPUT_CLS =
 
 const LABEL_CLS =
   "block text-[9px] uppercase tracking-widest font-extrabold text-[var(--muted)] mb-1";
-
-const PRIORITY_BADGE: Record<EmergencyPriority, string> = {
-  CRITICAL: "bg-rose-500/15 text-rose-600 border-rose-400/30",
-  URGENT: "bg-amber-500/15 text-amber-600 border-amber-400/30",
-  NON_URGENT: "bg-emerald-500/15 text-emerald-600 border-emerald-400/30",
-};
-
-const PRIORITY_LABEL: Record<EmergencyPriority, string> = {
-  CRITICAL: "Critical",
-  URGENT: "Urgent",
-  NON_URGENT: "Non-urgent",
-};
 
 function timeOf(iso: string): string {
   const d = new Date(iso);
@@ -79,37 +51,37 @@ function unknownName(gender: string, age: string): string {
   return age ? `Unknown ${who} ~${age}` : `Unknown ${who}`;
 }
 
+/** Which core demographics a patient is still missing. */
+function missingFields(p: PatientListRecord): string[] {
+  const missing: string[] = [];
+  if (!p.gender) missing.push("Gender");
+  if (!p.dateOfBirth) missing.push("Date of birth");
+  if (!p.phone) missing.push("Phone");
+  if (!p.address) missing.push("Address");
+  return missing;
+}
+
 export function EmergencyRegistrationPage() {
   /* ---------------- quick intake ---------------- */
   const [name, setName] = useState("");
   const [gender, setGender] = useState("");
   const [approxAge, setApproxAge] = useState("");
-  const [chiefComplaint, setChiefComplaint] = useState("");
-  const [guardianName, setGuardianName] = useState("");
-  const [guardianRelationship, setGuardianRelationship] = useState("");
-  const [guardianPhone, setGuardianPhone] = useState("");
   const [unidentified, setUnidentified] = useState(false);
   /** True while the name still mirrors the generated "Unknown …" label. */
   const [autoName, setAutoName] = useState(false);
-  const { options: relationshipOptions } = useMasterDataOptions(
-    "relationships",
-    RELATIONSHIP_OPTIONS.map((item) => item.value),
-  );
 
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; approxAge?: string }>({});
   const [registered, setRegistered] = useState<{
-    caseNumber: string;
     patientCode: string;
     name: string;
     warnings: DuplicateMatch[];
   } | null>(null);
 
   /* ---------------- today's arrivals still missing details ---------------- */
-  const [cases, setCases] = useState<EmergencyCaseRecord[]>([]);
-  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
-  const [summary, setSummary] = useState<EmergencySummary | null>(null);
+  const [patients, setPatients] = useState<PatientListRecord[]>([]);
+  const [pagination, setPagination] = useState<{ page: number; limit: number; total: number; totalPages: number } | null>(null);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [queueError, setQueueError] = useState("");
@@ -118,20 +90,16 @@ export function EmergencyRegistrationPage() {
   const [completingId, setCompletingId] = useState<number | null>(null);
   const [editPatient, setEditPatient] = useState<PatientDetail | null>(null);
 
-  // `incomplete: true` returns only patients still missing gender / DOB / phone
-  // / address, while its summary still counts the whole day (so the header can
-  // say "3 of 8" without a second request).
   useEffect(() => {
     let active = true;
     const timer = setTimeout(() => {
       setLoading(true);
-      emergencyApi
-        .list({ date: todayIso(), incomplete: true, page, limit: PAGE_SIZE })
+      patientApi
+        .list({ patientType: "EMERGENCY", page, limit: PAGE_SIZE })
         .then((res) => {
           if (!active) return;
-          setCases(res.data);
+          setPatients(res.data);
           setPagination(res.pagination);
-          setSummary(res.summary);
           setQueueError("");
         })
         .catch((err) => {
@@ -153,10 +121,6 @@ export function EmergencyRegistrationPage() {
     setName("");
     setGender("");
     setApproxAge("");
-    setChiefComplaint("");
-    setGuardianName("");
-    setGuardianRelationship("");
-    setGuardianPhone("");
     setUnidentified(false);
     setAutoName(false);
     setFieldErrors({});
@@ -171,8 +135,6 @@ export function EmergencyRegistrationPage() {
     event.preventDefault();
     if (saving) return;
 
-    // An unidentified patient still needs a name for the server, so the
-    // generated label is used when the box is ticked and nothing was typed.
     const resolvedName = name.trim() || (unidentified ? suggestedUnknownName() : "");
 
     const errors: { name?: string; approxAge?: string } = {};
@@ -190,27 +152,21 @@ export function EmergencyRegistrationPage() {
     setFormError("");
     setRegistered(null);
 
-    emergencyApi
-      .register({
-        patient: {
-          name: resolvedName,
-          gender: gender ? (gender as "MALE" | "FEMALE" | "OTHER") : undefined,
-          approxAge: approxAge ? Number(approxAge) : undefined,
-          guardianName: guardianName.trim() || undefined,
-          guardianRelationship: guardianRelationship.trim() || undefined,
-          guardianPhone: guardianPhone.trim() || undefined,
-        },
-        // Not asked at the door: triage starts Urgent and can be raised later.
-        priority: "URGENT",
-        chiefComplaint: chiefComplaint.trim() || undefined,
-        unidentified,
+    const dateOfBirth = approxAge ? new Date(new Date().getFullYear() - Number(approxAge), 0, 1).toISOString() : undefined;
+
+    patientApi
+      .create({
+        name: resolvedName,
+        ...(gender ? { gender: gender as "MALE" | "FEMALE" | "OTHER" } : {}),
+        ...(dateOfBirth ? { dateOfBirth } : {}),
+        patientType: "EMERGENCY",
+        forEmergency: true,
       })
       .then((res) => {
         setRegistered({
-          caseNumber: res.emergencyCase.caseNumber,
-          patientCode: res.emergencyCase.patient.patientCode,
-          name: res.emergencyCase.patient.name,
-          warnings: res.duplicateWarnings ?? [],
+          patientCode: res.patient.patientCode,
+          name: res.patient.name,
+          warnings: res.patient.duplicateWarnings ?? [],
         });
         setPage(1);
         setReload((t) => t + 1);
@@ -220,11 +176,11 @@ export function EmergencyRegistrationPage() {
       .finally(() => setSaving(false));
   };
 
-  const openComplete = (row: EmergencyCaseRecord) => {
-    setCompletingId(row.patient.id);
+  const openComplete = (row: PatientListRecord) => {
+    setCompletingId(row.id);
     setQueueError("");
     patientApi
-      .get(row.patient.id)
+      .get(row.id)
       .then((res) => setEditPatient(res.patient))
       .catch((err) => setQueueError(errorMessage(err)))
       .finally(() => setCompletingId(null));
@@ -232,11 +188,12 @@ export function EmergencyRegistrationPage() {
 
   const totalPages = pagination?.totalPages ?? 0;
   const today = todayIso();
+  const incompleteCount = patients.filter((p) => missingFields(p).length > 0).length;
 
   return (
     <div className="space-y-4">
       {/* ---------------------------------------------------------------
-          Fast intake — four fields, so care can start immediately
+          Fast intake — minimal fields, so care can start immediately
       --------------------------------------------------------------- */}
       <div className="card p-6 rounded-2xl shadow-sm space-y-4 w-full">
         <div className="flex items-start gap-3">
@@ -263,7 +220,7 @@ export function EmergencyRegistrationPage() {
             <FiCheckCircle className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
             <div>
               <p className="text-xs font-black text-emerald-800">
-                Registered {registered.caseNumber} · {registered.patientCode}
+                Registered {registered.patientCode}
               </p>
               <p className="text-[11px] font-semibold text-emerald-700">
                 {registered.name} is on today&apos;s board. Add the missing details from the list
@@ -287,7 +244,6 @@ export function EmergencyRegistrationPage() {
               onChange={(e) => {
                 const next = e.target.checked;
                 setUnidentified(next);
-                // Fill the label the moment the box is ticked and nothing is typed.
                 if (next && !name.trim()) {
                   setName(suggestedUnknownName());
                   setAutoName(true);
@@ -375,69 +331,9 @@ export function EmergencyRegistrationPage() {
             </div>
           </div>
 
-          <div className="max-w-3xl">
-            <label htmlFor="er-complaint" className={LABEL_CLS}>
-              Chief complaint
-            </label>
-            <textarea
-              id="er-complaint"
-              rows={2}
-              value={chiefComplaint}
-              onChange={(e) => setChiefComplaint(e.target.value)}
-              placeholder="What brought the patient in? e.g. chest pain since 30 minutes"
-              className={`${INPUT_CLS} resize-none`}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,16rem)_10rem_10rem] gap-3">
-            <div>
-              <label htmlFor="er-guardian-name" className={LABEL_CLS}>
-                Guardian name
-              </label>
-              <input
-                id="er-guardian-name"
-                value={guardianName}
-                onChange={(e) => setGuardianName(e.target.value)}
-                placeholder="Parent or guardian name"
-                className={INPUT_CLS}
-              />
-            </div>
-            <div>
-              <label htmlFor="er-guardian-relation" className={LABEL_CLS}>
-                Relation
-              </label>
-              <select
-                id="er-guardian-relation"
-                value={guardianRelationship}
-                onChange={(e) => setGuardianRelationship(e.target.value)}
-                className={INPUT_CLS}
-              >
-                <option value="">Select relationship</option>
-                {relationshipOptions.map((relationship) => (
-                  <option key={relationship.value} value={relationship.value}>
-                    {relationship.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="er-guardian-phone" className={LABEL_CLS}>
-                Guardian phone
-              </label>
-              <input
-                id="er-guardian-phone"
-                type="tel"
-                value={guardianPhone}
-                onChange={(e) => setGuardianPhone(e.target.value)}
-                placeholder="Phone number"
-                className={INPUT_CLS}
-              />
-            </div>
-          </div>
-
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <p className="text-[10px] font-semibold text-[var(--muted)]">
-              Priority defaults to Urgent. Phone, address and other details are completed later.
+              Phone, address and other details are completed later from the list below.
             </p>
             <button
               type="submit"
@@ -452,7 +348,7 @@ export function EmergencyRegistrationPage() {
       </div>
 
       {/* ---------------------------------------------------------------
-          Today's arrivals that still need their paperwork finished
+          Today's emergency arrivals that still need their paperwork finished
       --------------------------------------------------------------- */}
       <div className="card p-6 rounded-2xl shadow-sm space-y-4 w-full">
         <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -462,11 +358,9 @@ export function EmergencyRegistrationPage() {
             </p>
             <h4 className="font-black text-base text-[var(--text)]">Still needs details</h4>
             <p className="text-[11px] text-[var(--muted)] font-semibold">
-              {summary
-                ? summary.total === 0
-                  ? "Waiting for today's first arrival."
-                  : `${summary.needsInfo} of ${summary.total} arrivals today still need details.`
-                : "Loading registrations…"}
+              {pagination?.total === 0
+                ? "Waiting for today's first arrival."
+                : `${incompleteCount} of ${pagination?.total ?? 0} emergency arrivals still need details.`}
             </p>
           </div>
           <button
@@ -490,16 +384,16 @@ export function EmergencyRegistrationPage() {
           </div>
         )}
 
-        {loading && cases.length === 0 ? (
+        {loading && patients.length === 0 ? (
           <div className="py-12 text-center">
             <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--primary)]" />
             <p className="text-xs font-bold text-[var(--muted)] mt-3">Loading registrations…</p>
           </div>
-        ) : cases.length === 0 ? (
+        ) : patients.length === 0 ? (
           <div className="rounded-xl border border-dashed border-[var(--border)] px-4 py-12 text-center">
             <FiUser className="w-6 h-6 mx-auto mb-2 text-[var(--muted)] opacity-50" />
             <p className="text-xs font-bold text-[var(--muted)]">
-              {summary && summary.total > 0
+              {pagination && pagination.total > 0
                 ? "Every emergency patient today has complete details."
                 : "No emergency registrations yet today."}
             </p>
@@ -512,81 +406,64 @@ export function EmergencyRegistrationPage() {
               <span className="flex-1">Missing</span>
             </div>
             <div className="divide-y divide-[var(--border)]">
-              {cases.map((row) => (
-                <div
-                  key={row.id}
-                  className="flex items-start justify-between gap-3 px-4 py-3 flex-wrap hover:bg-[var(--primary-soft)]/10 transition-colors"
-                >
-                  <div className="flex items-start gap-3 min-w-0 flex-1">
-                    <div className="w-16 shrink-0">
-                      <span className="flex items-center gap-1 text-[11px] font-black text-[var(--text)]">
-                        <FiClock className="w-3 h-3 text-[var(--muted)]" />
-                        {timeOf(row.arrivedAt)}
-                      </span>
-                      <span className="block text-[9px] font-bold text-[var(--muted)]">
-                        {row.caseNumber}
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[11px] font-bold text-[var(--text)]">
-                          {row.patient.name}
+              {patients.map((row) => {
+                const miss = missingFields(row);
+                return (
+                  <div
+                    key={row.id}
+                    className="flex items-start justify-between gap-3 px-4 py-3 flex-wrap hover:bg-[var(--primary-soft)]/10 transition-colors"
+                  >
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                      <div className="w-16 shrink-0">
+                        <span className="flex items-center gap-1 text-[11px] font-black text-[var(--text)]">
+                          <FiClock className="w-3 h-3 text-[var(--muted)]" />
+                          {timeOf(row.createdAt)}
                         </span>
-                        <span className="text-[10px] font-semibold text-[var(--muted)]">
-                          {row.patient.patientCode}
+                        <span className="block text-[9px] font-bold text-[var(--muted)]">
+                          {row.patientCode}
                         </span>
-                        <span
-                          className={`text-[9px] font-bold uppercase tracking-wide border rounded-full px-2 py-0.5 ${PRIORITY_BADGE[row.priority]}`}
-                        >
-                          {PRIORITY_LABEL[row.priority]}
-                        </span>
-                        {row.unidentified && (
-                          <span className="text-[9px] font-bold uppercase tracking-wide border border-[var(--border)] rounded-full px-2 py-0.5 text-[var(--muted)]">
-                            Unidentified
-                          </span>
-                        )}
                       </div>
-                      <p className="text-[10px] font-semibold text-[var(--muted)] mt-0.5">
-                        {[
-                          genderLabel(row.patient.gender),
-                          row.patient.dateOfBirth
-                            ? `${calcAge(row.patient.dateOfBirth)} yrs`
-                            : null,
-                          row.patient.phone,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ") || "No demographics recorded yet"}
-                      </p>
-                      {row.chiefComplaint && (
-                        <p className="text-[10px] text-[var(--muted)] mt-0.5 line-clamp-2">
-                          {row.chiefComplaint}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[11px] font-bold text-[var(--text)]">
+                            {row.name}
+                          </span>
+                        </div>
+                        <p className="text-[10px] font-semibold text-[var(--muted)] mt-0.5">
+                          {[
+                            genderLabel(row.gender),
+                            row.dateOfBirth ? `${calcAge(row.dateOfBirth)} yrs` : null,
+                            row.phone,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ") || "No demographics recorded yet"}
                         </p>
-                      )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0 flex-wrap justify-end">
+                      <span className="inline-flex flex-wrap gap-1 justify-end">
+                        {miss.map((field) => (
+                          <span
+                            key={field}
+                            className="text-[9px] font-bold text-amber-700 bg-amber-500/10 border border-amber-400/30 rounded-full px-1.5 py-0.5"
+                          >
+                            {field}
+                          </span>
+                        ))}
+                      </span>
+                      <button
+                        onClick={() => openComplete(row)}
+                        disabled={completingId === row.id}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[10px] font-bold text-[var(--muted)] hover:text-[var(--text)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        <FiEdit3 className="w-3 h-3" />
+                        {completingId === row.id ? "Opening…" : "Complete info"}
+                      </button>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-3 shrink-0 flex-wrap justify-end">
-                    <span className="inline-flex flex-wrap gap-1 justify-end">
-                      {row.patient.missing.map((field) => (
-                        <span
-                          key={field}
-                          className="text-[9px] font-bold text-amber-700 bg-amber-500/10 border border-amber-400/30 rounded-full px-1.5 py-0.5"
-                        >
-                          {field}
-                        </span>
-                      ))}
-                    </span>
-                    <button
-                      onClick={() => openComplete(row)}
-                      disabled={completingId === row.patient.id}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[10px] font-bold text-[var(--muted)] hover:text-[var(--text)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                    >
-                      <FiEdit3 className="w-3 h-3" />
-                      {completingId === row.patient.id ? "Opening…" : "Complete info"}
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

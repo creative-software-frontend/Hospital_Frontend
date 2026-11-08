@@ -7,7 +7,7 @@
 // the UI, the validation layer and the service from drifting apart.
 
 /** Values offered for PatientSetting.defaultPatientType / Patient.patientType. */
-export const PATIENT_TYPE_VALUES = ["NEW", "FOLLOWUP", "REFERRAL"] as const;
+export const PATIENT_TYPE_VALUES = ["NEW", "FOLLOWUP", "REFERRAL", "EMERGENCY"] as const;
 export type PatientType = (typeof PATIENT_TYPE_VALUES)[number];
 
 /** Values offered for PatientSetting.requireGuardian. */

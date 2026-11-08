@@ -250,7 +250,6 @@ model Branch {
   bedGroups              BedGroup[]
   bedStatuses            BedStatus[]
   bedDefinitions         BedDefinition[]
-  emergencyCases         EmergencyCase[]
   chamberSchedules       ChamberSchedule[]
 
   @@index([code])
@@ -294,7 +293,6 @@ model User {
   nurse                    Nurse?
   employee                 Employee?
   uploadedDocuments        PatientDocument[]
-  registeredEmergencyCases EmergencyCase[]   @relation("EmergencyRegisteredBy")
   createdNursingNotes      NursingNote[]     @relation("NursingNoteCreatedBy")
   recordedPatientVitals    PatientVital[]    @relation("PatientVitalRecordedBy")
   recordedMedications      MedicationAdministration[] @relation("MedicationAdministrationRecordedBy")
@@ -591,7 +589,6 @@ model Doctor {
   prescriptions    Prescription[]
   labOrders        LabOrder[]
   labResults       LabResult[]
-  emergencyCases   EmergencyCase[]
   chamberSchedules ChamberSchedule[]
 
   @@unique([branchId, doctorCode])
@@ -873,7 +870,6 @@ model Patient {
   invoices       Invoice[]
   payments       Payment[]
   documents      PatientDocument[]
-  emergencyCases EmergencyCase[]
 
   @@unique([branchId, patientCode])
   @@index([branchId])
@@ -1020,60 +1016,6 @@ model PatientDocument {
 
   @@index([branchId])
   @@index([patientId])
-  @@index([deletedAt])
-}
-
-// ============================================================
-// EMERGENCY: quick-registration case (triage snapshot)
-// ============================================================
-//
-// Emergency intake is deliberately minimal: the patient row is created with
-// whatever was known at the door, and the case stores only the triage context.
-// The remaining demographics are completed later from the emergency queue
-// (PatientFormModal), which is why `unidentified` exists — an unconscious
-// patient can be registered as "Unknown Male ~40" and renamed once identified.
-
-enum EmergencyPriority {
-  CRITICAL
-  URGENT
-  NON_URGENT
-}
-
-enum EmergencyArrivalMode {
-  AMBULANCE
-  WALK_IN
-  REFERRED
-  OTHER
-}
-
-model EmergencyCase {
-  id             Int                  @id @default(autoincrement())
-  branchId       Int
-  patientId      Int
-  doctorId       Int?
-  caseNumber     String
-  priority       EmergencyPriority    @default(URGENT)
-  arrivalMode    EmergencyArrivalMode @default(WALK_IN)
-  chiefComplaint String?              @db.VarChar(500)
-  triageNotes    String?              @db.VarChar(500)
-  /// Registered without a confirmed identity; rename when the patient is known.
-  unidentified   Boolean              @default(false)
-  arrivedAt      DateTime             @default(now())
-  registeredById Int?
-  deletedAt      DateTime?
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
-
-  branch       Branch  @relation(fields: [branchId], references: [id])
-  patient      Patient @relation(fields: [patientId], references: [id])
-  doctor       Doctor? @relation(fields: [doctorId], references: [id])
-  registeredBy User?   @relation("EmergencyRegisteredBy", fields: [registeredById], references: [id])
-
-  @@unique([branchId, caseNumber])
-  @@index([branchId])
-  @@index([patientId])
-  @@index([doctorId])
-  @@index([arrivedAt])
   @@index([deletedAt])
 }
 
