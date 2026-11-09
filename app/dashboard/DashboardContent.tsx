@@ -38,6 +38,7 @@ import { ShiftManagementPage } from "@/app/employees/ShiftManagementPage";
 import { DoctorModule } from "@/app/doctors/DoctorModule";
 import { AppointmentModule } from "@/app/appointments/AppointmentModule";
 import { BedWardModule } from "@/app/bedward/BedWardModule";
+import { BedTransferPage } from "@/app/bedward/BedTransferPage";
 import { BedBoardOverlay } from "@/app/components/BedBoardOverlay";
 import { SuperAdminOverviewStats } from "@/app/dashboard/superadmin/SuperAdminOverviewStats";
 import { RolePermissionEditorModal } from "@/app/dashboard/role-permissions/RolePermissionEditorModal";
@@ -599,7 +600,16 @@ ${tbody}
                 />
               )
             ) : selectedFeature.id === 7 ? (
-              <BedWardModule role={permissions?.role ?? null} defaultBranchId={branchId} />
+              selectedSubFeatureId === "bed-transfer" ? (
+                <BedTransferPage onBack={() => setSelectedSubFeatureId(null)} />
+              ) : (
+                <BedWardModule
+                  role={permissions?.role ?? null}
+                  defaultBranchId={branchId}
+                  pageKey={selectedSubFeatureId ?? undefined}
+                  onNavigate={setSelectedSubFeatureId}
+                />
+              )
             ) : (
             <div className="grid grid-cols-1 gap-6">
               <div className="card p-6 rounded-2xl shadow-sm space-y-6 w-full">

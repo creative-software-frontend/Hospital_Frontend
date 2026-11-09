@@ -125,9 +125,10 @@ export const Sidebar = ({
                                                     : "text-[var(--muted)] hover:bg-[var(--primary-soft)]/20"
                                             }`}
                                             onClick={() => {
-                                                // Patient Management: only expand/collapse the submenu —
-                                                // do NOT auto-open the patient list.
-                                                if (feat.id !== 1 && feat.id !== 2 && feat.id !== 13) {
+                                                // Patient Management, Doctor Management, Nursing Management,
+                                                // and Bed & Ward Management: only expand/collapse the submenu —
+                                                // do NOT auto-open the module page.
+                                                if (feat.id !== 1 && feat.id !== 2 && feat.id !== 7 && feat.id !== 13) {
                                                     handleSelectFeature(feat);
                                                 } else {
                                                     setSelectedFeature(null);
