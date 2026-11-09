@@ -83,14 +83,6 @@ export function NurseModule({
   }, []);
 
   const load = useCallback(async () => {
-    if (!searchTerm) {
-      setRows([]);
-      setPagination(null);
-      setError("");
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
       const result = await nurseApi.list({
@@ -197,8 +189,6 @@ export function NurseModule({
     );
   }
 
-  if (!pageKey) return null;
-
   return (
     <div className="space-y-6">
       <div className="card p-5 rounded-2xl border border-[var(--border)] shadow-sm">
@@ -216,10 +206,23 @@ export function NurseModule({
           <div>
             <h4 className="text-sm font-extrabold text-[var(--text)]">Nurses</h4>
             <p className="text-xs text-[var(--muted)]">
-              {pagination ? `${pagination.total} nurse(s) total` : "Search to view nurses"}
+              {pagination ? `${pagination.total} nurse(s) total` : "Loading…"}
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {pageKey === "nurse-registration" && (
+              <button
+                onClick={() => {
+                  setEditing(null);
+                  setFormMode("form");
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-white transition-colors cursor-pointer"
+                style={{ background: "var(--primary)" }}
+              >
+                <FiPlus className="w-3.5 h-3.5" />
+                Register New Nurse
+              </button>
+            )}
             <div className="relative">
               <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)] w-3.5 h-3.5" />
               <input
@@ -236,14 +239,6 @@ export function NurseModule({
             >
               <FiRefreshCcw className="w-4 h-4" />
             </button>
-            <button
-              onClick={() => { setEditing(null); setFormMode("form"); }}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all duration-200 active:scale-[0.98]"
-              style={{ background: "var(--primary)" }}
-            >
-              <FiPlus className="w-3.5 h-3.5" />
-              Register New Nurse
-            </button>
           </div>
         </div>
 
@@ -251,7 +246,6 @@ export function NurseModule({
           <p className="text-sm alert-error">{error}</p>
         )}
 
-        {searchTerm ? (
         <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
           <table className="min-w-[900px] w-full">
             <thead>
@@ -293,13 +287,6 @@ export function NurseModule({
             </tbody>
           </table>
         </div>
-        ) : (
-          <div className="rounded-xl border border-dashed border-[var(--border)] px-4 py-12 text-center">
-            <p className="text-xs font-bold text-[var(--muted)]">Search for a nurse to view the table.</p>
-          </div>
-        )}
-
-        {searchTerm && (
         <div className="flex items-center justify-between gap-3 pt-1">
           <div className="text-xs text-[var(--muted)]">Showing {rows.length} of {pagination?.total ?? 0} rows</div>
           <div className="flex items-center gap-2">
@@ -314,7 +301,6 @@ export function NurseModule({
             </button>
           </div>
         </div>
-        )}
       </div>
 
       <ToastViewport toasts={toasts} onDismiss={dismissToast} />
