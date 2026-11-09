@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  FiEye, FiEdit2, FiTrash2, FiRefreshCcw, FiSearch, FiUser, FiTag, FiPhone, FiPlus,
+  FiEye, FiEdit2, FiTrash2, FiRefreshCcw, FiSearch, FiUser, FiTag, FiPhone,
 } from "react-icons/fi";
 import {
   patientApi,
@@ -81,12 +81,6 @@ export function PatientModule({
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const [creating, setCreating] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setCreating(false), 0);
-    return () => clearTimeout(timer);
-  }, [pageKey]);
 
   const notify = useCallback((kind: ToastKind, message: string) => {
     const id = Date.now() + Math.random();
@@ -299,10 +293,9 @@ export function PatientModule({
     );
   }
 
-  // Sub-feature "Patient Registration" — list of patients with a
-  // "Register New Patient" button; clicking it opens the full-page form.
-  if (pageKey === "patient-registration" && creating) {
-    const backToList = () => setCreating(false);
+  // Sub-feature "Patient Registration" — open the registration form directly.
+  if (pageKey === "patient-registration") {
+    const backToList = () => onNavigate?.(null);
     return (
       <div className="space-y-4">
         <button
@@ -327,27 +320,11 @@ export function PatientModule({
             }
             setPage(1);
             refreshList();
-            setCreating(false);
+            onNavigate?.(null);
           }}
         />
 
         <ToastViewport toasts={toasts} onDismiss={dismissToast} />
-      </div>
-    );
-  }
-
-  if (!pageKey) {
-    return (
-      <div className="card p-6 rounded-2xl border border-[var(--border)] shadow-sm">
-        <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">
-          Patient Management
-        </span>
-        <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">
-          Select a patient module
-        </h3>
-        <p className="text-xs text-[var(--muted)] mt-1.5">
-          Choose a submenu item from the sidebar to continue.
-        </p>
       </div>
     );
   }
@@ -363,16 +340,6 @@ export function PatientModule({
             </span>
             <h3 className="font-black text-xl text-[var(--primary-dark)]">Patients</h3>
           </div>
-          {pageKey === "patient-registration" && (
-            <button
-              onClick={() => setCreating(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all duration-200 active:scale-[0.98]"
-              style={{ background: "var(--primary)" }}
-            >
-              <FiPlus className="w-3.5 h-3.5" />
-              Register New Patient
-            </button>
-          )}
         </div>
 
         <div className="flex items-center justify-between gap-4 flex-wrap">

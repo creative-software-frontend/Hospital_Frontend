@@ -504,6 +504,20 @@ function buildListWhere(actor: AuthUser, query: ListPatientsQuery): Prisma.Patie
     where.patientType = query.patientType;
   }
 
+  if (query.createdFrom || query.createdTo) {
+    const from = query.createdFrom ? new Date(`${query.createdFrom}T00:00:00`) : null;
+    const to = query.createdTo ? new Date(`${query.createdTo}T00:00:00`) : null;
+    if (from && to && from.getTime() > to.getTime()) {
+      throw new ValidationError("`createdFrom` must be on or before `createdTo`");
+    }
+    const end = to ? new Date(to) : null;
+    end?.setDate(end.getDate() + 1);
+    where.createdAt = {
+      ...(from ? { gte: from } : {}),
+      ...(end ? { lt: end } : {}),
+    };
+  }
+
   const today = new Date();
   if (query.minAge !== undefined || query.maxAge !== undefined) {
     const dateOfBirth: Prisma.DateTimeFilter = {};

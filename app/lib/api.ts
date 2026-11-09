@@ -193,6 +193,8 @@ export interface PatientListQuery {
   status?: PatientStatus;
   branchId?: number;
   patientType?: string;
+  createdFrom?: string;
+  createdTo?: string;
 }
 
 /* ---------------------------------------------------------------------------

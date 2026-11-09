@@ -57,6 +57,14 @@ export const contactIdParamSchema = z.object({
   contactId: z.coerce.number().int().positive("Invalid contact id"),
 });
 
+/** `YYYY-MM-DD`, the value an `<input type="date">` submits. */
+const isoDate = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use the YYYY-MM-DD format")
+  .optional()
+  .or(z.literal("").transform(() => undefined));
+
 export const listPatientsQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional(),
   limit: z.coerce.number().int().positive().max(100).optional(),
@@ -75,6 +83,8 @@ export const listPatientsQuerySchema = z.object({
   patientType: z.enum(PATIENT_TYPE_VALUES).optional(),
   sortBy: z.string().optional(),
   sortOrder: z.enum(["asc", "desc"]).optional(),
+  createdFrom: isoDate,
+  createdTo: isoDate,
 });
 
 export const treatmentRecordsQuerySchema = z.object({
@@ -86,14 +96,6 @@ export const treatmentRecordsQuerySchema = z.object({
 });
 
 export type TreatmentRecordsQuery = z.infer<typeof treatmentRecordsQuerySchema>;
-
-/** `YYYY-MM-DD`, the value an `<input type="date">` submits. */
-const isoDate = z
-  .string()
-  .trim()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use the YYYY-MM-DD format")
-  .optional()
-  .or(z.literal("").transform(() => undefined));
 
 export const patientVisitsQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional(),

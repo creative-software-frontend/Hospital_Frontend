@@ -20,8 +20,10 @@ import {
   type PatientListRecord,
   type PatientDetail,
 } from "@/app/lib/api";
-import { genderLabel } from "@/app/patients/constants";
+import { RELATIONSHIP_OPTIONS, genderLabel } from "@/app/patients/constants";
 import { PatientFormModal } from "@/app/patients/PatientFormModal";
+import { useMasterDataOptions } from "@/app/lib/useMasterData";
+import { addError, checkName, checkPhone } from "@/app/lib/formValidation";
 
 const PAGE_SIZE = 10;
 
@@ -62,17 +64,33 @@ function missingFields(p: PatientListRecord): string[] {
 }
 
 export function EmergencyRegistrationPage() {
+  const { options: relationshipOptions, loading: relationshipsLoading } =
+    useMasterDataOptions("relationships");
+  const availableRelationshipOptions =
+    relationshipOptions.length > 0
+      ? relationshipOptions
+      : RELATIONSHIP_OPTIONS.map((relationship, index) => ({
+          value: relationship.value,
+          label: relationship.label,
+          code: relationship.value,
+          sortOrder: index,
+          fallback: true,
+        }));
+
   /* ---------------- quick intake ---------------- */
   const [name, setName] = useState("");
   const [gender, setGender] = useState("");
   const [approxAge, setApproxAge] = useState("");
+  const [guardianName, setGuardianName] = useState("");
+  const [guardianRelationship, setGuardianRelationship] = useState("");
+  const [guardianPhone, setGuardianPhone] = useState("");
   const [unidentified, setUnidentified] = useState(false);
   /** True while the name still mirrors the generated "Unknown …" label. */
   const [autoName, setAutoName] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<{ name?: string; approxAge?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [registered, setRegistered] = useState<{
     patientCode: string;
     name: string;
@@ -94,8 +112,15 @@ export function EmergencyRegistrationPage() {
     let active = true;
     const timer = setTimeout(() => {
       setLoading(true);
+      const today = todayIso();
       patientApi
-        .list({ patientType: "EMERGENCY", page, limit: PAGE_SIZE })
+        .list({
+          patientType: "EMERGENCY",
+          createdFrom: today,
+          createdTo: today,
+          page,
+          limit: PAGE_SIZE,
+        })
         .then((res) => {
           if (!active) return;
           setPatients(res.data);
@@ -121,6 +146,9 @@ export function EmergencyRegistrationPage() {
     setName("");
     setGender("");
     setApproxAge("");
+    setGuardianName("");
+    setGuardianRelationship("");
+    setGuardianPhone("");
     setUnidentified(false);
     setAutoName(false);
     setFieldErrors({});
@@ -137,13 +165,27 @@ export function EmergencyRegistrationPage() {
 
     const resolvedName = name.trim() || (unidentified ? suggestedUnknownName() : "");
 
-    const errors: { name?: string; approxAge?: string } = {};
+    const errors: Record<string, string> = {};
     if (!resolvedName) errors.name = "A name (or an \"Unknown …\" label) is required.";
     if (approxAge) {
       const age = Number(approxAge);
       if (!Number.isInteger(age) || age < 0 || age > 130) {
         errors.approxAge = "Enter an age between 0 and 130.";
       }
+    }
+    addError(errors, "guardianName", checkName(guardianName));
+    addError(errors, "guardianPhone", checkPhone(guardianPhone));
+    if (guardianName.trim() && !guardianRelationship) {
+      errors.guardianRelationship = "Select a relationship.";
+    }
+    if (guardianName.trim() && !guardianPhone.trim()) {
+      errors.guardianPhone = "A guardian contact number is required.";
+    }
+    if (guardianPhone.trim() && !guardianName.trim()) {
+      errors.guardianName = "Enter the guardian name.";
+    }
+    if (guardianRelationship && !guardianName.trim()) {
+      errors.guardianName = "Enter the guardian name.";
     }
     setFieldErrors(errors);
     if (errors.name || errors.approxAge) return;
@@ -154,6 +196,15 @@ export function EmergencyRegistrationPage() {
 
     const dateOfBirth = approxAge ? new Date(new Date().getFullYear() - Number(approxAge), 0, 1).toISOString() : undefined;
 
+    const contacts = guardianName.trim()
+      ? [{
+          name: guardianName.trim(),
+          relationship: guardianRelationship || undefined,
+          phone: guardianPhone.trim() || undefined,
+          isPrimary: true,
+        }]
+      : undefined;
+
     patientApi
       .create({
         name: resolvedName,
@@ -161,6 +212,7 @@ export function EmergencyRegistrationPage() {
         ...(dateOfBirth ? { dateOfBirth } : {}),
         patientType: "EMERGENCY",
         forEmergency: true,
+        contacts,
       })
       .then((res) => {
         setRegistered({
@@ -331,9 +383,78 @@ export function EmergencyRegistrationPage() {
             </div>
           </div>
 
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3 space-y-3">
+            <div>
+              <p className="text-[11px] font-black text-[var(--text)]">Guardian contact</p>
+              <p className="text-[10px] font-semibold text-[var(--muted)]">
+                Add a reachable family member or guardian if known.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,16rem)_11rem_minmax(0,14rem)] gap-3">
+              <div>
+                <label htmlFor="er-guardian-name" className={LABEL_CLS}>Guardian name</label>
+                <input
+                  id="er-guardian-name"
+                  type="text"
+                  value={guardianName}
+                  onChange={(e) => {
+                    setGuardianName(e.target.value);
+                    setFieldErrors((p) => ({ ...p, guardianName: "", guardianPhone: "" }));
+                  }}
+                  placeholder="Name"
+                  className={INPUT_CLS}
+                />
+                {fieldErrors.guardianName && (
+                  <p className="text-[10px] font-bold text-rose-500 mt-1">{fieldErrors.guardianName}</p>
+                )}
+              </div>
+              <div>
+                <label htmlFor="er-guardian-relationship" className={LABEL_CLS}>Relationship</label>
+                <select
+                  id="er-guardian-relationship"
+                  value={guardianRelationship}
+                  onChange={(e) => {
+                    setGuardianRelationship(e.target.value);
+                    setFieldErrors((p) => ({ ...p, guardianRelationship: "" }));
+                  }}
+                  className={INPUT_CLS}
+                >
+                  <option value="">
+                    {relationshipsLoading ? "Loading..." : "Select relation"}
+                  </option>
+                  {availableRelationshipOptions.map((relationship) => (
+                    <option key={relationship.value} value={relationship.value}>
+                      {relationship.label}
+                    </option>
+                  ))}
+                </select>
+                {fieldErrors.guardianRelationship && (
+                  <p className="text-[10px] font-bold text-rose-500 mt-1">{fieldErrors.guardianRelationship}</p>
+                )}
+              </div>
+              <div>
+                <label htmlFor="er-guardian-phone" className={LABEL_CLS}>Contact number</label>
+                <input
+                  id="er-guardian-phone"
+                  type="tel"
+                  value={guardianPhone}
+                  onChange={(e) => {
+                    setGuardianPhone(e.target.value);
+                    setFieldErrors((p) => ({ ...p, guardianPhone: "", guardianName: "" }));
+                  }}
+                  placeholder="Phone number"
+                  className={INPUT_CLS}
+                />
+                {fieldErrors.guardianPhone && (
+                  <p className="text-[10px] font-bold text-rose-500 mt-1">{fieldErrors.guardianPhone}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <p className="text-[10px] font-semibold text-[var(--muted)]">
-              Phone, address and other details are completed later from the list below.
+              Address and other details can be completed later from the list below.
             </p>
             <button
               type="submit"
