@@ -3518,6 +3518,124 @@ export const appointmentApi = {
 };
 
 /* ---------------------------------------------------------------------------
+ * Bed Transfer (Nursing Management → Bed & Ward Management → Bed Transfer)
+ * ------------------------------------------------------------------------- */
+
+export interface BedTransferRecord {
+  id: number;
+  branchId: number;
+  patientId: number;
+  admissionId: number;
+  fromBedId: number;
+  toBedId: number;
+  transferDate: string;
+  reason: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  patient: { id: number; name: string; patientCode: string };
+  admission: { id: number; admissionNumber: string; status: string };
+  fromBed: { id: number; bedNumber: string; bedClass: string | null };
+  toBed: { id: number; bedNumber: string; bedClass: string | null };
+  createdBy: { id: number; name: string } | null;
+}
+
+export interface BedTransferListResult {
+  data: BedTransferRecord[];
+  pagination: PaginationMeta;
+}
+
+export interface BedTransferListQuery {
+  page?: number;
+  limit?: number;
+  patientId?: number;
+  admissionId?: number;
+  fromDate?: string;
+  toDate?: string;
+}
+
+export interface CreateBedTransferInput {
+  patientId: number;
+  admissionId?: number | null;
+  fromBedId: number;
+  toBedId: number;
+  transferDate?: string | null;
+  reason?: string | null;
+  notes?: string | null;
+}
+
+export interface UpdateBedTransferInput {
+  reason?: string | null;
+  notes?: string | null;
+}
+
+export const bedTransferApi = {
+  list: (query: BedTransferListQuery = {}) =>
+    rawRequest<BedTransferListResult>(
+      `/bed-transfers${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+  get: (id: number) => request<BedTransferRecord>(`/bed-transfers/${id}`),
+  create: (input: CreateBedTransferInput) =>
+    request<BedTransferRecord>("/bed-transfers", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  update: (id: number, input: UpdateBedTransferInput) =>
+    request<BedTransferRecord>(`/bed-transfers/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  remove: (id: number) =>
+    request<{ message: string }>(`/bed-transfers/${id}`, { method: "DELETE" }),
+};
+
+/* ---------------------------------------------------------------------------
+ * Admissions (IPD) — used by Bed Transfer to find admitted patients
+ * ------------------------------------------------------------------------- */
+
+export interface AdmissionRecord {
+  id: number;
+  branchId: number;
+  patientId: number;
+  doctorId: number | null;
+  admissionNumber: string;
+  admissionDate: string;
+  expectedDischargeDate: string | null;
+  dischargeDate: string | null;
+  status: AdmissionStatus;
+  reason: string | null;
+  notes: string | null;
+  invoiceId: number | null;
+  createdById: number | null;
+  updatedById: number | null;
+  createdAt: string;
+  updatedAt: string;
+  patient: { id: number; name: string; patientCode: string };
+  doctor: { id: number; name: string } | null;
+  bed: { id: number; bedNumber: string; bedClass: string | null } | null;
+}
+
+export interface AdmissionListResult {
+  data: AdmissionRecord[];
+  pagination: PaginationMeta;
+}
+
+export interface AdmissionListQuery {
+  page?: number;
+  limit?: number;
+  patientId?: number;
+  status?: AdmissionStatus;
+  search?: string;
+}
+
+export const admissionApi = {
+  list: (query: AdmissionListQuery = {}) =>
+    rawRequest<AdmissionListResult>(
+      `/ipd/admissions${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+};
+
+/* ---------------------------------------------------------------------------
  * Shared error/date helpers
  * ------------------------------------------------------------------------- */
 

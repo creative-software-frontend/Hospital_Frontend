@@ -98,7 +98,17 @@ interface FormPayload {
   status?: BedOccupancyStatus;
 }
 
-export function BedWardModule({ role, defaultBranchId }: { role: string | null; defaultBranchId?: number | null }) {
+export function BedWardModule({
+  role,
+  defaultBranchId,
+  pageKey,
+  onNavigate,
+}: {
+  role: string | null;
+  defaultBranchId?: number | null;
+  pageKey?: string;
+  onNavigate?: (key: string | null) => void;
+}) {
   if (role !== "super-admin") {
     return (
       <div className="card p-8 rounded-2xl border border-[var(--border)] shadow-sm text-center space-y-2">
@@ -110,11 +120,55 @@ export function BedWardModule({ role, defaultBranchId }: { role: string | null; 
       </div>
     );
   }
-  return <BedWardManager defaultBranchId={defaultBranchId} />;
+
+  if (!pageKey) return null;
+
+  return (
+    <div className="space-y-6">
+      <button
+        onClick={() => onNavigate?.(null)}
+        className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] mb-3 cursor-pointer"
+      >
+        <span>← Back to Bed & Ward Management</span>
+      </button>
+      <BedWardManager defaultBranchId={defaultBranchId} pageKey={pageKey} />
+    </div>
+  );
 }
 
-function BedWardManager({ defaultBranchId }: { defaultBranchId?: number | null }) {
-  const [activeTabId, setActiveTabId] = useState<string>("bed-statuses");
+function BedWardManager({
+  defaultBranchId,
+  pageKey,
+}: {
+  defaultBranchId?: number | null;
+  pageKey?: string;
+}) {
+  const [activeTabId, setActiveTabId] = useState<string>(() => {
+    const tabMap: Record<string, string> = {
+      "bed-allocation": "bed-statuses",
+      "bed-transfer": "beds",
+      "cabin-management": "bed-types",
+      "ward-status-monitoring": "bed-groups",
+      "occupancy-report": "floors",
+    };
+    return pageKey ? tabMap[pageKey] ?? "bed-statuses" : "bed-statuses";
+  });
+
+  // Sync the active tab when the pageKey changes (e.g. navigating between sub-features).
+  useEffect(() => {
+    const tabMap: Record<string, string> = {
+      "bed-allocation": "bed-statuses",
+      "bed-transfer": "beds",
+      "cabin-management": "bed-types",
+      "ward-status-monitoring": "bed-groups",
+      "occupancy-report": "floors",
+    };
+    const timer = setTimeout(() => {
+      setActiveTabId(pageKey ? tabMap[pageKey] ?? "bed-statuses" : "bed-statuses");
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [pageKey]);
+
   const [branches, setBranches] = useState<BranchRecord[]>([]);
   const [branchId, setBranchId] = useState<number | null>(null);
   const [rows, setRows] = useState<BedWardItem[]>([]);

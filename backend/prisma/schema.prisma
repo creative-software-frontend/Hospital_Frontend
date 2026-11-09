@@ -185,72 +185,73 @@ model Branch {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  users                  User[]
-  departments            Department[]
-  chambers               Chamber[]
-  doctorAttendances      DoctorAttendance[]
-  doctors                Doctor[]
-  nurses                 Nurse[]
-  patients               Patient[]
-  auditLogs              AuditLog[]
-  services               Service[]
-  appointments           Appointment[]
-  admissions             Admission[]
-  medicalRecords         MedicalRecord[]
-  nursingNotes           NursingNote[]
-  patientVitals          PatientVital[]
+  users                     User[]
+  departments               Department[]
+  chambers                  Chamber[]
+  doctorAttendances         DoctorAttendance[]
+  doctors                   Doctor[]
+  nurses                    Nurse[]
+  patients                  Patient[]
+  auditLogs                 AuditLog[]
+  services                  Service[]
+  appointments              Appointment[]
+  admissions                Admission[]
+  medicalRecords            MedicalRecord[]
+  nursingNotes              NursingNote[]
+  patientVitals             PatientVital[]
   medicationAdministrations MedicationAdministration[]
-  prescriptions          Prescription[]
-  bedAllocations         Bed[]
-  rooms                  Room[]
-  wards                  Ward[]
-  floors                 Floor[]
-  employees              Employee[]
-  invoices               Invoice[]
-  payments               Payment[]
-  warehouses             Warehouse[]
-  integrations           Integration[]
-  medicines              Medicine[]
-  medicineBatches        MedicineBatch[]
-  stockMovements         StockMovement[]
-  labTests               LabTest[]
-  labOrders              LabOrder[]
-  labSamples             LabSample[]
-  labResults             LabResult[]
-  accounts               Account[]
-  accountingTransactions AccountingTransaction[]
-  inventoryItems         InventoryItem[]
-  inventoryStocks        InventoryStock[]
-  settings               SystemSetting[]
-  opdSettings            OpdSetting[]
-  ipdSettings            IpdSetting[]
-  patientSettings        PatientSetting[]
-  prescriptionTemplates  PrescriptionTemplate[]
-  prescriptionSettings   PrescriptionSetting[]
-  pharmacySettings       PharmacySetting[]
-  labSettings            LabSetting[]
-  billingSettings        BillingSetting[]
-  accountingSettings     AccountingSetting[]
-  hrSettings             HrSetting[]
-  inventorySettings      InventorySetting[]
-  notificationSettings   NotificationSetting[]
-  documentTemplates      DocumentTemplate[]
-  patientDocuments       PatientDocument[]
-  reportSettings         ReportSetting[]
-  localizationSettings   LocalizationSetting[]
-  divisions              Division[]
-  districts              District[]
-  upazilas               Upazila[]
-  unions                 Union[]
-  visitTypes             VisitType[]
-  bloodGroups            BloodGroup[]
-  documentTypes          DocumentType[]
-  patientRelationships   PatientRelationship[]
-  bedTypes               BedType[]
-  bedGroups              BedGroup[]
-  bedStatuses            BedStatus[]
-  bedDefinitions         BedDefinition[]
-  chamberSchedules       ChamberSchedule[]
+  bedTransfers              BedTransfer[]
+  prescriptions             Prescription[]
+  bedAllocations            Bed[]
+  rooms                     Room[]
+  wards                     Ward[]
+  floors                    Floor[]
+  employees                 Employee[]
+  invoices                  Invoice[]
+  payments                  Payment[]
+  warehouses                Warehouse[]
+  integrations              Integration[]
+  medicines                 Medicine[]
+  medicineBatches           MedicineBatch[]
+  stockMovements            StockMovement[]
+  labTests                  LabTest[]
+  labOrders                 LabOrder[]
+  labSamples                LabSample[]
+  labResults                LabResult[]
+  accounts                  Account[]
+  accountingTransactions    AccountingTransaction[]
+  inventoryItems            InventoryItem[]
+  inventoryStocks           InventoryStock[]
+  settings                  SystemSetting[]
+  opdSettings               OpdSetting[]
+  ipdSettings               IpdSetting[]
+  patientSettings           PatientSetting[]
+  prescriptionTemplates     PrescriptionTemplate[]
+  prescriptionSettings      PrescriptionSetting[]
+  pharmacySettings          PharmacySetting[]
+  labSettings               LabSetting[]
+  billingSettings           BillingSetting[]
+  accountingSettings        AccountingSetting[]
+  hrSettings                HrSetting[]
+  inventorySettings         InventorySetting[]
+  notificationSettings      NotificationSetting[]
+  documentTemplates         DocumentTemplate[]
+  patientDocuments          PatientDocument[]
+  reportSettings            ReportSetting[]
+  localizationSettings      LocalizationSetting[]
+  divisions                 Division[]
+  districts                 District[]
+  upazilas                  Upazila[]
+  unions                    Union[]
+  visitTypes                VisitType[]
+  bloodGroups               BloodGroup[]
+  documentTypes             DocumentType[]
+  patientRelationships      PatientRelationship[]
+  bedTypes                  BedType[]
+  bedGroups                 BedGroup[]
+  bedStatuses               BedStatus[]
+  bedDefinitions            BedDefinition[]
+  chamberSchedules          ChamberSchedule[]
 
   @@index([code])
 }
@@ -284,18 +285,19 @@ model User {
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
 
-  branch                   Branch?           @relation(fields: [branchId], references: [id])
-  userRoles                UserRole[]
-  auditLogs                AuditLog[]
-  loginAttempts            LoginAttempt[]
-  sessions                 UserSession[]
-  doctor                   Doctor?
-  nurse                    Nurse?
-  employee                 Employee?
-  uploadedDocuments        PatientDocument[]
-  createdNursingNotes      NursingNote[]     @relation("NursingNoteCreatedBy")
-  recordedPatientVitals    PatientVital[]    @relation("PatientVitalRecordedBy")
-  recordedMedications      MedicationAdministration[] @relation("MedicationAdministrationRecordedBy")
+  branch                Branch?                    @relation(fields: [branchId], references: [id])
+  userRoles             UserRole[]
+  auditLogs             AuditLog[]
+  loginAttempts         LoginAttempt[]
+  sessions              UserSession[]
+  doctor                Doctor?
+  nurse                 Nurse?
+  employee              Employee?
+  uploadedDocuments     PatientDocument[]
+  createdNursingNotes   NursingNote[]              @relation("NursingNoteCreatedBy")
+  recordedPatientVitals PatientVital[]             @relation("PatientVitalRecordedBy")
+  recordedMedications   MedicationAdministration[] @relation("MedicationAdministrationRecordedBy")
+  recordedBedTransfers  BedTransfer[]              @relation("BedTransferCreatedBy")
 
   @@index([branchId])
   @@index([email])
@@ -629,12 +631,12 @@ model Nurse {
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
-  user         User?         @relation(fields: [userId], references: [id])
-  branch       Branch?       @relation(fields: [branchId], references: [id])
-  department   Department?   @relation(fields: [departmentId], references: [id])
-  shiftType    ShiftType?    @relation(fields: [shiftTypeId], references: [id])
-  nursingNotes NursingNote[]
-  patientVitals PatientVital[]
+  user                      User?                      @relation(fields: [userId], references: [id])
+  branch                    Branch?                    @relation(fields: [branchId], references: [id])
+  department                Department?                @relation(fields: [departmentId], references: [id])
+  shiftType                 ShiftType?                 @relation(fields: [shiftTypeId], references: [id])
+  nursingNotes              NursingNote[]
+  patientVitals             PatientVital[]
   medicationAdministrations MedicationAdministration[]
 
   @@unique([branchId, nurseCode])
@@ -657,10 +659,10 @@ model DoctorSchedule {
   doctor Doctor @relation(fields: [doctorId], references: [id])
   room   Room?  @relation(fields: [roomId], references: [id])
 
+  @@unique([branchId, doctorId, dayOfWeek])
   @@index([doctorId])
   @@index([branchId])
   @@index([roomId])
-  @@unique([branchId, doctorId, dayOfWeek])
 }
 
 // ============================================================
@@ -735,9 +737,11 @@ model Bed {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  branch     Branch?     @relation(fields: [branchId], references: [id])
-  room       Room?       @relation(fields: [roomId], references: [id])
-  admissions Admission[]
+  branch           Branch?       @relation(fields: [branchId], references: [id])
+  room             Room?         @relation(fields: [roomId], references: [id])
+  admissions       Admission[]
+  fromBedTransfers BedTransfer[] @relation("FromBed")
+  toBedTransfers   BedTransfer[] @relation("ToBed")
 
   @@unique([branchId, bedNumber])
   @@index([branchId])
@@ -858,19 +862,20 @@ model Patient {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
-  branch         Branch?           @relation(fields: [branchId], references: [id])
-  contacts       PatientContact[]
-  appointments   Appointment[]
-  admissions     Admission[]
-  medicalRecords MedicalRecord[]
-  nursingNotes   NursingNote[]
-  vitals         PatientVital[]
+  branch                    Branch?                    @relation(fields: [branchId], references: [id])
+  contacts                  PatientContact[]
+  appointments              Appointment[]
+  admissions                Admission[]
+  medicalRecords            MedicalRecord[]
+  nursingNotes              NursingNote[]
+  vitals                    PatientVital[]
   medicationAdministrations MedicationAdministration[]
-  prescriptions  Prescription[]
-  labOrders      LabOrder[]
-  invoices       Invoice[]
-  payments       Payment[]
-  documents      PatientDocument[]
+  bedTransfers              BedTransfer[]
+  prescriptions             Prescription[]
+  labOrders                 LabOrder[]
+  invoices                  Invoice[]
+  payments                  Payment[]
+  documents                 PatientDocument[]
 
   @@unique([branchId, patientCode])
   @@index([branchId])
@@ -923,25 +928,25 @@ model NursingNote {
 /// Every row is one observation; the UI derives abnormal flags from these
 /// numbers, so no derived status is stored.
 model PatientVital {
-  id              Int      @id @default(autoincrement())
+  id              Int       @id @default(autoincrement())
   branchId        Int
   patientId       Int
   nurseId         Int?
   admissionId     Int?
-  recordedAt      DateTime @default(now())
-  temperature     Decimal? @db.Decimal(5, 2)
+  recordedAt      DateTime  @default(now())
+  temperature     Decimal?  @db.Decimal(5, 2)
   pulse           Int?
   systolic        Int?
   diastolic       Int?
   respiratoryRate Int?
   spo2            Int?
-  bloodSugar      Decimal? @db.Decimal(6, 2)
-  weight          Decimal? @db.Decimal(6, 2)
-  notes           String?  @db.VarChar(500)
+  bloodSugar      Decimal?  @db.Decimal(6, 2)
+  weight          Decimal?  @db.Decimal(6, 2)
+  notes           String?   @db.VarChar(500)
   createdByUserId Int?
   deletedAt       DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   branch    Branch     @relation(fields: [branchId], references: [id])
   patient   Patient    @relation(fields: [patientId], references: [id])
@@ -958,7 +963,7 @@ model PatientVital {
 /// prescribed medicine. The medicine name / dosage / route are snapshotted so the
 /// history stays readable even if the prescription is later edited or removed.
 model MedicationAdministration {
-  id                 Int                           @id @default(autoincrement())
+  id                 Int                            @id @default(autoincrement())
   branchId           Int
   patientId          Int
   prescriptionItemId Int?
@@ -968,13 +973,13 @@ model MedicationAdministration {
   medicineName       String
   dosage             String?
   route              String?
-  administeredAt     DateTime                      @default(now())
+  administeredAt     DateTime                       @default(now())
   status             MedicationAdministrationStatus @default(GIVEN)
-  notes              String?                       @db.VarChar(500)
+  notes              String?                        @db.VarChar(500)
   createdByUserId    Int?
   deletedAt          DateTime?
-  createdAt          DateTime                      @default(now())
-  updatedAt          DateTime                      @updatedAt
+  createdAt          DateTime                       @default(now())
+  updatedAt          DateTime                       @updatedAt
 
   branch           Branch            @relation(fields: [branchId], references: [id])
   patient          Patient           @relation(fields: [patientId], references: [id])
@@ -1021,16 +1026,16 @@ model PatientDocument {
 }
 
 model ChamberSchedule {
-  id               Int      @id @default(autoincrement())
-  chamberId        Int
-  branchId         Int
-  doctorId         Int
-  dayOfWeek        Int
-  startTime        String
-  endTime          String
-  status           String   @default("active")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  chamberId Int
+  branchId  Int
+  doctorId  Int
+  dayOfWeek Int
+  startTime String
+  endTime   String
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   chamber Chamber @relation(fields: [chamberId], references: [id])
   branch  Branch  @relation(fields: [branchId], references: [id])
@@ -1156,8 +1161,8 @@ model PrescriptionItem {
   quantity       Int?
   route          String?
 
-  prescription Prescription @relation(fields: [prescriptionId], references: [id])
-  medicine     Medicine     @relation(fields: [medicineId], references: [id])
+  prescription    Prescription               @relation(fields: [prescriptionId], references: [id])
+  medicine        Medicine                   @relation(fields: [medicineId], references: [id])
   administrations MedicationAdministration[]
 
   @@index([prescriptionId])
@@ -1205,9 +1210,9 @@ model Medicine {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  branch            Branch?            @relation(fields: [branchId], references: [id])
-  category          MedicineCategory?  @relation(fields: [categoryId], references: [id])
-  unit              MedicineUnit?      @relation(fields: [unitId], references: [id])
+  branch            Branch?                    @relation(fields: [branchId], references: [id])
+  category          MedicineCategory?          @relation(fields: [categoryId], references: [id])
+  unit              MedicineUnit?              @relation(fields: [unitId], references: [id])
   batches           MedicineBatch[]
   stockMovements    StockMovement[]
   prescriptionItems PrescriptionItem[]
@@ -1453,19 +1458,53 @@ model Admission {
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
 
-  branch       Branch?       @relation(fields: [branchId], references: [id])
-  patient      Patient?      @relation(fields: [patientId], references: [id])
-  doctor       Doctor?       @relation(fields: [doctorId], references: [id])
-  bed          Bed?          @relation(fields: [bedId], references: [id])
-  nursingNotes NursingNote[]
-  vitals       PatientVital[]
+  branch                    Branch?                    @relation(fields: [branchId], references: [id])
+  patient                   Patient?                   @relation(fields: [patientId], references: [id])
+  doctor                    Doctor?                    @relation(fields: [doctorId], references: [id])
+  bed                       Bed?                       @relation(fields: [bedId], references: [id])
+  nursingNotes              NursingNote[]
+  vitals                    PatientVital[]
   medicationAdministrations MedicationAdministration[]
+  bedTransfers              BedTransfer[]
 
   @@unique([branchId, admissionNumber])
   @@index([branchId])
   @@index([patientId])
   @@index([bedId])
   @@index([status])
+  @@index([deletedAt])
+}
+
+/// Bed transfer record: tracks when an admitted patient is moved from one bed
+/// to another, including who performed the transfer and why.
+model BedTransfer {
+  id              Int       @id @default(autoincrement())
+  branchId        Int
+  patientId       Int
+  admissionId     Int
+  fromBedId       Int
+  toBedId         Int
+  transferDate    DateTime  @default(now())
+  reason          String?   @db.VarChar(500)
+  notes           String?   @db.VarChar(500)
+  createdByUserId Int?
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  branch    Branch    @relation(fields: [branchId], references: [id])
+  patient   Patient   @relation(fields: [patientId], references: [id])
+  admission Admission @relation(fields: [admissionId], references: [id])
+  fromBed   Bed       @relation("FromBed", fields: [fromBedId], references: [id])
+  toBed     Bed       @relation("ToBed", fields: [toBedId], references: [id])
+  createdBy User?     @relation("BedTransferCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@index([branchId])
+  @@index([patientId])
+  @@index([admissionId])
+  @@index([fromBedId])
+  @@index([toBedId])
+  @@index([transferDate])
   @@index([deletedAt])
 }
 
@@ -1502,7 +1541,7 @@ model Appointment {
 
   patient       Patient?       @relation(fields: [patientId], references: [id])
   doctor        Doctor?        @relation(fields: [doctorId], references: [id])
-  chamber        Chamber?      @relation(fields: [chamberId], references: [id])
+  chamber       Chamber?       @relation(fields: [chamberId], references: [id])
   branch        Branch?        @relation(fields: [branchId], references: [id])
   medicalRecord MedicalRecord?
 
@@ -2404,10 +2443,10 @@ model Chamber {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  branch    Branch            @relation(fields: [branchId], references: [id])
-  doctor    Doctor?           @relation(fields: [doctorId], references: [id])
+  branch       Branch            @relation(fields: [branchId], references: [id])
+  doctor       Doctor?           @relation(fields: [doctorId], references: [id])
   appointments Appointment[]
-  schedules ChamberSchedule[]
+  schedules    ChamberSchedule[]
 
   @@unique([branchId, code])
   @@index([branchId])

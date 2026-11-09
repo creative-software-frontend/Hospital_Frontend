@@ -72,12 +72,12 @@ export const keyFeatures: Feature[] = [
         englishTitle: "Bed & Ward Management",
         icon: FiLayers,
         subFeatures: [
-            { label: "Bed Allocation", icon: FiLayers },
-            { label: "Bed Transfer", icon: FiRepeat },
-            { label: "Cabin Management", icon: FiHome },
-            { label: "Ward Status Monitoring", icon: FiActivity },
-            { label: "Occupancy Report", icon: FiBarChart2 },
-            { label: "Available Bed Report", icon: FiFileText },
+            { label: "Bed Allocation", icon: FiLayers, id: "bed-allocation" },
+            { label: "Bed Transfer", icon: FiRepeat, id: "bed-transfer" },
+            { label: "Cabin Management", icon: FiHome, id: "cabin-management" },
+            { label: "Ward Status Monitoring", icon: FiActivity, id: "ward-status-monitoring" },
+            { label: "Occupancy Report", icon: FiBarChart2, id: "occupancy-report" },
+            { label: "Available Bed Report", icon: FiFileText, id: "available-bed-report" },
         ]
     },
     {

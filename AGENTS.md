@@ -235,6 +235,23 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Live verified (super-admin `admin@hospital.com`): create/list/search/patch return 200 for all four kinds; probe rows (code `PROBE*`) cleaned via temp tsx script. Note: rapid sequential calls in a tight loop intermittently failed the LIST step (likely a rate limiter); standalone + debounced UI calls succeed.
 - Reordering tabs/kind + branch select resets `page` in the onClick/onChange handlers (NOT a `setPage(1)` effect — the repo's `react-hooks/set-state-in-effect` rule forbids that).
 
+## Memory: Bed & Ward Management sub-menu (feature id 7) — sub-menu navigation
+- User request: clicking **Bed & Ward Management** should NOT show "Setup Lists" directly — it should show the sub-menu. Clicking **Bed Allocation** sub-menu item opens the BedWardModule.
+- `app/data/features.ts`: feature id 7 sub-features now carry `id` values (`bed-allocation`, `bed-transfer`, `cabin-management`, `ward-status-monitoring`, `occupancy-report`, `available-bed-report`), making them clickable in the sidebar.
+- `app/dashboard/DashboardContent.tsx`: feature id 7 passes `pageKey={selectedSubFeatureId ?? undefined}` and `onNavigate={setSelectedSubFeatureId}` to `<BedWardModule>`, matching the NurseModule/PatientModule pattern.
+- `app/bedward/BedWardModule.tsx`: accepts `pageKey` + `onNavigate` props. Returns `null` when `pageKey` is unset (feature click shows sub-menu, nothing in main content). When `pageKey` is set (e.g. "bed-allocation"), shows a **← Back to Bed & Ward Management** button + `<BedWardManager>`.
+- Frontend `tsc`/scoped `eslint`/`next build` green.
+
+## Memory: Bed Transfer (Bed & Ward Management → Bed Transfer)
+- User request: **Bed Transfer** sub-menu item should allow transferring an admitted patient from one bed to another.
+- **New model `BedTransfer`** (migration `20261109120000_bed_transfers`, applied): `id, branchId, patientId, admissionId, fromBedId, toBedId, transferDate, reason VarChar(500)?, notes VarChar(500)?, createdByUserId?, deletedAt?, timestamps` + indexes `[branchId]`, `[patientId]`, `[admissionId]`, `[fromBedId]`, `[toBedId]`, `[transferDate]`, `[deletedAt]`. Relations: branch, patient, admission, fromBed, toBed, createdBy.
+- **New backend module** `backend/src/modules/bed-transfers/` (validation/service/controller/routes), registered at `/api/bed-transfers`. Reuses `nursingNote` read/create/update permissions.
+- Endpoints: `GET /bed-transfers` (patientId/admissionId/fromDate/toDate + pagination), `GET /:id`, `POST`, `PATCH /:id`, `DELETE /:id` (soft delete). Create validates source bed is occupied, destination bed is available, both beds same branch, fromBed ≠ toBed. Resolves active admission automatically if admissionId omitted. Updates admission.bedId, frees source bed, occupies destination bed. Audit-logged.
+- **Frontend page** `app/bedward/BedTransferPage.tsx`: form (Patient ID, From Bed ID, To Bed ID, Reason, Notes) + transfer history table with pagination. Routed via `pageKey === "bed-transfer"` in `DashboardContent.tsx`, renders instead of `BedWardModule` for that sub-feature.
+- API types in `app/lib/api.ts`: `BedTransferRecord`, `BedTransferListResult`, `BedTransferListQuery`, `CreateBedTransferInput`, `UpdateBedTransferInput` + `bedTransferApi` (list/get/create/update/remove).
+- Also added `admissionApi.list()` to fetch active admissions (status filter) — requires `ipd:read` permission.
+- Verified: `tsc`, `eslint`, `next build` green; backend `typecheck` clean. API validation tested: invalid patient → 400, missing fields → 400, same from/to bed → 400, list → 200.
+
 ## Memory: Patient form — Patient Type field + Medical heading removed
 - Removed the **Patient Type** select from `app/patients/PatientFormModal.tsx` (form-scoped; modal serves create + edit). Dropped the `patientType` field from `FormState`/`EMPTY_FORM`/`prefillFromPatient`/`buildInput`, the `PATIENT_TYPE_OPTIONS` + `PatientType` imports, and the `<select>`. The form no longer sends `patientType`, so the backend applies `PatientSetting.defaultPatientType` (settings "Default Patient Type" + backend `patient.policy.ts`/`Patient.patientType` column unchanged, still supported).
 - Removed the "Medical" `<h4>` heading (kept the wrapper `<div>` + grid). tsc/eslint/build green (1 pre-existing react-hooks warning at ~L276 accepted).
