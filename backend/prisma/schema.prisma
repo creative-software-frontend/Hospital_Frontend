@@ -563,6 +563,7 @@ model Doctor {
   photo              String?
   signature          String?
   cv                 String?
+  nidPhoto           String?         @db.VarChar(500)
   phone              String?
   email              String?
   permanentAddress   String?         @db.VarChar(500)
@@ -624,10 +625,11 @@ model Nurse {
   photo            String?
   signature        String?
   cv               String?
+  nidPhoto         String?         @db.VarChar(500)
   phone            String?
   email            String?
-  permanentAddress   String?         @db.VarChar(500)
-  presentAddress     String?         @db.VarChar(500)
+  permanentAddress String?         @db.VarChar(500)
+  presentAddress   String?         @db.VarChar(500)
   division           String?
   district           String?
   upazila            String?

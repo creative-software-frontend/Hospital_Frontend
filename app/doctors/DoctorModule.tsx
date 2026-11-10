@@ -467,6 +467,7 @@ function DoctorFormPage({
   const [maritalStatus, setMaritalStatus] = useState<string>(doctor?.maritalStatus ?? "");
   const [bloodGroup, setBloodGroup] = useState<string>(doctor?.bloodGroup ?? "");
   const [photo, setPhoto] = useState(doctor?.photo ?? "");
+  const [nidPhoto, setNidPhoto] = useState(doctor?.nidPhoto ?? "");
   const [signature, setSignature] = useState(doctor?.signature ?? "");
   const [cv, setCv] = useState(doctor?.cv ?? "");
   const [phone, setPhone] = useState(doctor?.phone ?? "");
@@ -669,6 +670,7 @@ function DoctorFormPage({
         maritalStatus: maritalStatus ? (maritalStatus as MaritalStatus) : null,
         bloodGroup: bloodGroup ? (bloodGroup as BloodGroup) : null,
         photo: photo || null,
+        nidPhoto: nidPhoto.trim() || null,
         signature: signature || null,
         cv: cv || null,
         phone: phone.trim() || null,
@@ -926,6 +928,11 @@ function DoctorFormPage({
           <FileUploadField label="Picture" kind="photo" value={photo} onChange={setPhoto} preview="image" hint="JPG, PNG or WebP up to 5 MB." />
           <FileUploadField label="Signature" kind="signature" value={signature} onChange={setSignature} preview="image" hint="JPG, PNG or WebP up to 5 MB." />
           <FileUploadField label="CV / Résumé" kind="cv" value={cv} onChange={setCv} preview="file" hint="PDF, DOC or DOCX up to 10 MB." />
+          <FileUploadField label="NID Photo" kind="photo" value={nidPhoto} onChange={(url) => {
+            setFieldErrors((prev) => ({ ...prev, nidPhoto: "" }));
+            setNidPhoto(url);
+          }}
+          hint="PNG, JPG, WEBP up to 5 MB." />
         </div>
 
         {error && <p className="text-sm alert-error">{error}</p>}

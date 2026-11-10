@@ -1,0 +1,3 @@
+-- AddColumn
+ALTER TABLE `Doctor` ADD COLUMN `nidPhoto` VARCHAR(500) NULL;
+ALTER TABLE `Nurse` ADD COLUMN `nidPhoto` VARCHAR(500) NULL;

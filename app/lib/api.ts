@@ -2333,6 +2333,7 @@ export interface DoctorRecord {
   maritalStatus: MaritalStatus | null;
   bloodGroup: BloodGroup | null;
   photo: string | null;
+  nidPhoto: string | null;
   signature: string | null;
   cv: string | null;
   phone: string | null;
@@ -2806,6 +2807,7 @@ export interface CreateDoctorInput {
   maritalStatus?: MaritalStatus | null;
   bloodGroup?: BloodGroup | null;
   photo?: string | null;
+  nidPhoto?: string | null;
   signature?: string | null;
   cv?: string | null;
   phone?: string | null;
@@ -2844,6 +2846,7 @@ export interface NurseRecord {
   maritalStatus: MaritalStatus | null;
   bloodGroup: BloodGroup | null;
   photo: string | null;
+  nidPhoto: string | null;
   signature: string | null;
   cv: string | null;
   phone: string | null;
@@ -2886,6 +2889,7 @@ export interface CreateNurseInput {
   maritalStatus?: MaritalStatus | null;
   bloodGroup?: BloodGroup | null;
   photo?: string | null;
+  nidPhoto?: string | null;
   signature?: string | null;
   cv?: string | null;
   phone?: string | null;
