@@ -252,6 +252,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Also added `admissionApi.list()` to fetch active admissions (status filter) — requires `ipd:read` permission.
 - Verified: `tsc`, `eslint`, `next build` green; backend `typecheck` clean. API validation tested: invalid patient → 400, missing fields → 400, same from/to bed → 400, list → 200.
 
+## Memory: Patient form — NID photo upload
+- User request: **"Register New Patient"** page should have an NID photo upload field alongside the existing Photo upload.
+- **DB**: Added `nidPhoto String? @db.VarChar(500)` column to `Patient` model (migration `20261109130000_patient_nid_photo`, applied).
+- **Backend**: `patient.validation.ts` adds `nidPhoto: optionalString(500)` to create/update schemas; `patient.service.ts` adds `nidPhoto` to create/update data and `SCALAR_FIELD_SELECT` + `PATIENT_LIST_SELECT` so it round-trips in GET responses.
+- **Frontend**: `app/lib/api.ts` adds `nidPhoto?: string | null` to `CreatePatientInput`, `UpdatePatientInput`, `PatientDetail`; `PatientFormModal.tsx` adds `nidPhoto` to `FormState`, `EMPTY_FORM`, `prefillFromPatient`, `buildInput`, and renders a second `FileUploadField label="NID" kind="photo"` right after the Photo field.
+- Verified: `tsc`, `eslint`, `next build` green; backend `typecheck` clean; API round-trip confirmed: POST with `nidPhoto` → 201, GET returns `nidPhoto` field.
+
 ## Memory: Patient form — Patient Type field + Medical heading removed
 - Removed the **Patient Type** select from `app/patients/PatientFormModal.tsx` (form-scoped; modal serves create + edit). Dropped the `patientType` field from `FormState`/`EMPTY_FORM`/`prefillFromPatient`/`buildInput`, the `PATIENT_TYPE_OPTIONS` + `PatientType` imports, and the `<select>`. The form no longer sends `patientType`, so the backend applies `PatientSetting.defaultPatientType` (settings "Default Patient Type" + backend `patient.policy.ts`/`Patient.patientType` column unchanged, still supported).
 - Removed the "Medical" `<h4>` heading (kept the wrapper `<div>` + grid). tsc/eslint/build green (1 pre-existing react-hooks warning at ~L276 accepted).

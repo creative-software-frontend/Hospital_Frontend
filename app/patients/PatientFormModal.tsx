@@ -71,6 +71,7 @@ interface FormState {
   nationalId: string;
   occupation: string;
   photo: string;
+  nidPhoto: string;
   patientCode: string;
 }
 
@@ -91,6 +92,7 @@ const EMPTY_FORM: FormState = {
   nationalId: "",
   occupation: "",
   photo: "",
+  nidPhoto: "",
   patientCode: "",
 };
 
@@ -113,6 +115,7 @@ function prefillFromPatient(p: PatientDetail | PatientListRecord | null): FormSt
     nationalId: (p as PatientDetail).nationalId ?? "",
     occupation: (p as PatientDetail).occupation ?? "",
     photo: (p as PatientDetail).photo ?? "",
+    nidPhoto: (p as PatientDetail).nidPhoto ?? "",
     // The code is immutable, so the edit form never shows or sends it.
     patientCode: "",
   };
@@ -379,6 +382,7 @@ export function PatientFormModal({
       nationalId: opt(form.nationalId),
       occupation: hasOccupation ? (form.occupation as Occupation) : undefined,
       photo: opt(form.photo),
+      nidPhoto: opt(form.nidPhoto),
       // The code is immutable, so only create ever offers it — and only when the
       // branch issues IDs by hand. Sending one while autoGenerateId is on is
       // rejected by the server rather than ignored.
@@ -797,6 +801,19 @@ export function PatientFormModal({
                   hint="PNG, JPG, WEBP or GIF up to 5MB."
                 />
                 {fieldError("photo")}
+              </div>
+              <div>
+                <FileUploadField
+                  label="NID"
+                  kind="photo"
+                  value={form.nidPhoto}
+                  onChange={(url) => {
+                    setFieldErrors((prev) => ({ ...prev, nidPhoto: "" }));
+                    setForm((prev) => ({ ...prev, nidPhoto: url }));
+                  }}
+                  hint="PNG, JPG, WEBP or GIF up to 5MB."
+                />
+                {fieldError("nidPhoto")}
               </div>
             </div>
 

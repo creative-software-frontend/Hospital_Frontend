@@ -855,6 +855,7 @@ model Patient {
   occupation    String?
   maritalStatus MaritalStatus?
   photo         String?
+  nidPhoto      String?         @db.VarChar(500)
   status        String          @default("active")
   deletedAt     DateTime?
   createdById   Int?

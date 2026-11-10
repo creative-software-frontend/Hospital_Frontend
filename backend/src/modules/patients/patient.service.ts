@@ -73,6 +73,7 @@ const PATIENT_LIST_SELECT: Prisma.PatientSelect = {
   branchId: true,
   createdAt: true,
   updatedAt: true,
+  nidPhoto: true,
   branch: { select: { id: true, name: true, code: true } },
   contacts: {
     select: { id: true, name: true, relationship: true, phone: true, isPrimary: true },
@@ -695,6 +696,7 @@ export async function createPatient(
     nationalId: input.nationalId,
     occupation: input.occupation,
     photo: input.photo,
+    nidPhoto: input.nidPhoto,
     status: "active",
     createdById: actor.id,
     updatedById: actor.id,
@@ -823,6 +825,7 @@ export async function updatePatient(actor: AuthUser, id: number, input: UpdatePa
     "nationalId",
     "occupation",
     "photo",
+    "nidPhoto",
   ] as const satisfies readonly (keyof UpdatePatientInput)[];
 
   // The cascade levels are handled separately: they must be validated together

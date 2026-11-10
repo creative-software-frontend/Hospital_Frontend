@@ -118,6 +118,7 @@ export interface PatientDetail extends PatientListRecord {
   nationalId: string | null;
   occupation: Occupation | null;
   photo: string | null;
+  nidPhoto: string | null;
   deletedAt: string | null;
   createdById: number | null;
   updatedById: number | null;
@@ -164,6 +165,7 @@ export interface CreatePatientInput {
   nationalId?: string | null;
   occupation?: Occupation | null;
   photo?: string | null;
+  nidPhoto?: string | null;
   contacts?: PatientContactInput[];
   /** Only meaningful when the branch has autoGenerateId switched off. */
   patientCode?: string;

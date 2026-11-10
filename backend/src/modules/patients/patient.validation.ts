@@ -188,6 +188,7 @@ export const createPatientSchema = z.object({
   nationalId: optionalString(64),
   occupation: z.enum(OCCUPATION_VALUES).optional(),
   photo: optionalString(500),
+  nidPhoto: optionalString(500),
   branchId: z.coerce.number().int().positive().optional(),
   contacts: z
     .array(
