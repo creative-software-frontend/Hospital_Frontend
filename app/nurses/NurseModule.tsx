@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FiPlus, FiRefreshCcw, FiSearch, FiEdit2 } from "react-icons/fi";
 import {
   departmentApi,
@@ -40,6 +40,7 @@ import {
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
 import { GENDER_OPTIONS, BLOOD_GROUP_OPTIONS, MARITAL_STATUS_OPTIONS } from "@/app/patients/constants";
 import { useMasterDataOptions } from "@/app/lib/useMasterData";
+import { useAddressCascade } from "@/app/lib/useAddressCascade";
 import { FileUploadField } from "@/app/components/FileUploadField";
 import { NursingNotesPage } from "@/app/nurses/NursingNotesPage";
 import { PatientVitalsPage } from "@/app/nurses/PatientVitalsPage";
@@ -335,6 +336,10 @@ function NurseFormPage({
   const [phone, setPhone] = useState(nurse?.phone ?? "");
   const [permanentAddress, setPermanentAddress] = useState(nurse?.permanentAddress ?? "");
   const [presentAddress, setPresentAddress] = useState(nurse?.presentAddress ?? "");
+  const [division, setDivision] = useState(nurse?.division ?? "");
+  const [district, setDistrict] = useState(nurse?.district ?? "");
+  const [upazila, setUpazila] = useState(nurse?.upazila ?? "");
+  const [thana, setThana] = useState(nurse?.thana ?? "");
   const [email, setEmail] = useState(nurse?.email ?? "");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -354,6 +359,9 @@ function NurseFormPage({
       <p className="text-[10px] font-bold text-rose-500 mt-1">{fieldErrors[key]}</p>
     ) : null;
 
+  const clearFieldError = (key: string) =>
+    setFieldErrors((prev) => (prev[key] ? { ...prev, [key]: "" } : prev));
+
   useEffect(() => {
     let active = true;
     departmentApi.list({ limit: 100 })
@@ -369,6 +377,78 @@ function NurseFormPage({
 
   const { options: bloodGroups } = useMasterDataOptions("blood_groups", BLOOD_GROUP_OPTIONS);
 
+  const {
+    divisions,
+    districts,
+    localities: upazilas,
+    divisionsLoading,
+    districtsLoading,
+    localitiesLoading,
+    addressError,
+    retryAddress,
+    loadDistricts,
+    loadLocalities,
+    resetDistricts,
+    resetLocalities,
+  } = useAddressCascade();
+
+  const onDivisionChange = (label: string) => {
+    clearFieldError("division");
+    resetDistricts();
+    resetLocalities();
+    setDivision(label);
+    setDistrict("");
+    setUpazila("");
+    setThana("");
+    const code = divisions.find((d) => d.label === label)?.code;
+    if (code) loadDistricts(code);
+  };
+
+  const onDistrictChange = (label: string) => {
+    clearFieldError("district");
+    resetLocalities();
+    setDistrict(label);
+    setUpazila("");
+    setThana("");
+    const code = districts.find((d) => d.label === label)?.code;
+    if (code) loadLocalities(code);
+  };
+
+  const onUpazilaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    clearFieldError("upazila");
+    const label = e.target.value;
+    setUpazila(label);
+    setThana("");
+  };
+
+  // Prefill division/district/upazila from saved values when options load
+  const prefillDone = useRef(false);
+  useEffect(() => {
+    if (prefillDone.current || divisionsLoading) return;
+    const savedDivision = division;
+    if (!savedDivision) {
+      prefillDone.current = true;
+      return;
+    }
+    const divisionCode = divisions.find((d) => d.label === savedDivision)?.code;
+    if (!divisionCode) {
+      prefillDone.current = true;
+      return;
+    }
+    prefillDone.current = true;
+    loadDistricts(divisionCode);
+    const savedDistrict = district;
+    if (!savedDistrict) return;
+    const districtCode = districts.find((d) => d.label === savedDistrict)?.code;
+    if (districtCode) loadLocalities(districtCode);
+  }, [divisions, divisionsLoading, loadDistricts, loadLocalities, division, district]);
+
+  useEffect(() => {
+    if (!district || districts.length === 0 || upazilas.length > 0) return;
+    const code = districts.find((d) => d.label === district)?.code;
+    if (code) loadLocalities(code);
+  }, [district, districts, upazilas.length, loadLocalities]);
+
   // Mirrors the backend Zod rules so an obviously bad value is caught before a
   // round trip; the server still has the final say.
   const validate = (): boolean => {
@@ -378,6 +458,20 @@ function NurseFormPage({
       addError(next, "phone", checkPhone(phone));
       addError(next, "permanentAddress", checkText(permanentAddress, ADDRESS_MAX, "Permanent address"));
       addError(next, "presentAddress", checkText(presentAddress, ADDRESS_MAX, "Present address"));
+
+      // A district or lower level without a division would be orphaned data, so
+      // the cascade has to be consistent top down.
+      for (const [child, parent, label] of [
+        ["district", "division", "Division"],
+        ["upazila", "district", "District"],
+        ["thana", "district", "District"],
+      ] as const) {
+        const childValue = (({ division: division, district: district, upazila: upazila, thana: thana } as Record<string, string>)[child] || "").trim();
+        const parentValue = (({ division: division, district: district, upazila: upazila, thana: thana } as Record<string, string>)[parent] || "").trim();
+        if (childValue && !parentValue) {
+          addError(next, parent, `${label} is required to select ${child}.`);
+        }
+      }
       addError(next, "departmentId", checkOptionalId(departmentId, "department"));
       addError(next, "shiftTypeId", checkOptionalId(shiftTypeId, "shift"));
       addError(next, "qualification", checkText(qualification, SHORT_TEXT_MAX, "Qualification"));
@@ -425,6 +519,10 @@ function NurseFormPage({
         phone: phone.trim() || null,
         permanentAddress: permanentAddress.trim() || null,
         presentAddress: presentAddress.trim() || null,
+        division: division.trim() || null,
+        district: district.trim() || null,
+        upazila: upazila.trim() || null,
+        thana: thana.trim() || null,
         email: email.trim() || null,
         ...(!editing
           ? { password: password.trim(), confirmPassword: confirmPassword.trim() || password.trim() }
@@ -516,15 +614,70 @@ function NurseFormPage({
             <input value={phone} inputMode="tel" onChange={(e) => setPhone(setField("phone", sanitizePhone(e.target.value)))} className={INPUT_CLS} />
             {fieldError("phone")}
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Permanent Address</label>
-            <input value={permanentAddress} onChange={(e) => setPermanentAddress(setField("permanentAddress", e.target.value))} className={INPUT_CLS} />
-            {fieldError("permanentAddress")}
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Present Address</label>
-            <input value={presentAddress} onChange={(e) => setPresentAddress(setField("presentAddress", e.target.value))} className={INPUT_CLS} />
-            {fieldError("presentAddress")}
+          <div className="sm:col-span-2 lg:col-span-4">
+            <div className="mb-3">
+              <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Permanent Address</label>
+              <p className="text-[10px] font-semibold text-[var(--muted)] mb-2">Select your permanent residential location in Bangladesh.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Permanent Address</label>
+                <input value={permanentAddress} onChange={(e) => setPermanentAddress(setField("permanentAddress", e.target.value))} className={INPUT_CLS} />
+                {fieldError("permanentAddress")}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Division</label>
+                <select value={division} onChange={(e) => onDivisionChange(e.target.value)} className={INPUT_CLS} disabled={saving || divisionsLoading}>
+                  <option value="">
+                    {divisionsLoading
+                      ? "Loading divisions..."
+                      : divisions.length === 0
+                        ? "No divisions available"
+                        : "Select division"}
+                  </option>
+                  {divisions.map((d) => (
+                    <option key={d.code} value={d.label}>{d.label}</option>
+                  ))}
+                </select>
+                {fieldError("division")}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[var(--muted)] mb-1">District</label>
+                <select value={district} onChange={(e) => onDistrictChange(e.target.value)} className={INPUT_CLS} disabled={saving || !division || districtsLoading}>
+                  <option value="">
+                    {!division
+                      ? "Select division first"
+                      : districtsLoading
+                        ? "Loading districts..."
+                        : districts.length === 0
+                          ? "No districts available"
+                          : "Select district"}
+                  </option>
+                  {districts.map((d) => (
+                    <option key={d.code} value={d.label}>{d.label}</option>
+                  ))}
+                </select>
+                {fieldError("district")}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Upazila</label>
+                <select value={upazila} onChange={onUpazilaChange} className={INPUT_CLS} disabled={saving || !district || localitiesLoading}>
+                  <option value="">
+                    {!district
+                      ? "Select district first"
+                      : localitiesLoading
+                        ? "Loading..."
+                        : upazilas.length === 0
+                          ? "None for this district"
+                          : "Select upazila"}
+                  </option>
+                  {upazilas.map((u) => (
+                    <option key={u.code} value={u.label}>{u.label}</option>
+                  ))}
+                </select>
+                {fieldError("upazila")}
+              </div>
+            </div>
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Date of Birth</label>

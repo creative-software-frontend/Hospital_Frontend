@@ -2339,6 +2339,10 @@ export interface DoctorRecord {
   email: string | null;
   permanentAddress: string | null;
   presentAddress: string | null;
+  division: string | null;
+  district: string | null;
+  upazila: string | null;
+  thana: string | null;
   consultationFee: string | null;
   followupFee: string | null;
   emergencyFee: string | null;
@@ -2808,6 +2812,10 @@ export interface CreateDoctorInput {
   email?: string | null;
   permanentAddress?: string | null;
   presentAddress?: string | null;
+  division?: string | null;
+  district?: string | null;
+  upazila?: string | null;
+  thana?: string | null;
   consultationFee?: string | null;
   followupFee?: string | null;
   emergencyFee?: string | null;
@@ -2842,6 +2850,10 @@ export interface NurseRecord {
   email: string | null;
   permanentAddress: string | null;
   presentAddress: string | null;
+  division: string | null;
+  district: string | null;
+  upazila: string | null;
+  thana: string | null;
   status: ActiveStatus;
   createdAt: string;
   updatedAt: string;
@@ -2880,6 +2892,10 @@ export interface CreateNurseInput {
   email?: string | null;
   permanentAddress?: string | null;
   presentAddress?: string | null;
+  division?: string | null;
+  district?: string | null;
+  upazila?: string | null;
+  thana?: string | null;
   password?: string;
   confirmPassword?: string;
   status?: ActiveStatus;

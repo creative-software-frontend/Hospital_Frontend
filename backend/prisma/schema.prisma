@@ -567,6 +567,10 @@ model Doctor {
   email              String?
   permanentAddress   String?         @db.VarChar(500)
   presentAddress     String?         @db.VarChar(500)
+  division           String?
+  district           String?
+  upazila            String?
+  thana              String?
   consultationFee    Decimal?        @db.Decimal(12, 2)
   followupFee        Decimal?        @db.Decimal(12, 2)
   emergencyFee       Decimal?        @db.Decimal(12, 2)
@@ -622,9 +626,13 @@ model Nurse {
   cv               String?
   phone            String?
   email            String?
-  permanentAddress String?         @db.VarChar(500)
-  presentAddress   String?         @db.VarChar(500)
-  status           String          @default("active")
+  permanentAddress   String?         @db.VarChar(500)
+  presentAddress     String?         @db.VarChar(500)
+  division           String?
+  district           String?
+  upazila            String?
+  thana              String?
+  status             String          @default("active")
   deletedAt        DateTime?
   createdById      Int?
   updatedById      Int?

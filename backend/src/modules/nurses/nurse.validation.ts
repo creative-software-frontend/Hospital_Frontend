@@ -81,6 +81,10 @@ const nurseFieldsSchema = z.object({
   email: emailSchema,
   permanentAddress: optionalString(500),
   presentAddress: optionalString(500),
+  division: optionalString(255),
+  district: optionalString(255),
+  upazila: optionalString(255),
+  thana: optionalString(255),
   status: z.enum(NURSE_STATUS_VALUES).optional(),
 });
 
