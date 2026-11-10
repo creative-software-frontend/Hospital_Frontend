@@ -782,8 +782,7 @@ function DoctorFormPage({
           </div>
           <div className="sm:col-span-2 lg:col-span-4">
             <div className="mb-3">
-              <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Permanent Address</label>
-              <p className="text-[10px] font-semibold text-[var(--muted)] mb-2">Select your permanent residential location in Bangladesh.</p>
+              <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Address</label>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
@@ -842,6 +841,11 @@ function DoctorFormPage({
                   ))}
                 </select>
                 {fieldError("upazila")}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Present Address</label>
+                <input value={presentAddress} onChange={(e) => setPresentAddress(setField("presentAddress", e.target.value))} className={INPUT_CLS} />
+                {fieldError("presentAddress")}
               </div>
             </div>
           </div>

@@ -552,6 +552,7 @@ describe("listDoctors", () => {
     expect(where.OR).toEqual([
       { name: { contains: "cardio" } },
       { doctorCode: { contains: "cardio" } },
+      { phone: { contains: "cardio" } },
       { specialization: { contains: "cardio" } },
       { bmdcRegistrationNo: { contains: "cardio" } },
     ]);

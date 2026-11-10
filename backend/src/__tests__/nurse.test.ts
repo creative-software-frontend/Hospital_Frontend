@@ -435,6 +435,7 @@ describe("listNurses", () => {
     expect(mockPrisma.nurse.findMany.mock.calls[0][0].where.OR).toEqual([
       { name: { contains: "sadia" } },
       { nurseCode: { contains: "sadia" } },
+      { phone: { contains: "sadia" } },
       { qualification: { contains: "sadia" } },
     ]);
   });
