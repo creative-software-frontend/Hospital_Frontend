@@ -367,6 +367,54 @@ describe("createDoctorAccount", () => {
     expect(mockPrisma.doctor.create).not.toHaveBeenCalled();
   });
 
+  it("rejects when the email already belongs to another doctor", async () => {
+    mockPrisma.user.findUnique.mockReset().mockResolvedValueOnce(null);
+    mockPrisma.doctor.findFirst.mockReset().mockResolvedValueOnce({ id: 8 });
+
+    await expect(
+      doctorService.createDoctor(branchUser, {
+        ...VALID_INPUT,
+        password: "Str0ng!pass",
+        confirmPassword: "Str0ng!pass",
+      }),
+    ).rejects.toThrow(/A doctor with this email already exists/i);
+    expect(mockPrisma.doctor.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects when the phone number already belongs to another user", async () => {
+    mockPrisma.user.findUnique.mockReset().mockResolvedValueOnce(null);
+    mockPrisma.doctor.findFirst.mockReset().mockResolvedValueOnce(null);
+    mockPrisma.user.findFirst.mockReset().mockResolvedValueOnce({ id: 12 });
+
+    await expect(
+      doctorService.createDoctor(branchUser, {
+        ...VALID_INPUT,
+        phone: "+8801711000000",
+        password: "Str0ng!pass",
+        confirmPassword: "Str0ng!pass",
+      }),
+    ).rejects.toThrow(/A user with this phone number already exists/i);
+    expect(mockPrisma.doctor.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects when the phone number already belongs to another doctor", async () => {
+    mockPrisma.user.findUnique.mockReset().mockResolvedValueOnce(null);
+    mockPrisma.doctor.findFirst
+      .mockReset()
+      .mockResolvedValueOnce(null) // email check
+      .mockResolvedValueOnce({ id: 15 }); // phone check
+
+    await expect(
+      doctorService.createDoctor(branchUser, {
+        ...VALID_INPUT,
+        phone: "+8801711000000",
+        password: "Str0ng!pass",
+        confirmPassword: "Str0ng!pass",
+      }),
+    ).rejects.toThrow(/A doctor with this phone number already exists/i);
+    expect(mockPrisma.doctor.create).not.toHaveBeenCalled();
+  });
+
   it("rejects account creation without an email", async () => {
     mockPrisma.user.findUnique.mockReset().mockResolvedValue(null);
 

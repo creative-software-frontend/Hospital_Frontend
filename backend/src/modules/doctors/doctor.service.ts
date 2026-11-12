@@ -66,7 +66,7 @@ async function deriveUniqueUsername(email: string): Promise<string> {
 async function getAccessibleDoctor(actor: AuthUser, id: number) {
   const row = await prisma.doctor.findFirst({
     where: { id, deletedAt: null },
-    select: { id: true, branchId: true },
+    select: { id: true, branchId: true, userId: true },
   });
   if (!row) {
     throw new NotFoundError("Doctor not found");
@@ -152,7 +152,8 @@ export async function getDoctor(actor: AuthUser, id: number) {
 }
 
 export async function createDoctor(actor: AuthUser, input: CreateDoctorInput) {
-  await ensureBranch(actor.branchId);
+  const targetBranchId = actor.branchId;
+  await ensureBranch(targetBranchId);
   await ensureDepartment(input.departmentId);
 
   // A doctor always ships with its linked login account, so a password is
@@ -166,29 +167,54 @@ export async function createDoctor(actor: AuthUser, input: CreateDoctorInput) {
   if (!input.email) {
     throw new BusinessRuleError("Email is required to create a login account");
   }
-  const email = input.email;
+  const email = input.email.trim().toLowerCase();
   const role = await prisma.role.findUnique({ where: { seederKey: "DOCTOR" } });
   if (!role) {
     throw new BusinessRuleError("Doctor role is not configured");
   }
+
+  // Duplicate email check across User (login accounts) and active Doctor records
   if (await prisma.user.findUnique({ where: { email }, select: { id: true } })) {
-    throw new ConflictError("A user with this email already exists");
+    throw new ConflictError("A user with this email already exists", { email: "A user with this email already exists" });
   }
+  if (await prisma.doctor.findFirst({ where: { email, deletedAt: null }, select: { id: true } })) {
+    throw new ConflictError("A doctor with this email already exists", { email: "A doctor with this email already exists" });
+  }
+
+  // Duplicate phone check across User and active Doctor records
+  const phone = input.phone?.trim() || null;
+  if (phone) {
+    const existingUserPhone = await prisma.user.findFirst({
+      where: { phone },
+      select: { id: true },
+    });
+    if (existingUserPhone) {
+      throw new ConflictError("A user with this phone number already exists", { phone: "A user with this phone number already exists" });
+    }
+    const existingDoctorPhone = await prisma.doctor.findFirst({
+      where: { phone, deletedAt: null },
+      select: { id: true },
+    });
+    if (existingDoctorPhone) {
+      throw new ConflictError("A doctor with this phone number already exists", { phone: "A doctor with this phone number already exists" });
+    }
+  }
+
   const username = await deriveUniqueUsername(email);
   const passwordHash = await bcrypt.hash(password, config.bcryptSaltRounds);
 
   // Claim the next branch-scoped doctor code and create the record in one
   // transaction: if creation fails the sequence increment rolls back too.
   const row = await prisma.$transaction(async (tx) => {
-    const doctorCode = await generateBusinessCode(tx, CODE_ENTITIES.DOCTOR, actor.branchId);
+    const doctorCode = await generateBusinessCode(tx, CODE_ENTITIES.DOCTOR, targetBranchId);
     const user = await tx.user.create({
       data: {
         name: input.name,
         email,
         username,
         password: passwordHash,
-        phone: input.phone,
-        branchId: actor.branchId,
+        phone,
+        branchId: targetBranchId,
         status: "ACTIVE",
         // A brand-new account must not be treated as "password never changed".
         passwordChangedAt: new Date(),
@@ -200,7 +226,7 @@ export async function createDoctor(actor: AuthUser, input: CreateDoctorInput) {
     });
     return tx.doctor.create({
       data: {
-        branchId: actor.branchId,
+        branchId: targetBranchId,
         doctorCode,
         userId: user.id,
         name: input.name,
@@ -219,8 +245,8 @@ export async function createDoctor(actor: AuthUser, input: CreateDoctorInput) {
         signature: input.signature,
         cv: input.cv,
         nidPhoto: input.nidPhoto,
-        phone: input.phone,
-        email: input.email,
+        phone,
+        email,
         permanentAddress: input.permanentAddress,
         presentAddress: input.presentAddress,
         division: input.division,
@@ -245,12 +271,13 @@ export async function createDoctor(actor: AuthUser, input: CreateDoctorInput) {
     newValues: {
       name: row.name,
       doctorCode: row.doctorCode,
-      branchId: actor.branchId,
+      branchId: targetBranchId,
       accountCreated: true,
+      userId: row.userId,
       username,
     },
     user: actor,
-    branchId: actor.branchId,
+    branchId: targetBranchId,
   });
 
   return row;
@@ -262,9 +289,62 @@ export async function updateDoctor(actor: AuthUser, id: number, input: UpdateDoc
     await ensureDepartment(input.departmentId);
   }
   const current = await prisma.doctor.findFirst({ where: { id } });
-  const updated = await prisma.doctor.update({
-    where: { id },
-    data: { ...input },
+
+  // Uniqueness check if email changed
+  if (input.email) {
+    const email = input.email.trim().toLowerCase();
+    const existingUser = await prisma.user.findFirst({
+      where: { email, id: { not: accessible.userId ?? 0 } },
+      select: { id: true },
+    });
+    if (existingUser) {
+      throw new ConflictError("A user with this email already exists", { email: "A user with this email already exists" });
+    }
+    const existingDoctor = await prisma.doctor.findFirst({
+      where: { email, id: { not: id }, deletedAt: null },
+      select: { id: true },
+    });
+    if (existingDoctor) {
+      throw new ConflictError("A doctor with this email already exists", { email: "A doctor with this email already exists" });
+    }
+  }
+
+  // Uniqueness check if phone changed
+  if (input.phone) {
+    const phone = input.phone.trim();
+    const existingUserPhone = await prisma.user.findFirst({
+      where: { phone, id: { not: accessible.userId ?? 0 } },
+      select: { id: true },
+    });
+    if (existingUserPhone) {
+      throw new ConflictError("A user with this phone number already exists", { phone: "A user with this phone number already exists" });
+    }
+    const existingDoctorPhone = await prisma.doctor.findFirst({
+      where: { phone, id: { not: id }, deletedAt: null },
+      select: { id: true },
+    });
+    if (existingDoctorPhone) {
+      throw new ConflictError("A doctor with this phone number already exists", { phone: "A doctor with this phone number already exists" });
+    }
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    if (accessible.userId) {
+      const userUpdate: { name?: string; email?: string; phone?: string | null } = {};
+      if (input.name !== undefined) userUpdate.name = input.name;
+      if (input.email !== undefined && input.email !== null) userUpdate.email = input.email.trim().toLowerCase();
+      if (input.phone !== undefined) userUpdate.phone = input.phone?.trim() || null;
+      if (Object.keys(userUpdate).length > 0) {
+        await tx.user.update({
+          where: { id: accessible.userId },
+          data: userUpdate,
+        });
+      }
+    }
+    return tx.doctor.update({
+      where: { id },
+      data: { ...input },
+    });
   });
 
   await writeAuditLog({

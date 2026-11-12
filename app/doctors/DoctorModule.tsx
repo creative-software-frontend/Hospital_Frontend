@@ -17,8 +17,9 @@ import {
   type DoctorRecord,
   type Gender,
   type MaritalStatus,
-  type   PaginationMeta,
+  type PaginationMeta,
   errorMessage,
+  ConflictError,
   NotFoundError,
   formatDate,
   toDateInput,
@@ -688,7 +689,7 @@ function DoctorFormPage({
         commissionValue: commissionValue.trim() || null,
         status: "active",
         ...(!editing
-          ? { password: password.trim(), confirmPassword: confirmPassword.trim() || password.trim() }
+          ? { password: password.trim(), confirmPassword: confirmPassword.trim() }
           : {}),
       });
     } catch (err) {
@@ -697,6 +698,9 @@ function DoctorFormPage({
       if (err instanceof ValidationError) {
         setFieldErrors(err.fieldErrors ?? {});
         setError("Please correct the highlighted fields.");
+      } else if (err instanceof ConflictError && err.details && typeof err.details === "object") {
+        setFieldErrors(err.details as Record<string, string>);
+        setError(err.message || "Please correct the highlighted fields.");
       } else if (err instanceof NotFoundError) {
         // Reference checks (branch / department) land on the related select.
         const key = /department/i.test(err.message) ? "departmentId" : "";
@@ -760,8 +764,18 @@ function DoctorFormPage({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Email *</label>
-            <input type="email" value={email} onChange={(e) => setEmail(setField("email", e.target.value))} className={INPUT_CLS} />
+            <label className="block text-xs font-semibold text-[var(--muted)] mb-1">
+              Email * <span className="text-[10px] text-[var(--primary)] font-semibold">(Login Email)</span>
+            </label>
+            <input
+              type="email"
+              autoComplete="username"
+              placeholder="e.g. doctor@hospital.com"
+              value={email}
+              onChange={(e) => setEmail(setField("email", e.target.value))}
+              className={INPUT_CLS}
+            />
+            <p className="text-[10px] text-[var(--muted)] mt-1">Serves as the doctor's login email.</p>
             {fieldError("email")}
           </div>
 
@@ -911,16 +925,30 @@ function DoctorFormPage({
           {!editing && (
             <>
               <div>
-                <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Password * (creates login)</label>
-                <input type="password" autoComplete="new-password" value={password}
-                  onChange={(e) => setPassword(setField("password", e.target.value))} className={INPUT_CLS} />
-                <p className="text-[10px] text-[var(--muted)] mt-1">A login account is created for every doctor.</p>
+                <label className="block text-xs font-semibold text-[var(--muted)] mb-1">
+                  Password * <span className="text-[10px] text-[var(--primary)] font-semibold">(Login Password)</span>
+                </label>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="Min. 8 characters"
+                  value={password}
+                  onChange={(e) => setPassword(setField("password", e.target.value))}
+                  className={INPUT_CLS}
+                />
+                <p className="text-[10px] text-[var(--muted)] mt-1">A login account with Doctor role will be created.</p>
                 {fieldError("password")}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-[var(--muted)] mb-1">Confirm Password *</label>
-                <input type="password" autoComplete="new-password" value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(setField("confirmPassword", e.target.value))} className={INPUT_CLS} />
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="Re-type password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(setField("confirmPassword", e.target.value))}
+                  className={INPUT_CLS}
+                />
                 {fieldError("confirmPassword")}
               </div>
             </>
