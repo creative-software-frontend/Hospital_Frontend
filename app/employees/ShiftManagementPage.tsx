@@ -10,7 +10,8 @@ import {
 } from "@/app/lib/api";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
 
-const INPUT = "w-full h-10 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--primary)]";
+const INPUT = "w-full h-10 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15 transition-colors";
+const LABEL = "block text-[11px] font-bold text-[var(--muted)] mb-1";
 const EMPTY_FORM: CreateShiftTypeInput = {
   name: "",
   startTime: "",
@@ -19,9 +20,11 @@ const EMPTY_FORM: CreateShiftTypeInput = {
   status: "active",
 };
 
-export function ShiftManagementPage({ onBack, module = "Human Resource" }: { onBack?: () => void; module?: string }) {
+export function ShiftManagementPage({ onBack, module = "Nursing Management" }: { onBack?: () => void; module?: string }) {
   const [rows, setRows] = useState<ShiftTypeRecord[]>([]);
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"" | "active" | "inactive">("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [form, setForm] = useState<CreateShiftTypeInput>(EMPTY_FORM);
@@ -34,10 +37,18 @@ export function ShiftManagementPage({ onBack, module = "Human Resource" }: { onB
     setToasts((prev) => [...prev.slice(-3), { id: Date.now() + Math.random(), kind, message }]);
   }, []);
 
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await shiftTypeApi.list({ search: search.trim() || undefined });
+      const result = await shiftTypeApi.list({
+        search: search || undefined,
+        status: statusFilter || undefined,
+      });
       setRows(result.shiftTypes);
       setError("");
     } catch (err) {
@@ -45,7 +56,7 @@ export function ShiftManagementPage({ onBack, module = "Human Resource" }: { onB
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [search, statusFilter]);
 
   useEffect(() => {
     const timer = setTimeout(() => load(), 0);
@@ -73,8 +84,8 @@ export function ShiftManagementPage({ onBack, module = "Human Resource" }: { onB
       notify("error", "Shift name is required.");
       return;
     }
-    if (form.startTime && form.endTime && form.endTime <= form.startTime) {
-      notify("error", "End time must be after start time.");
+    if (form.startTime && form.endTime && form.startTime === form.endTime) {
+      notify("error", "Start time and end time cannot be identical.");
       return;
     }
     setSaving(true);
@@ -95,11 +106,13 @@ export function ShiftManagementPage({ onBack, module = "Human Resource" }: { onB
     }
   };
 
+  const filtersActive = Boolean(searchInput.trim() || statusFilter);
+
   return (
     <div className="space-y-6">
       <div className="card p-5 rounded-2xl border border-[var(--border)] shadow-sm">
         {onBack && (
-          <button onClick={onBack} className="text-xs font-bold text-[var(--primary)] mb-3 cursor-pointer">
+          <button onClick={onBack} className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] hover:text-[var(--primary-dark)] mb-3 transition-colors cursor-pointer">
             {"\u2190"} Back
           </button>
         )}
@@ -110,54 +123,142 @@ export function ShiftManagementPage({ onBack, module = "Human Resource" }: { onB
 
       <div className="card p-5 rounded-2xl border border-[var(--border)] shadow-sm">
         <div className="flex items-center justify-between gap-3 mb-4">
-          <h4 className="text-sm font-extrabold">{editing ? "Edit shift" : "Add shift"}</h4>
-          {editing && <button onClick={reset} className="text-xs font-bold text-[var(--muted)] cursor-pointer">Cancel</button>}
+          <div>
+            <h4 className="text-sm font-extrabold text-[var(--text)]">{editing ? "Edit shift" : "Add shift"}</h4>
+            <p className="text-xs text-[var(--muted)] mt-0.5">{editing ? `Editing "${editing.name}"` : "Configure shift name, start and end times, grace period, and status."}</p>
+          </div>
+          {editing && <button onClick={reset} className="px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs font-bold text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer">Cancel</button>}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,20rem)_9rem_9rem_8rem_8rem_10rem] gap-3 items-end max-w-3xl">
-          <label className="text-xs font-semibold text-[var(--muted)]">Shift name *
-            <input className={`${INPUT} mt-1`} value={form.name} onChange={(e) => setForm((v) => ({ ...v, name: e.target.value }))} placeholder="Morning Shift" />
-          </label>
-          <label className="text-xs font-semibold text-[var(--muted)]">Start
-            <input type="time" className={`${INPUT} mt-1`} value={form.startTime ?? ""} onChange={(e) => setForm((v) => ({ ...v, startTime: e.target.value || null }))} />
-          </label>
-          <label className="text-xs font-semibold text-[var(--muted)]">End
-            <input type="time" className={`${INPUT} mt-1`} value={form.endTime ?? ""} onChange={(e) => setForm((v) => ({ ...v, endTime: e.target.value || null }))} />
-          </label>
-          <label className="text-xs font-semibold text-[var(--muted)]">Grace (min)
-            <input type="number" min={0} max={1440} className={`${INPUT} mt-1`} value={form.graceMinutes ?? 0} onChange={(e) => setForm((v) => ({ ...v, graceMinutes: Number(e.target.value) }))} />
-          </label>
-          <label className="text-xs font-semibold text-[var(--muted)]">Status
-            <select className={`${INPUT} mt-1`} value={form.status ?? "active"} onChange={(e) => setForm((v) => ({ ...v, status: e.target.value as "active" | "inactive" }))}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end max-w-4xl">
+          <div className="sm:col-span-2 lg:col-span-2">
+            <label className={LABEL}>Shift name *</label>
+            <input className={INPUT} value={form.name} onChange={(e) => setForm((v) => ({ ...v, name: e.target.value }))} placeholder="e.g. Morning Shift" />
+          </div>
+          <div>
+            <label className={LABEL}>Start</label>
+            <input type="time" className={INPUT} value={form.startTime ?? ""} onChange={(e) => setForm((v) => ({ ...v, startTime: e.target.value || null }))} />
+          </div>
+          <div>
+            <label className={LABEL}>End</label>
+            <input type="time" className={INPUT} value={form.endTime ?? ""} onChange={(e) => setForm((v) => ({ ...v, endTime: e.target.value || null }))} />
+          </div>
+          <div>
+            <label className={LABEL}>Grace (min)</label>
+            <input type="number" min={0} max={1440} className={INPUT} value={form.graceMinutes ?? 0} onChange={(e) => setForm((v) => ({ ...v, graceMinutes: Math.max(0, Number(e.target.value)) }))} />
+          </div>
+          <div>
+            <label className={LABEL}>Status</label>
+            <select className={INPUT} value={form.status ?? "active"} onChange={(e) => setForm((v) => ({ ...v, status: e.target.value as "active" | "inactive" }))}>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </select>
-          </label>
-          <button onClick={submit} disabled={saving} className="h-10 rounded-xl px-4 text-xs font-bold text-white disabled:opacity-60 cursor-pointer" style={{ background: "var(--primary)" }}>
-            {saving ? "Saving…" : editing ? "Save" : "Add shift"}
+          </div>
+        </div>
+        <div className="mt-4 flex items-center gap-2">
+          <button onClick={submit} disabled={saving} className="h-10 rounded-xl px-5 text-xs font-bold text-white transition-all duration-200 active:scale-[0.98] disabled:opacity-60 cursor-pointer" style={{ background: "var(--primary)" }}>
+            {saving ? "Saving…" : editing ? "Save changes" : "Add shift"}
           </button>
+          {editing && (
+            <button onClick={reset} className="h-10 px-4 rounded-xl border border-[var(--border)] text-xs font-bold text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer">
+              Cancel
+            </button>
+          )}
         </div>
       </div>
 
       <div className="card p-5 rounded-2xl border border-[var(--border)] shadow-sm space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h4 className="text-sm font-extrabold">Configured shifts</h4>
+            <h4 className="text-sm font-extrabold text-[var(--text)]">Configured shifts</h4>
             <p className="text-xs text-[var(--muted)]">{rows.length} shift(s)</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2.5">
             <div className="relative">
               <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)] w-3.5 h-3.5" />
-              <input className="pl-9 h-10 w-56 max-w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-xs font-semibold outline-none" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search shifts..." />
+              <input
+                className="pl-9 h-10 w-48 sm:w-56 max-w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15 transition-colors"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search shifts..."
+              />
             </div>
-            <button onClick={() => setReloadKey((key) => key + 1)} className="h-10 w-10 rounded-xl border border-[var(--border)] text-[var(--muted)] cursor-pointer" title="Refresh"><FiRefreshCcw className="mx-auto w-4 h-4" /></button>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as "" | "active" | "inactive")}
+              className="h-10 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15 transition-colors text-[var(--text)] cursor-pointer"
+            >
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            {filtersActive && (
+              <button
+                onClick={() => {
+                  setSearchInput("");
+                  setSearch("");
+                  setStatusFilter("");
+                }}
+                className="h-10 px-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-[11px] font-bold text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer"
+              >
+                Clear
+              </button>
+            )}
+            <button
+              onClick={() => setReloadKey((key) => key + 1)}
+              className="h-10 w-10 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--primary-soft)]/20 transition-colors cursor-pointer flex items-center justify-center"
+              title="Refresh"
+            >
+              <FiRefreshCcw className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
         {error && <p className="text-sm alert-error">{error}</p>}
-        {loading ? <p className="text-xs text-[var(--muted)]">Loading shifts...</p> : rows.length === 0 ? <p className="text-xs text-[var(--muted)]">No shifts configured yet.</p> : (
-          <div className="overflow-x-auto">
+        {loading ? (
+          <p className="text-xs text-[var(--muted)]">Loading shifts...</p>
+        ) : rows.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-[var(--border)] px-4 py-8 text-center">
+            <p className="text-xs font-bold text-[var(--muted)]">
+              {filtersActive ? "No shifts match this filter." : "No shifts configured yet."}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
             <table className="w-full text-left text-xs">
-              <thead><tr className="border-b border-[var(--border)] text-[var(--muted)]"><th className="py-3 pr-4">Name</th><th className="py-3 pr-4">Time</th><th className="py-3 pr-4">Grace</th><th className="py-3 pr-4">Status</th><th className="py-3 text-right">Action</th></tr></thead>
-              <tbody>{rows.map((row) => <tr key={row.id} className="border-b border-[var(--border)] last:border-0"><td className="py-3 pr-4 font-bold">{row.name}</td><td className="py-3 pr-4">{row.startTime ?? "—"} - {row.endTime ?? "—"}</td><td className="py-3 pr-4">{row.graceMinutes} min</td><td className="py-3 pr-4"><span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${row.status === "active" ? "bg-emerald-50 text-emerald-600 border-emerald-200" : "bg-slate-100 text-slate-500 border-slate-200"}`}>{row.status}</span></td><td className="py-3 text-right"><button onClick={() => edit(row)} className="inline-flex items-center gap-1 text-[var(--primary)] font-bold cursor-pointer"><FiEdit2 className="w-3.5 h-3.5" /> Edit</button></td></tr>)}</tbody>
+              <thead>
+                <tr className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--muted)]">
+                  <th className="py-3 px-4 font-bold">Name</th>
+                  <th className="py-3 px-4 font-bold">Time</th>
+                  <th className="py-3 px-4 font-bold">Grace</th>
+                  <th className="py-3 px-4 font-bold">Status</th>
+                  <th className="py-3 px-4 text-right font-bold">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.id} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--primary-soft)]/10 transition-colors">
+                    <td className="py-3 px-4 font-bold text-[var(--text)]">{row.name}</td>
+                    <td className="py-3 px-4 font-semibold text-[var(--text)]">
+                      {row.startTime ?? "—"} - {row.endTime ?? "—"}
+                      {row.startTime && row.endTime && row.endTime < row.startTime && (
+                        <span className="ml-1.5 text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
+                          Overnight
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-[var(--muted)]">{row.graceMinutes} min</td>
+                    <td className="py-3 px-4">
+                      <span className={`inline-block rounded-md border px-2 py-0.5 text-[10px] font-bold capitalize ${row.status === "active" ? "bg-emerald-50 text-emerald-600 border-emerald-200" : "bg-slate-100 text-slate-500 border-slate-200"}`}>
+                        {row.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <button onClick={() => edit(row)} className="inline-flex items-center gap-1 text-[var(--primary)] hover:text-[var(--primary-dark)] font-bold transition-colors cursor-pointer">
+                        <FiEdit2 className="w-3.5 h-3.5" /> Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </div>
         )}
