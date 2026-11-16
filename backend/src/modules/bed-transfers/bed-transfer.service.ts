@@ -24,8 +24,8 @@ const BED_TRANSFER_SELECT: Prisma.BedTransferSelect = {
   updatedAt: true,
   patient: { select: { id: true, name: true, patientCode: true } },
   admission: { select: { id: true, admissionNumber: true, status: true } },
-  fromBed: { select: { id: true, bedNumber: true, bedClass: true } },
-  toBed: { select: { id: true, bedNumber: true, bedClass: true } },
+  fromBedDefinition: { select: { id: true, name: true, status: true } },
+  toBedDefinition: { select: { id: true, name: true, status: true } },
   createdBy: { select: { id: true, name: true } },
 };
 
@@ -131,25 +131,25 @@ export async function createBedTransfer(actor: AuthUser, input: CreateBedTransfe
   }
 
   // Validate source bed matches the admission's current bed
-  const fromBed = await prisma.bed.findFirst({
+  const fromBedDefinition = await prisma.bedDefinition.findFirst({
     where: { id: input.fromBedId },
-    select: { id: true, branchId: true, status: true, bedNumber: true },
+    select: { id: true, branchId: true, status: true, name: true },
   });
-  if (!fromBed) throw new NotFoundError("Source bed not found");
-  if (fromBed.status !== "occupied") {
+  if (!fromBedDefinition) throw new NotFoundError("Source bed not found");
+  if (fromBedDefinition.status !== "OCCUPIED") {
     throw new ValidationError("Source bed is not currently occupied");
   }
 
   // Validate destination bed is available
-  const toBed = await prisma.bed.findFirst({
+  const toBedDefinition = await prisma.bedDefinition.findFirst({
     where: { id: input.toBedId },
-    select: { id: true, branchId: true, status: true, bedNumber: true },
+    select: { id: true, branchId: true, status: true, name: true },
   });
-  if (!toBed) throw new NotFoundError("Destination bed not found");
-  if (toBed.status !== "available") {
+  if (!toBedDefinition) throw new NotFoundError("Destination bed not found");
+  if (toBedDefinition.status !== "AVAILABLE") {
     throw new ValidationError("Destination bed is not available");
   }
-  if (toBed.branchId !== fromBed.branchId) {
+  if (toBedDefinition.branchId !== fromBedDefinition.branchId) {
     throw new ValidationError("Source and destination beds must be in the same branch");
   }
 
@@ -179,13 +179,13 @@ export async function createBedTransfer(actor: AuthUser, input: CreateBedTransfe
     });
 
     // Free up source bed, occupy destination bed
-    await tx.bed.update({
+    await tx.bedDefinition.update({
       where: { id: input.fromBedId },
-      data: { status: "available" },
+      data: { status: "AVAILABLE" },
     });
-    await tx.bed.update({
+    await tx.bedDefinition.update({
       where: { id: input.toBedId },
-      data: { status: "occupied" },
+      data: { status: "OCCUPIED" },
     });
 
     return transfer;

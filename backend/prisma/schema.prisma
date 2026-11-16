@@ -630,11 +630,11 @@ model Nurse {
   email            String?
   permanentAddress String?         @db.VarChar(500)
   presentAddress   String?         @db.VarChar(500)
-  division           String?
-  district           String?
-  upazila            String?
-  thana              String?
-  status             String          @default("active")
+  division         String?
+  district         String?
+  upazila          String?
+  thana            String?
+  status           String          @default("active")
   deletedAt        DateTime?
   createdById      Int?
   updatedById      Int?
@@ -747,11 +747,8 @@ model Bed {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  branch           Branch?       @relation(fields: [branchId], references: [id])
-  room             Room?         @relation(fields: [roomId], references: [id])
-  admissions       Admission[]
-  fromBedTransfers BedTransfer[] @relation("FromBed")
-  toBedTransfers   BedTransfer[] @relation("ToBed")
+  branch Branch? @relation(fields: [branchId], references: [id])
+  room   Room?   @relation(fields: [roomId], references: [id])
 
   @@unique([branchId, bedNumber])
   @@index([branchId])
@@ -830,6 +827,11 @@ model BedDefinition {
   branch   Branch   @relation(fields: [branchId], references: [id])
   bedType  BedType  @relation(fields: [bedTypeId], references: [id])
   bedGroup BedGroup @relation(fields: [bedGroupId], references: [id])
+
+  bedTransfersFrom BedTransfer[] @relation("FromBedDefinition")
+  bedTransfersTo   BedTransfer[] @relation("ToBedDefinition")
+
+  admissions Admission[]
 
   @@index([branchId])
   @@index([bedTypeId])
@@ -1472,7 +1474,7 @@ model Admission {
   branch                    Branch?                    @relation(fields: [branchId], references: [id])
   patient                   Patient?                   @relation(fields: [patientId], references: [id])
   doctor                    Doctor?                    @relation(fields: [doctorId], references: [id])
-  bed                       Bed?                       @relation(fields: [bedId], references: [id])
+  bedDefinition             BedDefinition?             @relation(fields: [bedId], references: [id])
   nursingNotes              NursingNote[]
   vitals                    PatientVital[]
   medicationAdministrations MedicationAdministration[]
@@ -1503,12 +1505,12 @@ model BedTransfer {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  branch    Branch    @relation(fields: [branchId], references: [id])
-  patient   Patient   @relation(fields: [patientId], references: [id])
-  admission Admission @relation(fields: [admissionId], references: [id])
-  fromBed   Bed       @relation("FromBed", fields: [fromBedId], references: [id])
-  toBed     Bed       @relation("ToBed", fields: [toBedId], references: [id])
-  createdBy User?     @relation("BedTransferCreatedBy", fields: [createdByUserId], references: [id])
+  branch            Branch        @relation(fields: [branchId], references: [id])
+  patient           Patient       @relation(fields: [patientId], references: [id])
+  admission         Admission     @relation(fields: [admissionId], references: [id])
+  fromBedDefinition BedDefinition @relation("FromBedDefinition", fields: [fromBedId], references: [id])
+  toBedDefinition   BedDefinition @relation("ToBedDefinition", fields: [toBedId], references: [id])
+  createdBy         User?         @relation("BedTransferCreatedBy", fields: [createdByUserId], references: [id])
 
   @@index([branchId])
   @@index([patientId])

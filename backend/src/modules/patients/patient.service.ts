@@ -1085,7 +1085,7 @@ export async function getPatientHistory(actor: AuthUser, patientId: number) {
         reason: true,
         notes: true,
         doctor: { select: { id: true, doctorCode: true, name: true } },
-        bed: { select: { id: true, bedNumber: true, bedClass: true } },
+        bedDefinition: { select: { id: true, name: true } },
       },
     }),
   ]);

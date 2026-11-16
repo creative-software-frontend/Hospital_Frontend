@@ -867,7 +867,7 @@ export interface PatientHistoryAdmission {
   reason: string | null;
   notes: string | null;
   doctor: { id: number; doctorCode: string | null; name: string } | null;
-  bed: { id: number; bedNumber: string; bedClass: string | null } | null;
+  bedDefinition: { id: number; name: string } | null;
 }
 
 export interface PatientHistoryResult {
@@ -3557,8 +3557,8 @@ export interface BedTransferRecord {
   updatedAt: string;
   patient: { id: number; name: string; patientCode: string };
   admission: { id: number; admissionNumber: string; status: string };
-  fromBed: { id: number; bedNumber: string; bedClass: string | null };
-  toBed: { id: number; bedNumber: string; bedClass: string | null };
+  fromBedDefinition: { id: number; name: string; status: string };
+  toBedDefinition: { id: number; name: string; status: string };
   createdBy: { id: number; name: string } | null;
 }
 
@@ -3634,7 +3634,7 @@ export interface AdmissionRecord {
   updatedAt: string;
   patient: { id: number; name: string; patientCode: string };
   doctor: { id: number; name: string } | null;
-  bed: { id: number; bedNumber: string; bedClass: string | null } | null;
+  bedDefinition: { id: number; name: string } | null;
 }
 
 export interface AdmissionListResult {

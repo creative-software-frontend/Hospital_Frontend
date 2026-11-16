@@ -39,6 +39,10 @@ import { DoctorModule } from "@/app/doctors/DoctorModule";
 import { AppointmentModule } from "@/app/appointments/AppointmentModule";
 import { BedWardModule } from "@/app/bedward/BedWardModule";
 import { BedTransferPage } from "@/app/bedward/BedTransferPage";
+import { CabinManagementPage } from "@/app/bedward/CabinManagementPage";
+import { WardStatusMonitoringPage } from "@/app/bedward/WardStatusMonitoringPage";
+import { OccupancyReportPage } from "@/app/bedward/OccupancyReportPage";
+import { AvailableBedReportPage } from "@/app/bedward/AvailableBedReportPage";
 import { BedBoardOverlay } from "@/app/components/BedBoardOverlay";
 import { SuperAdminOverviewStats } from "@/app/dashboard/superadmin/SuperAdminOverviewStats";
 import { RolePermissionEditorModal } from "@/app/dashboard/role-permissions/RolePermissionEditorModal";
@@ -602,6 +606,14 @@ ${tbody}
             ) : selectedFeature.id === 7 ? (
               selectedSubFeatureId === "bed-transfer" ? (
                 <BedTransferPage onBack={() => setSelectedSubFeatureId(null)} />
+              ) : selectedSubFeatureId === "cabin-management" ? (
+                <CabinManagementPage onBack={() => setSelectedSubFeatureId(null)} />
+              ) : selectedSubFeatureId === "ward-status-monitoring" ? (
+                <WardStatusMonitoringPage onBack={() => setSelectedSubFeatureId(null)} />
+              ) : selectedSubFeatureId === "occupancy-report" ? (
+                <OccupancyReportPage onBack={() => setSelectedSubFeatureId(null)} />
+              ) : selectedSubFeatureId === "available-bed-report" ? (
+                <AvailableBedReportPage onBack={() => setSelectedSubFeatureId(null)} />
               ) : (
                 <BedWardModule
                   role={permissions?.role ?? null}

@@ -261,7 +261,7 @@ export async function listAdmissions(actor: AuthUser, query: ListAdmissionsQuery
         invoiceId: true,
         patient: { select: { id: true, patientCode: true, name: true } },
         doctor: { select: { id: true, name: true, doctorCode: true } },
-        bed: { select: { id: true, bedNumber: true, bedClass: true } },
+        bedDefinition: { select: { id: true, name: true } },
       },
     }),
   ]);

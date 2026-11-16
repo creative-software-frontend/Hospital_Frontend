@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { FiPlus, FiRefreshCcw, FiSearch, FiEdit2, FiX } from "react-icons/fi";
+import { MdKingBed } from "react-icons/md";
 import {
   bedWardApi,
   branchApi,
@@ -454,6 +455,55 @@ function BedWardManager({
           </p>
         )}
 
+        {activeTabId === "bed-statuses" ? (
+          <div className="rounded-xl border border-[var(--border)] p-4">
+            {loading ? (
+              <div className="py-10 text-center">
+                <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--primary)]" />
+              </div>
+            ) : rows.length === 0 ? (
+              <div className="py-10 text-center text-xs text-[var(--muted)]">No beds found.</div>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                {rows.map((item) => {
+                  const status = (item.status ?? "AVAILABLE") as BedOccupancyStatus;
+                  const color =
+                    status === "AVAILABLE"
+                      ? "text-emerald-500"
+                      : status === "OCCUPIED"
+                      ? "text-rose-500"
+                      : "text-slate-400";
+                  const label =
+                    status === "AVAILABLE" ? "Available" : status === "OCCUPIED" ? "Occupied" : "Unused";
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex flex-col items-center gap-1 w-20 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-2"
+                      title={`${item.name} — ${label}`}
+                    >
+                      <MdKingBed className={`w-8 h-8 ${color}`} />
+                      <span className="text-[9px] font-mono text-[var(--muted)]">#{item.id}</span>
+                      <span className="text-[10px] font-bold text-[var(--primary-dark)] truncate w-full text-center">
+                        {item.name}
+                      </span>
+                      <span
+                        className={`text-[9px] font-bold ${
+                          status === "AVAILABLE"
+                            ? "text-emerald-600"
+                            : status === "OCCUPIED"
+                            ? "text-rose-500"
+                            : "text-slate-500"
+                        }`}
+                      >
+                        {label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : (
         <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
           <table className="min-w-[640px] w-full">
             <thead>
@@ -502,6 +552,7 @@ function BedWardManager({
             </tbody>
           </table>
         </div>
+        )}
 
         <div className="flex items-center justify-between gap-3 pt-1">
           <div className="text-xs text-[var(--muted)]">

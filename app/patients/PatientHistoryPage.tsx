@@ -153,10 +153,10 @@ function visitEntry(v: PatientHistoryVisit): TimelineEntry {
 
 function admissionEntry(a: PatientHistoryResult["admissions"][number]): TimelineEntry {
   const details: { label: string; value: string }[] = [];
-  if (a.bed) {
+  if (a.bedDefinition) {
     details.push({
       label: "Bed",
-      value: [a.bed.bedNumber, a.bed.bedClass].filter(Boolean).join(" · "),
+      value: a.bedDefinition.name,
     });
   }
   if (a.reason) details.push({ label: "Reason", value: a.reason });
