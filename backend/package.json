@@ -15,6 +15,7 @@
     "db:create": "tsx prisma/create-database.ts",
     "db:migrate": "prisma migrate deploy",
   "db:import": "tsx prisma/import-database.ts",
+  "sync": "tsx prisma/sync.ts",
   "db:export": "tsx prisma/export-database.ts",
     "db:migrate:dev": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
