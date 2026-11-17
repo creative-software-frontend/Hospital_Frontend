@@ -52,9 +52,14 @@ export function errorHandler(
   }
 
   if (err instanceof Prisma.PrismaClientValidationError) {
+    // Surface the underlying reason in non-production so a stale/out-of-sync
+    // database is easy to diagnose instead of a generic message.
+    const detail = !config.isProduction ? err.message : undefined;
     res.status(400).json({
       success: false,
-      message: "Invalid data supplied to the database",
+      message: detail
+        ? `Invalid data supplied to the database: ${detail}`
+        : "Invalid data supplied to the database. Run `npm run setup` or `npx prisma migrate deploy` to sync the database schema.",
       code: "DB_VALIDATION_ERROR",
     } satisfies ErrorResponse);
     return;
@@ -71,7 +76,6 @@ export function errorHandler(
   }
 
   // Unexpected error
-  // eslint-disable-next-line no-console
   console.error("Unhandled error:", err);
 
   res.status(500).json({
