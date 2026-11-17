@@ -46,7 +46,8 @@ next-env.d.ts
 backend/sql/*.sql
 
 # database dumps produced by Settings -> Backup must never be committed
-backend/backups/
+backend/backups/*
+!backend/backups/hospital_management_FRESH_20261117_101616.sql
 backend/storage/
 
 # user-uploaded attachments (doctor/nurse photos, signatures, CVs)
