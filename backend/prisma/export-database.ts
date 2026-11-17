@@ -130,15 +130,16 @@ async function main() {
   console.log("[3/5] Updating .gitignore to track the new dump...");
   const gitignorePath = resolve(projectRoot, ".gitignore");
   let gi = readFileSync(gitignorePath, "utf8");
-  // Remove any previous FRESH exception lines
+  // Remove any previous FRESH exception lines (handle both LF and CRLF)
+  const eol = gi.includes("\r\n") ? "\r\n" : "\n";
   gi = gi
-    .split("\n")
+    .split(/\r?\n/)
     .filter((line) => !/hospital_management_FRESH_.*\.sql/.test(line))
-    .join("\n");
+    .join(eol);
   // Add the new exception after the backups/* rule
   gi = gi.replace(
-    "backend/backups/*\n",
-    `backend/backups/*\n!backend/backups/${dumpName}\n`,
+    `backend/backups/*${eol}`,
+    `backend/backups/*${eol}!backend/backups/${dumpName}${eol}`,
   );
   writeFileSync(gitignorePath, gi);
   console.log("  .gitignore updated.");
