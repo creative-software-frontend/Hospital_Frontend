@@ -84,7 +84,7 @@ export const Sidebar = ({
             <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 news-scroll">
                 {/* General Group */}
                 <div>
-                    <div className="text-[11px] font-bold tracking-wider text-[var(--muted)] uppercase mb-3 px-2">General</div>
+                    <div className="text-base font-bold tracking-wider text-[var(--muted)] uppercase mb-3 px-2">General</div>
 
                     {permissions.canViewOverview && (
                         <button onClick={() => { setActiveSection("overview"); setSelectedFeature(null); }}
@@ -148,7 +148,7 @@ export const Sidebar = ({
                                                 >
                                                     <Icon className="w-4 h-4 shrink-0" />
                                                 </div>
-                                                <span className="text-xs font-semibold truncate text-left">
+                                                <span className="text-lg font-semibold truncate text-left">
                                                     {feat.englishTitle}
                                                 </span>
                                             </div>
@@ -173,7 +173,7 @@ export const Sidebar = ({
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => toggleGroup(groupKey)}
-                                                                    className="w-full flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-[var(--primary-dark)] hover:bg-[var(--primary-soft)]/25 transition-colors cursor-pointer"
+                                                                    className="w-full flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-lg text-base font-bold text-[var(--primary-dark)] hover:bg-[var(--primary-soft)]/25 transition-colors cursor-pointer"
                                                                 >
                                                                     <div className="flex items-center gap-2.5 overflow-hidden">
                                                                         <SubIcon className="w-3 h-3 shrink-0 text-[var(--primary)]" />
@@ -194,7 +194,7 @@ export const Sidebar = ({
                                                                                 <div
                                                                                     key={cIdx}
                                                                                     onClick={() => handleSelectSubFeature(feat, child)}
-                                                                                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer text-[11px] font-medium transition-all duration-200 ${
+                                                                                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer text-base font-medium transition-all duration-200 ${
                                                                                         isSubActive
                                                                                             ? "bg-[var(--primary)]/10 text-[var(--primary-dark)] pl-4"
                                                                                             : "text-[var(--muted)] hover:bg-[var(--primary)]/10 hover:text-[var(--primary-dark)] hover:pl-4"
@@ -216,7 +216,7 @@ export const Sidebar = ({
                                                         <div
                                                             key={sIdx}
                                                             onClick={() => sub.id && handleSelectSubFeature(feat, sub)}
-                                                            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer text-[11px] font-medium transition-all duration-200 ${
+                                                            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer text-base font-medium transition-all duration-200 ${
                                                                 sub.id && isSubActive
                                                                     ? "bg-[var(--primary)]/10 text-[var(--primary-dark)] pl-4"
                                                                     : "text-[var(--muted)] hover:bg-[var(--primary)]/10 hover:text-[var(--primary-dark)] hover:pl-4"
