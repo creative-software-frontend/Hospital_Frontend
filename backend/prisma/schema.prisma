@@ -207,6 +207,8 @@ model Branch {
   wards                     Ward[]
   floors                    Floor[]
   employees                 Employee[]
+  employeeAttendances       EmployeeAttendance[]
+  employeeEvaluations       EmployeeEvaluation[]
   invoices                  Invoice[]
   payments                  Payment[]
   warehouses                Warehouse[]
@@ -298,6 +300,7 @@ model User {
   recordedPatientVitals PatientVital[]             @relation("PatientVitalRecordedBy")
   recordedMedications   MedicationAdministration[] @relation("MedicationAdministrationRecordedBy")
   recordedBedTransfers  BedTransfer[]              @relation("BedTransferCreatedBy")
+  evaluatedEmployees    EmployeeEvaluation[]       @relation("EmployeeEvaluationEvaluator")
 
   @@index([branchId])
   @@index([email])
@@ -1797,6 +1800,48 @@ model ShiftType {
   nurses       Nurse[]
 }
 
+model EmployeeEvaluation {
+  id          Int      @id @default(autoincrement())
+  branchId    Int
+  employeeId  Int
+  evaluatorId Int?
+  date        DateTime @db.Date
+  rating      Int      @default(0)
+  comments    String?  @db.VarChar(1000)
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  branch    Branch   @relation(fields: [branchId], references: [id])
+  employee  Employee @relation(fields: [employeeId], references: [id])
+  evaluator User?    @relation("EmployeeEvaluationEvaluator", fields: [evaluatorId], references: [id])
+
+  @@index([branchId])
+  @@index([employeeId])
+  @@index([date])
+}
+
+model EmployeeAttendance {
+  id           Int      @id @default(autoincrement())
+  branchId     Int
+  employeeId   Int
+  date         DateTime @db.Date
+  status       String   @default("PRESENT")
+  checkInTime  String?
+  checkOutTime String?
+  notes        String?  @db.VarChar(500)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  branch   Branch   @relation(fields: [branchId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([branchId, employeeId, date])
+  @@index([branchId])
+  @@index([employeeId])
+  @@index([date])
+}
+
 model Employee {
   id               Int             @id @default(autoincrement())
   userId           Int?            @unique
@@ -1823,12 +1868,14 @@ model Employee {
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
-  user              User?         @relation(fields: [userId], references: [id])
-  branch            Branch?       @relation(fields: [branchId], references: [id])
-  employeeType      EmployeeType? @relation(fields: [employeeTypeId], references: [id])
-  designation       Designation?  @relation(fields: [designationId], references: [id])
-  department        Department?   @relation(fields: [departmentId], references: [id])
+  user              User?                @relation(fields: [userId], references: [id])
+  branch            Branch?              @relation(fields: [branchId], references: [id])
+  employeeType      EmployeeType?        @relation(fields: [employeeTypeId], references: [id])
+  designation       Designation?         @relation(fields: [designationId], references: [id])
+  department        Department?          @relation(fields: [departmentId], references: [id])
   managedWarehouses Warehouse[]
+  attendances       EmployeeAttendance[]
+  evaluations       EmployeeEvaluation[]
 
   @@unique([branchId, employeeCode])
   @@index([branchId])

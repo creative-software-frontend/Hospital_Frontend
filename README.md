@@ -87,6 +87,7 @@ The seed creates one login per role, all sharing the same password (default
 | Pathologist | `pathologist@hospital.com` |
 | Radiologist | `radiologist@hospital.com` |
 | Accountant | `accountant@hospital.com` |
+| Employee | `employee@hospital.com` |
 
 Recreate or reset them any time with `npm run seed:demo --prefix backend`.
 

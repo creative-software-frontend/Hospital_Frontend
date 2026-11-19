@@ -2535,6 +2535,149 @@ export const doctorAttendanceApi = {
     }),
 };
 
+export type EmployeeAttendanceStatus = "PRESENT" | "ABSENT" | "LATE" | "HALF_DAY" | "ON_LEAVE";
+
+export interface EmployeeAttendanceRecord {
+  id: number;
+  branchId: number;
+  employeeId: number;
+  date: string;
+  status: EmployeeAttendanceStatus;
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  employee?: { id: number; name: string; employeeCode: string };
+}
+
+export interface EmployeeAttendanceListQuery {
+  page?: number;
+  limit?: number;
+  employeeId?: number;
+  date?: string;
+  from?: string;
+  to?: string;
+  status?: EmployeeAttendanceStatus;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+}
+
+export interface CreateEmployeeAttendanceInput {
+  employeeId: number;
+  date: string;
+  status?: EmployeeAttendanceStatus;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
+  notes?: string | null;
+}
+
+export interface UpdateEmployeeAttendanceInput {
+  status?: EmployeeAttendanceStatus;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
+  notes?: string | null;
+}
+
+export interface BulkEmployeeAttendanceInput {
+  date: string;
+  entries: Array<{
+    employeeId: number;
+    status: EmployeeAttendanceStatus;
+    checkInTime?: string | null;
+    checkOutTime?: string | null;
+    notes?: string | null;
+  }>;
+}
+
+export const employeeAttendanceApi = {
+  list: (query: EmployeeAttendanceListQuery = {}) =>
+    rawRequest<{ data: EmployeeAttendanceRecord[]; pagination: PaginationMeta }>(
+      `/employee-attendances${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+  get: (id: number) => request<EmployeeAttendanceRecord>(`/employee-attendances/${id}`),
+  forDate: (date: string) =>
+    request<Array<{ employee: { id: number; name: string; employeeCode: string }; attendance: EmployeeAttendanceRecord | null }>>(
+      `/employee-attendances/for-date?date=${encodeURIComponent(date)}`,
+    ),
+  create: (input: CreateEmployeeAttendanceInput) =>
+    request<EmployeeAttendanceRecord>("/employee-attendances", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  update: (id: number, input: UpdateEmployeeAttendanceInput) =>
+    request<EmployeeAttendanceRecord>(`/employee-attendances/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  remove: (id: number) =>
+    request<{ message: string }>(`/employee-attendances/${id}`, { method: "DELETE" }),
+  bulk: (input: BulkEmployeeAttendanceInput) =>
+    request<EmployeeAttendanceRecord[]>("/employee-attendances/bulk", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+};
+
+export interface EmployeeEvaluationRecord {
+  id: number;
+  branchId: number;
+  employeeId: number;
+  evaluatorId: number | null;
+  date: string;
+  rating: number;
+  comments: string | null;
+  status: "active" | "inactive";
+  createdAt: string;
+  updatedAt: string;
+  employee?: { id: number; name: string; employeeCode: string };
+  evaluator?: { id: number; name: string } | null;
+}
+
+export interface EmployeeEvaluationListQuery {
+  page?: number;
+  limit?: number;
+  employeeId?: number;
+  from?: string;
+  to?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+}
+
+export interface CreateEmployeeEvaluationInput {
+  employeeId: number;
+  date: string;
+  rating?: number;
+  comments?: string | null;
+  status?: "active" | "inactive";
+}
+
+export interface UpdateEmployeeEvaluationInput {
+  rating?: number;
+  comments?: string | null;
+  status?: "active" | "inactive";
+}
+
+export const employeeEvaluationApi = {
+  list: (query: EmployeeEvaluationListQuery = {}) =>
+    rawRequest<{ data: EmployeeEvaluationRecord[]; pagination: PaginationMeta }>(
+      `/employee-evaluations${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+  get: (id: number) => request<EmployeeEvaluationRecord>(`/employee-evaluations/${id}`),
+  create: (input: CreateEmployeeEvaluationInput) =>
+    request<EmployeeEvaluationRecord>("/employee-evaluations", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  update: (id: number, input: UpdateEmployeeEvaluationInput) =>
+    request<EmployeeEvaluationRecord>(`/employee-evaluations/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  remove: (id: number) =>
+    request<{ message: string }>(`/employee-evaluations/${id}`, { method: "DELETE" }),
+};
+
 export interface NursingNoteRecord {
   id: number;
   branchId: number;
@@ -2941,6 +3084,45 @@ export const shiftTypeApi = {
       method: "PATCH",
       body: JSON.stringify(input),
     }),
+};
+
+export type LeaveTypeStatus = "active" | "inactive";
+
+export interface LeaveTypeRecord {
+  id: number;
+  name: string;
+  daysAllowed: number;
+  paid: boolean;
+  status: LeaveTypeStatus;
+}
+
+export interface CreateLeaveTypeInput {
+  name: string;
+  daysAllowed?: number;
+  paid?: boolean;
+  status?: LeaveTypeStatus;
+}
+
+export type UpdateLeaveTypeInput = Partial<CreateLeaveTypeInput>;
+
+export const leaveTypeApi = {
+  list: (query: { search?: string; status?: LeaveTypeStatus } = {}) =>
+    request<{ leaveTypes: LeaveTypeRecord[] }>(
+      `/leave-types${qs(query as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+  get: (id: number) => request<{ leaveType: LeaveTypeRecord }>(`/leave-types/${id}`),
+  create: (input: CreateLeaveTypeInput) =>
+    request<{ leaveType: LeaveTypeRecord }>("/leave-types", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  update: (id: number, input: UpdateLeaveTypeInput) =>
+    request<{ leaveType: LeaveTypeRecord }>(`/leave-types/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  remove: (id: number) =>
+    request<{ message: string }>(`/leave-types/${id}`, { method: "DELETE" }),
 };
 
 export interface ServiceCategoryRecord {

@@ -16,6 +16,7 @@ export const BACKEND_ROLE_TO_USER_ROLE: Record<string, UserRole> = {
   ACCOUNTANT: "accountant",
   RECEPTIONIST: "receptionist",
   NURSE: "nurse",
+  EMPLOYEE: "employee",
 };
 
 /**
