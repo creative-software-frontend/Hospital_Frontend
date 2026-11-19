@@ -16,6 +16,7 @@ const demoAccounts = [ // ggshield:ignore
   { role: "Doctor", email: "doctor@hospital.com", password: DEMO_PASSWORD }, // ggshield:ignore
   { role: "Receptionist", email: "receptionist@hospital.com", password: DEMO_PASSWORD }, // ggshield:ignore
   { role: "Nurse", email: "nurse@hospital.com", password: DEMO_PASSWORD }, // ggshield:ignore
+  { role: "Employee", email: "employee@hospital.com", password: DEMO_PASSWORD }, // ggshield:ignore
   { role: "Pharmacist", email: "pharmacist@hospital.com", password: DEMO_PASSWORD }, // ggshield:ignore
   { role: "Pathologist", email: "pathologist@hospital.com", password: DEMO_PASSWORD }, // ggshield:ignore
   { role: "Radiologist", email: "radiologist@hospital.com", password: DEMO_PASSWORD }, // ggshield:ignore

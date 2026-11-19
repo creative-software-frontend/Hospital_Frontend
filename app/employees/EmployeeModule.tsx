@@ -37,6 +37,10 @@ import {
   checkText,
 } from "@/app/lib/formValidation";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
+import { EmployeeAttendancePage } from "@/app/employees/EmployeeAttendancePage";
+import { PayrollManagementPage } from "@/app/employees/PayrollManagementPage";
+import { LeaveManagementPage } from "@/app/employees/LeaveManagementPage";
+import { EmployeeEvaluationPage } from "@/app/employees/EmployeeEvaluationPage";
 import { GENDER_OPTIONS, BLOOD_GROUP_OPTIONS, MARITAL_STATUS_OPTIONS } from "@/app/patients/constants";
 import { useMasterDataOptions } from "@/app/lib/useMasterData";
 import { FileUploadField } from "@/app/components/FileUploadField";
@@ -116,6 +120,18 @@ export function EmployeeModule({
   if (pageKey === "shift-management") {
     return <ShiftManagementPage onBack={() => onNavigate?.(null)} />;
   }
+  if (pageKey === "attendance-management") {
+    return <EmployeeAttendancePage onBack={() => onNavigate?.(null)} />;
+  }
+  if (pageKey === "payroll-management") {
+    return <PayrollManagementPage onBack={() => onNavigate?.(null)} />;
+  }
+  if (pageKey === "leave-management") {
+    return <LeaveManagementPage onBack={() => onNavigate?.(null)} />;
+  }
+  if (pageKey === "employee-evaluation") {
+    return <EmployeeEvaluationPage onBack={() => onNavigate?.(null)} />;
+  }
 
   const totalPages = pagination?.totalPages ?? 1;
   const safePage = Math.min(page, Math.max(1, totalPages));
@@ -172,6 +188,14 @@ export function EmployeeModule({
 
   return (
     <div className="space-y-6">
+      {pageKey && onNavigate && (
+        <button
+          onClick={() => onNavigate(null)}
+          className="text-xs font-bold text-[var(--primary)] hover:text-[var(--primary-dark)] cursor-pointer"
+        >
+          ← Back to Human Resource Management
+        </button>
+      )}
       <div className="card p-5 rounded-2xl border border-[var(--border)] shadow-sm">
         <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">
           Human Resource Management

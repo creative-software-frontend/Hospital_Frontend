@@ -85,12 +85,12 @@ export const keyFeatures: Feature[] = [
         englishTitle: "Human Resource Management",
         icon: FiBriefcase,
         subFeatures: [
-            { label: "Employee Management", icon: FiUsers },
-            { label: "Attendance Management", icon: FiCheckSquare },
-            { label: "Payroll Management", icon: FiDollarSign },
-            { label: "Leave Management", icon: FiCalendar },
+            { label: "Employee Management", icon: FiUsers, id: "employee-management" },
+            { label: "Attendance Management", icon: FiCheckSquare, id: "attendance-management" },
+            { label: "Payroll Management", icon: FiDollarSign, id: "payroll-management" },
+            { label: "Leave Management", icon: FiCalendar, id: "leave-management" },
             { label: "Shift Management", icon: FiClock, id: "shift-management" },
-            { label: "Employee Evaluation", icon: FiStar },
+            { label: "Employee Evaluation", icon: FiStar, id: "employee-evaluation" },
         ]
     },
     {

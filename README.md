@@ -55,6 +55,24 @@ npm run dev                  # frontend -> http://localhost:3000
 npm run dev --prefix backend # backend  -> http://localhost:5000
 ```
 
+## Daily workflow after pulling updates
+
+```bash
+git pull
+npm run migration
+npm run dev
+```
+
+- `git pull` — fetches the latest code and (if any) migration files and database dumps.
+- `npm run migration` — applies pending Prisma migrations (`prisma migrate deploy`) and
+  regenerates the Prisma client (`prisma generate`). Runs in `backend/`. Preserves all
+  existing data; never resets or seeds. Stops on the first error.
+- `npm run dev` — starts the **frontend** dev server only. Start the backend separately:
+  `cd backend && npm run dev`.
+
+Run `npm run migration` whenever you pull, even if you are not sure whether
+migrations changed — it is a no-op when nothing is pending.
+
 The seed creates one login per role, all sharing the same password (default
 `12345678`), and the login page's **Quick demo access** buttons fill them in:
 
@@ -69,6 +87,7 @@ The seed creates one login per role, all sharing the same password (default
 | Pathologist | `pathologist@hospital.com` |
 | Radiologist | `radiologist@hospital.com` |
 | Accountant | `accountant@hospital.com` |
+| Employee | `employee@hospital.com` |
 
 Recreate or reset them any time with `npm run seed:demo --prefix backend`.
 

@@ -21,7 +21,8 @@ export type DemoRole =
   | "RADIOLOGIST"
   | "ACCOUNTANT"
   | "RECEPTIONIST"
-  | "NURSE";
+  | "NURSE"
+  | "EMPLOYEE";
 
 export interface DemoAccount {
   role: DemoRole;
@@ -45,6 +46,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
   { role: "ACCOUNTANT", name: "Demo Accountant", email: "accountant@hospital.com", username: "accountant1" },
   { role: "RECEPTIONIST", name: "Demo Receptionist", email: "receptionist@hospital.com", username: "receptionist1" },
   { role: "NURSE", name: "Demo Nurse", email: "nurse@hospital.com", username: "nurse1" },
+  { role: "EMPLOYEE", name: "Demo Employee", email: "employee@hospital.com", username: "employee1" },
 ];
 
 /**

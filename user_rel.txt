@@ -1,0 +1,11 @@
+  branch                Branch?                    @relation(fields: [branchId], references: [id])
+  userRoles             UserRole[]
+  auditLogs             AuditLog[]
+  loginAttempts         LoginAttempt[]
+  sessions              UserSession[]
+  doctor                Doctor?
+  nurse                 Nurse?
+  employee              Employee?
+  uploadedDocuments     PatientDocument[]
+  createdNursingNotes   NursingNote[]              @relation("NursingNoteCreatedBy")
+  recordedPatientVitals PatientVit

@@ -1,5 +1,5 @@
 // config/roleConfig.ts
-export type UserRole = 'super-admin' | 'admin' | 'doctor' | 'pharmacist' | 'pathologist' | 'radiologist' | 'accountant' | 'receptionist' | 'nurse';
+export type UserRole = 'super-admin' | 'admin' | 'doctor' | 'pharmacist' | 'pathologist' | 'radiologist' | 'accountant' | 'receptionist' | 'nurse' | 'employee';
 
 /** All staff/admin roles that can access the dashboard area. */
 export const STAFF_ROLES: UserRole[] = [
@@ -12,6 +12,7 @@ export const STAFF_ROLES: UserRole[] = [
     'accountant',
     'receptionist',
     'nurse',
+    'employee',
 ];
 
 export const isStaffRole = (role: string | null | undefined): role is UserRole =>
@@ -90,6 +91,13 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermission> = {
         canViewRolePermissions: false,
         accessibleFeatureIds: [5, 13], // IPD + Nursing
     },
+    'employee': {
+        role: 'employee',
+        label: 'Employee',
+        canViewOverview: true,
+        canViewRolePermissions: false,
+        accessibleFeatureIds: [16], // Human Resource Management
+    },
 };
 
 // Role-specific dashboard stats configuration
@@ -151,6 +159,10 @@ export const getRoleStats = (role: UserRole): RoleStat[] => {
             { label: "Admitted Patients", value: "38", icon: "FiUsers" },
             { label: "Medicine Rounds", value: "15 Pending", icon: "FiClock" },
             { label: "Available Beds", value: "12", icon: "FiLayers" },
+        ],
+    'employee': [
+            { label: "Total Employees", value: "0", icon: "FiUsers" },
+            { label: "Active Employees", value: "0", icon: "FiCheckSquare" },
         ],
     };
 
