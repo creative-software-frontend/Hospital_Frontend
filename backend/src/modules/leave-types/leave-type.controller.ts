@@ -4,7 +4,7 @@ import { created, success } from "../../utils/apiResponse";
 import * as leaveTypeService from "./leave-type.service";
 
 export const listLeaveTypes = asyncHandler(async (req: Request, res: Response) => {
-  const leaveTypes = await leaveTypeService.listLeaveTypes(req.query as never);
+  const leaveTypes = await leaveTypeService.listLeaveTypes((req.validatedQuery ?? req.query) as never);
   success(res, { leaveTypes });
 });
 

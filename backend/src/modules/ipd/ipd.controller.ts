@@ -8,7 +8,7 @@ export const createAdmission = asyncHandler(async (req, res) => {
 });
 
 export const listAdmissions = asyncHandler(async (req, res) => {
-  const result = await ipdService.listAdmissions(req.user!, req.query as never);
+  const result = await ipdService.listAdmissions(req.user!, (req.validatedQuery ?? req.query) as never);
   return success(res, result);
 });
 

@@ -31,7 +31,7 @@ export const createPatient = asyncHandler(async (req: Request, res: Response) =>
  * GET /api/patients
  */
 export const listPatients = asyncHandler(async (req: Request, res: Response) => {
-  const result = await patientService.listPatients(req.user!, req.query as never);
+  const result = await patientService.listPatients(req.user!, (req.validatedQuery ?? req.query) as never);
   list(res, result.data, result.pagination);
 });
 

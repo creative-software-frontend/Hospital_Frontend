@@ -5,7 +5,7 @@ import { success, list, created } from "../../utils/apiResponse";
 
 export const listChambers = asyncHandler(async (req: Request, res: Response) => {
   const actor = req.user!;
-  const result = await chamberService.listChambers(actor, req.query as never);
+  const result = await chamberService.listChambers(actor, (req.validatedQuery ?? req.query) as never);
   list(res, result.data, result.pagination);
 });
 

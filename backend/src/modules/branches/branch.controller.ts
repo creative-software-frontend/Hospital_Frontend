@@ -4,7 +4,7 @@ import { success, list } from "../../utils/apiResponse";
 import * as branchService from "./branch.service";
 
 export const listBranches = asyncHandler(async (req: Request, res: Response) => {
-  const result = await branchService.listBranches(req.user!, req.query as never);
+  const result = await branchService.listBranches(req.user!, (req.validatedQuery ?? req.query) as never);
   list(res, result.data, result.pagination);
 });
 

@@ -7,7 +7,7 @@ import * as userService from "./user.service";
  * Lists users (branch-scoped, filterable, paginated).
  */
 export const listUsers = asyncHandler(async (req: Request, res: Response) => {
-  const result = await userService.listUsers(req.user!, req.query as never);
+  const result = await userService.listUsers(req.user!, (req.validatedQuery ?? req.query) as never);
   res.status(200).json({ success: true, data: result });
 });
 

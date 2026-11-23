@@ -256,3 +256,30 @@ body {
   color: var(--primary);
   font-weight: bold;
 }
+
+/* Print: hide app chrome (sidebar, header, modals) so only the content prints. */
+@page {
+  margin: 0;
+}
+
+@media print {
+  aside,
+  header,
+  nav,
+  [role="banner"],
+  [data-print-hidden="true"] {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+}

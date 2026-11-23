@@ -112,7 +112,6 @@ function PrescriptionBlock({ prescription }: { prescription: TreatmentRecordPres
                   <span className="block text-[10px] text-[var(--muted)]">
                     {[
                       item.medicine?.genericName,
-                      item.medicine?.unit?.shortName ?? item.medicine?.unit?.name,
                       item.medicine?.medicineCode,
                     ]
                       .filter(Boolean)

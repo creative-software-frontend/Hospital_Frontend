@@ -6,7 +6,7 @@ import * as backupService from "./backup.service";
 import { BusinessRuleError } from "../../errors/ApiError";
 
 export const listSystemSettings = asyncHandler(async (req: Request, res: Response) => {
-  const settings = await settingService.listSystemSettings(req.user!, req.query as never);
+  const settings = await settingService.listSystemSettings(req.user!, (req.validatedQuery ?? req.query) as never);
   success(res, { settings });
 });
 

@@ -1,5 +1,5 @@
 import { asyncHandler } from "../../utils/asyncHandler";
-import { success, created } from "../../utils/apiResponse";
+import { success, created, list } from "../../utils/apiResponse";
 import * as pharmacyService from "./pharmacy.service";
 
 export const createMedicine = asyncHandler(async (req, res) => {
@@ -8,8 +8,8 @@ export const createMedicine = asyncHandler(async (req, res) => {
 });
 
 export const listMedicines = asyncHandler(async (req, res) => {
-  const result = await pharmacyService.listMedicines(req.user!, req.query as never);
-  return success(res, result);
+  const result = await pharmacyService.listMedicines(req.user!, (req.validatedQuery ?? req.query) as never);
+  return list(res, result.data, result.pagination);
 });
 
 export const createBatch = asyncHandler(async (req, res) => {

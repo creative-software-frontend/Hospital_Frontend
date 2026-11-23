@@ -97,7 +97,6 @@ const PATIENT_DETAIL_SELECT: Prisma.PatientSelect = {
       prescriptions: true,
       labOrders: true,
       invoices: true,
-      payments: true,
     },
   },
 };
@@ -1144,7 +1143,6 @@ const TREATMENT_RECORD_SELECT = {
               medicineCode: true,
               genericName: true,
               brandName: true,
-              unit: { select: { name: true, shortName: true } },
             },
           },
         },

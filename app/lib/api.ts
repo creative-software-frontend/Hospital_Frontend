@@ -133,6 +133,38 @@ export interface PatientDetail extends PatientListRecord {
   };
 }
 
+export interface MedicineRecord {
+  id: number;
+  branchId: number;
+  genericName: string;
+  brandName: string | null;
+  medicineCode: string;
+  barcode: string | null;
+  manufacturer: string | null;
+  reorderLevel: number;
+  status: string;
+  totalStock?: number;
+  isLowStock?: boolean;
+}
+
+export interface MedicineListResult {
+  data: MedicineRecord[];
+  pagination: PaginationMeta;
+}
+
+export interface MedicineListQuery {
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export const medicineApi = {
+  list: (query: MedicineListQuery = {}) =>
+    rawRequest<MedicineListResult>(
+      `/pharmacy/medicines${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+};
+
 export interface PatientListResult {
   data: PatientListRecord[];
   pagination: PaginationMeta;
@@ -906,7 +938,6 @@ export interface TreatmentRecordPrescriptionItem {
     medicineCode: string;
     genericName: string;
     brandName: string | null;
-    unit: { name: string; shortName: string } | null;
   } | null;
 }
 

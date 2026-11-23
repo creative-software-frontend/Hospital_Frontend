@@ -39,6 +39,7 @@ import { DoctorModule } from "@/app/doctors/DoctorModule";
 import { AppointmentModule } from "@/app/appointments/AppointmentModule";
 import { BedWardModule } from "@/app/bedward/BedWardModule";
 import { BedTransferPage } from "@/app/bedward/BedTransferPage";
+import { DigitalPrescriptionPage } from "@/app/prescriptions/DigitalPrescriptionPage";
 import { CabinManagementPage } from "@/app/bedward/CabinManagementPage";
 import { WardStatusMonitoringPage } from "@/app/bedward/WardStatusMonitoringPage";
 import { OccupancyReportPage } from "@/app/bedward/OccupancyReportPage";
@@ -551,7 +552,7 @@ ${tbody}
                 setSelectedFeature(null);
                 setSelectedSubFeatureId(null);
               }}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] hover:text-[var(--primary-dark)] transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] hover:text-[var(--primary-dark)] transition-colors cursor-pointer print:hidden"
             >
               <span>← Back to Dashboard Overview</span>
             </button>
@@ -622,6 +623,8 @@ ${tbody}
                   onNavigate={setSelectedSubFeatureId}
                 />
               )
+            ) : selectedFeature.id === 8 && selectedSubFeatureId === "digital-prescription" ? (
+              <DigitalPrescriptionPage onBack={() => setSelectedSubFeatureId(null)} />
             ) : (
             <div className="grid grid-cols-1 gap-6">
               <div className="card p-6 rounded-2xl shadow-sm space-y-6 w-full">

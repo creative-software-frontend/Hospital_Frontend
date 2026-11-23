@@ -47,7 +47,7 @@ backend/sql/*.sql
 
 # database dumps produced by Settings -> Backup must never be committed
 backend/backups/*
-!backend/backups/hospital_management_FRESH_20261117_104335.sql
+!backend/backups/hospital_management_FRESH_20261123_165547.sql
 backend/storage/
 
 # user-uploaded attachments (doctor/nurse photos, signatures, CVs)

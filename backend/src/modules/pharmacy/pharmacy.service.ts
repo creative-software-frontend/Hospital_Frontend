@@ -53,14 +53,8 @@ export async function createMedicine(actor: AuthUser, input: CreateMedicineInput
       medicineCode: input.medicineCode,
       barcode: input.barcode ?? null,
       manufacturer: input.manufacturer ?? null,
-      categoryId: input.categoryId ?? null,
-      unitId: input.unitId ?? null,
       reorderLevel: input.reorderLevel ?? 10,
       createdById: actor.id,
-    },
-    include: {
-      category: true,
-      unit: true,
     },
   });
 
@@ -99,8 +93,8 @@ export async function listMedicines(actor: AuthUser, query: ListMedicinesQuery) 
     ];
   }
 
-  const page = query.page ?? 1;
-  const limit = query.limit ?? 20;
+  const page = Number(query.page ?? 1);
+  const limit = Number(query.limit ?? 20);
 
   const [total, medicines] = await Promise.all([
     prisma.medicine.count({ where }),
@@ -110,8 +104,6 @@ export async function listMedicines(actor: AuthUser, query: ListMedicinesQuery) 
       take: limit,
       orderBy: { genericName: "asc" },
       include: {
-        category: true,
-        unit: true,
         batches: {
           where: { status: "active" },
           select: {
@@ -152,7 +144,7 @@ export async function listMedicines(actor: AuthUser, query: ListMedicinesQuery) 
       page,
       limit,
       total: query.lowStockOnly ? filteredItems.length : total,
-      pages: Math.ceil((query.lowStockOnly ? filteredItems.length : total) / limit),
+      totalPages: Math.ceil((query.lowStockOnly ? filteredItems.length : total) / limit),
     },
     effectiveConfig: config,
   };

@@ -6,8 +6,7 @@ export const createMedicineSchema = z.object({
   medicineCode: z.string().min(1, "Medicine code is required"),
   barcode: z.string().optional(),
   manufacturer: z.string().optional(),
-  categoryId: z.number().int().positive().optional(),
-  unitId: z.number().int().positive().optional(),
+
   reorderLevel: z.number().int().min(0).default(10),
 });
 export type CreateMedicineInput = z.infer<typeof createMedicineSchema>;

@@ -4,7 +4,7 @@ import { success, created, list } from "../../utils/apiResponse";
 import * as serviceService from "./service.service";
 
 export const listServices = asyncHandler(async (req: Request, res: Response) => {
-  const result = await serviceService.listServices(req.user!, req.query as never);
+  const result = await serviceService.listServices(req.user!, (req.validatedQuery ?? req.query) as never);
   list(res, result.data, result.pagination);
 });
 

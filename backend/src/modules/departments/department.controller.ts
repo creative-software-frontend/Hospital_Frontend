@@ -4,7 +4,7 @@ import { success, created, list } from "../../utils/apiResponse";
 import * as departmentService from "./department.service";
 
 export const listDepartments = asyncHandler(async (req: Request, res: Response) => {
-  const result = await departmentService.listDepartments(req.user!, req.query as never);
+  const result = await departmentService.listDepartments(req.user!, (req.validatedQuery ?? req.query) as never);
   list(res, result.data, result.pagination);
 });
 

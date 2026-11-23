@@ -285,6 +285,7 @@ const MATRIX: Record<RoleKey, string[]> = {
     "appointment:read", "appointment:update",
     "medicalRecord:read", "medicalRecord:create", "medicalRecord:update",
     "prescription:read", "prescription:create", "prescription:update",
+    "medicine:read",
     "admission:read", "bed:read", "labOrder:read", "labOrder:update",
     "imaging:read", "imaging:create", "imaging:update",
     "department:read", "doctor:read", "service:read",

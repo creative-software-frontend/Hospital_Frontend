@@ -9,7 +9,7 @@ export const listShiftTypes = asyncHandler(async (_req: Request, res: Response) 
 });
 
 export const listNurses = asyncHandler(async (req: Request, res: Response) => {
-  const result = await nurseService.listNurses(req.user!, req.query as never);
+  const result = await nurseService.listNurses(req.user!, (req.validatedQuery ?? req.query) as never);
   list(res, result.data, result.pagination);
 });
 

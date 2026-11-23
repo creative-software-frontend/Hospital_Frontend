@@ -14,7 +14,7 @@ export const nextCode = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const listEmployees = asyncHandler(async (req: Request, res: Response) => {
-  const result = await employeeService.listEmployees(req.user!, req.query as never);
+  const result = await employeeService.listEmployees(req.user!, (req.validatedQuery ?? req.query) as never);
   list(res, result.data, result.pagination);
 });
 

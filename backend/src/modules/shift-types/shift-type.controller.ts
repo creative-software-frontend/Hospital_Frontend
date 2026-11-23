@@ -4,7 +4,7 @@ import { created, success } from "../../utils/apiResponse";
 import * as shiftTypeService from "./shift-type.service";
 
 export const listShiftTypes = asyncHandler(async (req: Request, res: Response) => {
-  const shiftTypes = await shiftTypeService.listShiftTypes(req.query as never);
+  const shiftTypes = await shiftTypeService.listShiftTypes((req.validatedQuery ?? req.query) as never);
   success(res, { shiftTypes });
 });
 

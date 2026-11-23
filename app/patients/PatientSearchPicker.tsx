@@ -18,6 +18,7 @@ export function PatientSearchPicker({
   eyebrow = "Patient Management",
   placeholder = "Search patient by name, code, phone, email...",
   refreshToken = 0,
+  clearOnSelect = false,
 }: {
   title: string;
   description: string;
@@ -28,6 +29,8 @@ export function PatientSearchPicker({
   placeholder?: string;
   /** Bump to re-run the search (e.g. after a save or delete). */
   refreshToken?: number;
+  /** When true, clears the search box and results after a patient is picked. */
+  clearOnSelect?: boolean;
 }) {
   const [search, setSearch] = useState("");
   const [term, setTerm] = useState("");
@@ -130,7 +133,14 @@ export function PatientSearchPicker({
             results.map((p) => (
               <button
                 key={p.id}
-                onClick={() => onPick(p)}
+                onClick={() => {
+                  onPick(p);
+                  if (clearOnSelect) {
+                    setSearch("");
+                    setTerm("");
+                    setResults([]);
+                  }
+                }}
                 className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-left transition-colors cursor-pointer hover:bg-[var(--primary-soft)]/15 ${
                   selectedId === p.id ? "bg-[var(--primary-soft)]/20" : ""
                 }`}
