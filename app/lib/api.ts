@@ -3871,6 +3871,69 @@ export const admissionApi = {
 };
 
 /* ---------------------------------------------------------------------------
+ * Suppliers (legacy `suppliers` table, shared across branches)
+ * ------------------------------------------------------------------------- */
+
+export interface SupplierRecord {
+  id: number;
+  name: string;
+  mobile: string | null;
+  address: string | null;
+  balance: number | null;
+  status: ActiveStatus;
+  shop: number;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface SupplierListQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: ActiveStatus;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+}
+
+export interface SupplierListResult {
+  data: SupplierRecord[];
+  pagination: PaginationMeta;
+}
+
+export interface CreateSupplierInput {
+  name: string;
+  mobile?: string | null;
+  address?: string | null;
+  balance?: number | null;
+  status?: ActiveStatus;
+  shop?: number;
+}
+
+export type UpdateSupplierInput = Partial<CreateSupplierInput>;
+
+export const supplierApi = {
+  list: (query: SupplierListQuery = {}) =>
+    rawRequest<SupplierListResult>(
+      `/suppliers${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+  get: (id: number) => request<SupplierRecord>(`/suppliers/${id}`),
+  create: (input: CreateSupplierInput) =>
+    request<SupplierRecord>("/suppliers", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  update: (id: number, input: UpdateSupplierInput) =>
+    request<SupplierRecord>(`/suppliers/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  remove: (id: number) =>
+    request<{ id: number; name: string; message: string }>(`/suppliers/${id}`, {
+      method: "DELETE",
+    }),
+};
+
+/* ---------------------------------------------------------------------------
  * Shared error/date helpers
  * ------------------------------------------------------------------------- */
 

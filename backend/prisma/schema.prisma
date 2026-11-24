@@ -1253,6 +1253,23 @@ model StockMovement {
   @@index([createdAt])
 }
 
+/// Legacy supplier list imported into the `suppliers` table. It has no branch
+/// column, so records are shared across the installation.
+model Supplier {
+  id        BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  name      String    @db.VarChar(255)
+  mobile    String?   @db.VarChar(255)
+  address   String?   @db.Text
+  balance   Float?    @db.Double
+  /// 1 = active, 0 = inactive (matches the imported tinyint column).
+  status    Int       @default(1) @db.TinyInt
+  shop      Int
+  createdAt DateTime? @map("created_at")
+  updatedAt DateTime? @map("updated_at")
+
+  @@map("suppliers")
+}
+
 // ============================================================
 // LABORATORY
 // ============================================================

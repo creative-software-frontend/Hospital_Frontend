@@ -121,6 +121,9 @@ const PERMISSIONS: PermissionDef[] = [
   { module: "stockMovement", action: "create", description: "Record stock movements" },
   { module: "inventory", action: "read", description: "View inventory" },
   { module: "inventory", action: "update", description: "Update inventory" },
+  { module: "supplier", action: "read", description: "View suppliers" },
+  { module: "supplier", action: "create", description: "Add suppliers" },
+  { module: "supplier", action: "update", description: "Update suppliers" },
 
   // Laboratory
   { module: "labTest", action: "read", description: "View lab tests" },
@@ -265,6 +268,7 @@ const MATRIX: Record<RoleKey, string[]> = {
     "ipdSetting:read", "ipdSetting:update",
     "prescriptionSetting:read", "prescriptionSetting:update",
     "pharmacySetting:read", "pharmacySetting:update",
+    "supplier:read", "supplier:create", "supplier:update",
     "labSetting:read", "labSetting:update",
     "billingSetting:read", "billingSetting:update",
     "accountingSetting:read", "accountingSetting:update",
@@ -295,6 +299,7 @@ const MATRIX: Record<RoleKey, string[]> = {
     "localizationSetting:read",
     "auth:read", "medicine:read", "medicine:update", "prescription:read",
     "stockMovement:read", "stockMovement:create", "inventory:read", "inventory:update",
+    "supplier:read", "supplier:create", "supplier:update",
   ],
   PATHOLOGIST: [
     "localizationSetting:read",

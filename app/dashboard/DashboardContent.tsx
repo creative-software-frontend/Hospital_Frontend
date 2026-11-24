@@ -42,6 +42,7 @@ import { BedTransferPage } from "@/app/bedward/BedTransferPage";
 import { DigitalPrescriptionPage } from "@/app/prescriptions/DigitalPrescriptionPage";
 import { DoctorSignaturePage } from "@/app/prescriptions/DoctorSignaturePage";
 import { MedicineRecommendationPage } from "@/app/prescriptions/MedicineRecommendationPage";
+import { SupplierManagementPage } from "@/app/pharmacy/SupplierManagementPage";
 import { CabinManagementPage } from "@/app/bedward/CabinManagementPage";
 import { WardStatusMonitoringPage } from "@/app/bedward/WardStatusMonitoringPage";
 import { OccupancyReportPage } from "@/app/bedward/OccupancyReportPage";
@@ -631,6 +632,8 @@ ${tbody}
               <DoctorSignaturePage onBack={() => setSelectedSubFeatureId(null)} />
             ) : selectedFeature.id === 8 && selectedSubFeatureId === "medicine-recommendation" ? (
               <MedicineRecommendationPage onBack={() => setSelectedSubFeatureId(null)} />
+            ) : selectedFeature.id === 9 && selectedSubFeatureId === "supplier-management" ? (
+              <SupplierManagementPage onBack={() => setSelectedSubFeatureId(null)} />
             ) : (
             <div className="grid grid-cols-1 gap-6">
               <div className="card p-6 rounded-2xl shadow-sm space-y-6 w-full">

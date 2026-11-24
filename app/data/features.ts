@@ -174,7 +174,7 @@ export const keyFeatures: Feature[] = [
             { label: "Stock Management", icon: FiPackage },
             { label: "Expiry Tracking", icon: FiClock },
             { label: "Batch Management", icon: FiTag },
-            { label: "Supplier Management", icon: FiUsers },
+            { label: "Supplier Management", icon: FiUsers, id: "supplier-management" },
             { label: "Barcode System", icon: FiToggleRight },
             { label: "Pharmacy Billing", icon: FiCreditCard },
         ]
