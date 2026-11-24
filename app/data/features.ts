@@ -156,8 +156,8 @@ export const keyFeatures: Feature[] = [
         icon: FiFileText,
         subFeatures: [
             { label: "Digital Prescription", icon: FiEdit, id: "digital-prescription" },
-            { label: "Doctor Signature", icon: FiCheckSquare },
-            { label: "Medicine Recommendation", icon: FiBriefcase },
+            { label: "Doctor Signature", icon: FiCheckSquare, id: "doctor-signature" },
+            { label: "Medicine Recommendation", icon: FiBriefcase, id: "medicine-recommendation" },
             { label: "Diagnosis Notes", icon: FiClipboard },
             { label: "Follow-up Instructions", icon: FiCalendar },
             { label: "Print Prescription", icon: FiPrinter },
