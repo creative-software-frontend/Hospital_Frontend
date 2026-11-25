@@ -158,8 +158,8 @@ export const keyFeatures: Feature[] = [
             { label: "Digital Prescription", icon: FiEdit, id: "digital-prescription" },
             { label: "Doctor Signature", icon: FiCheckSquare, id: "doctor-signature" },
             { label: "Medicine Recommendation", icon: FiBriefcase, id: "medicine-recommendation" },
-            { label: "Diagnosis Notes", icon: FiClipboard },
-            { label: "Follow-up Instructions", icon: FiCalendar },
+            { label: "Diagnosis Notes", icon: FiClipboard, id: "diagnosis-notes" },
+            { label: "Follow-up Instructions", icon: FiCalendar, id: "follow-up-instructions" },
             { label: "Print Prescription", icon: FiPrinter },
             { label: "Email Prescription", icon: FiMail },
         ]
