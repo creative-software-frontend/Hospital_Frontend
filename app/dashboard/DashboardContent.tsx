@@ -41,9 +41,8 @@ import { BedWardModule } from "@/app/bedward/BedWardModule";
 import { BedTransferPage } from "@/app/bedward/BedTransferPage";
 import { DigitalPrescriptionPage } from "@/app/prescriptions/DigitalPrescriptionPage";
 import { DoctorSignaturePage } from "@/app/prescriptions/DoctorSignaturePage";
-import { MedicineRecommendationPage } from "@/app/prescriptions/MedicineRecommendationPage";
-import { DiagnosisNotesPage } from "@/app/prescriptions/DiagnosisNotesPage";
-import { FollowUpInstructionsPage } from "@/app/prescriptions/FollowUpInstructionsPage";
+import { MedicinePage } from "@/app/prescriptions/MedicinePage";
+import { PrescriptionOptionsPage } from "@/app/prescriptions/PrescriptionOptionsPage";
 import { SupplierManagementPage } from "@/app/pharmacy/SupplierManagementPage";
 import { CabinManagementPage } from "@/app/bedward/CabinManagementPage";
 import { WardStatusMonitoringPage } from "@/app/bedward/WardStatusMonitoringPage";
@@ -632,12 +631,10 @@ ${tbody}
               <DigitalPrescriptionPage onBack={() => setSelectedSubFeatureId(null)} />
             ) : selectedFeature.id === 8 && selectedSubFeatureId === "doctor-signature" ? (
               <DoctorSignaturePage onBack={() => setSelectedSubFeatureId(null)} />
-            ) : selectedFeature.id === 8 && selectedSubFeatureId === "medicine-recommendation" ? (
-              <MedicineRecommendationPage onBack={() => setSelectedSubFeatureId(null)} />
-            ) : selectedFeature.id === 8 && selectedSubFeatureId === "diagnosis-notes" ? (
-              <DiagnosisNotesPage onBack={() => setSelectedSubFeatureId(null)} />
-            ) : selectedFeature.id === 8 && selectedSubFeatureId === "follow-up-instructions" ? (
-              <FollowUpInstructionsPage onBack={() => setSelectedSubFeatureId(null)} />
+            ) : selectedFeature.id === 8 && selectedSubFeatureId === "medicine" ? (
+              <MedicinePage onBack={() => setSelectedSubFeatureId(null)} />
+            ) : selectedFeature.id === 8 && selectedSubFeatureId === "prescription-options" ? (
+              <PrescriptionOptionsPage onBack={() => setSelectedSubFeatureId(null)} />
             ) : selectedFeature.id === 9 && selectedSubFeatureId === "supplier-management" ? (
               <SupplierManagementPage onBack={() => setSelectedSubFeatureId(null)} />
             ) : (

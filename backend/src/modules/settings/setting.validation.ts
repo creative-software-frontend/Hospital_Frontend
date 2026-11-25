@@ -191,6 +191,33 @@ export type UpdateOpdSettingInput = z.infer<typeof updateOpdSettingSchema>;
 export type UpdateIpdSettingInput = z.infer<typeof updateIpdSettingSchema>;
 export type UpdatePrescriptionSettingInput = z.infer<typeof updatePrescriptionSettingSchema>;
 
+/* Prescription option lists (Settings → Prescription Options) --------------- */
+
+export const PRESCRIPTION_OPTION_CATEGORIES = [
+  "ILLNESS",
+  "DURATION",
+  "BP",
+  "TEMPERATURE",
+  "PULSE",
+  "RESPIRATION",
+  "SPO2",
+  "WEIGHT",
+  "FREQUENCY",
+  "INSTRUCTION",
+  "ADVICE",
+] as const;
+
+export const createPrescriptionOptionSchema = z.object({
+  category: z.enum(PRESCRIPTION_OPTION_CATEGORIES),
+  label: z.string().trim().min(1, "Label is required").max(255, "Label must be at most 255 characters"),
+  sortOrder: z.number().int().min(0).optional(),
+});
+export type CreatePrescriptionOptionInput = z.infer<typeof createPrescriptionOptionSchema>;
+
+export const prescriptionOptionIdSchema = z.object({
+  id: z.coerce.number().int().positive(),
+});
+
 /* Pharmacy settings (Settings → Pharmacy Settings) ------------------------- */
 
 export const updatePharmacySettingSchema = z.object({

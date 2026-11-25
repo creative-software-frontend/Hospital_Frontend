@@ -1,33 +1,49 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { FiArrowLeft, FiSearch, FiTrash2, FiPlus } from "react-icons/fi";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { FiPlus, FiRefreshCcw, FiSearch, FiX } from "react-icons/fi";
 import {
   errorMessage,
   medicineApi,
   type MedicineRecord,
+  type PaginationMeta,
 } from "@/app/lib/api";
+import { addError, checkName, checkText } from "@/app/lib/formValidation";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
 
-const ILLNESSES = ["Fever", "Cold", "Cough", "Headache", "Body ache", "Stomach pain", "Diarrhea", "Vomiting", "Allergy", "Skin rash", "Joint pain", "Chest pain", "Breathing difficulty", "Weakness", "Dizziness", "Diabetes", "Hypertension", "Asthma", "Anemia", "Migraine"];
+const PAGE_SIZE = 10;
 
-interface RecItem {
-  id: number;
-  medicine: MedicineRecord;
-  dosage: string;
-  frequency: string;
-  duration: string;
-  instruction: string;
-}
+const EMPTY_FORM = {
+  genericName: "",
+  brandName: "",
+  medicineCode: "",
+  barcode: "",
+  manufacturer: "",
+  reorderLevel: "10",
+};
 
-const INPUT = "w-full h-9 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15";
+type FormState = typeof EMPTY_FORM;
 
-export function MedicineRecommendationPage({ onBack }: { onBack?: () => void }) {
-  const [selectedIllness, setSelectedIllness] = useState("");
-  const [items, setItems] = useState<RecItem[]>([]);
-  const [medSearch, setMedSearch] = useState("");
-  const [medResults, setMedResults] = useState<MedicineRecord[]>([]);
-  const [medSearching, setMedSearching] = useState(false);
+const INPUT = "w-full h-10 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15";
+
+export function MedicinePage({ onBack }: { onBack?: () => void }) {
+  const [medicines, setMedicines] = useState<MedicineRecord[]>([]);
+  const [pagination, setPagination] = useState<PaginationMeta>({
+    page: 1,
+    limit: PAGE_SIZE,
+    total: 0,
+    totalPages: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const toastId = useRef(0);
 
@@ -37,43 +53,87 @@ export function MedicineRecommendationPage({ onBack }: { onBack?: () => void }) 
   }, []);
 
   useEffect(() => {
-    if (!medSearch.trim()) {
-      setMedResults([]);
-      return;
-    }
-    const timer = setTimeout(async () => {
-      setMedSearching(true);
-      try {
-        const result = await medicineApi.list({ search: medSearch.trim(), limit: 15 });
-        setMedResults(result.data);
-      } catch (err) {
-        notify("error", err instanceof Error ? err.message : "Could not search medicines");
-      } finally {
-        setMedSearching(false);
-      }
-    }, 300);
+    const timer = setTimeout(() => setAppliedSearch(search.trim()), 300);
     return () => clearTimeout(timer);
-  }, [medSearch, notify]);
+  }, [search]);
 
-  const addMedicine = (med: MedicineRecord) => {
-    if (items.some((r) => r.medicine.id === med.id)) {
-      notify("error", "Medicine already added.");
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const result = await medicineApi.list({
+          search: appliedSearch || undefined,
+          page,
+          limit: PAGE_SIZE,
+        });
+        setMedicines(result.data);
+        setPagination(result.pagination);
+      } catch (err) {
+        setError(errorMessage(err));
+      } finally {
+        setLoading(false);
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [appliedSearch, page, reloadKey]);
+
+  const setField = (key: keyof FormState, value: string) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setFieldErrors((prev) => ({ ...prev, [key]: "" }));
+  };
+
+  const openModal = () => {
+    setForm(EMPTY_FORM);
+    setFieldErrors({});
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    if (!saving) setModalOpen(false);
+  };
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const errors: Record<string, string> = {};
+    addError(errors, "genericName", checkName(form.genericName));
+    if (!form.medicineCode.trim()) {
+      addError(errors, "medicineCode", "Medicine code is required.");
+    } else {
+      addError(errors, "medicineCode", checkText(form.medicineCode, 191, "Medicine code"));
+    }
+    addError(errors, "brandName", checkText(form.brandName, 191, "Brand name"));
+    addError(errors, "barcode", checkText(form.barcode, 191, "Barcode"));
+    addError(errors, "manufacturer", checkText(form.manufacturer, 191, "Manufacturer"));
+    const reorderLevel = Number(form.reorderLevel);
+    if (!Number.isInteger(reorderLevel) || reorderLevel < 0) {
+      errors.reorderLevel = "Enter a whole number of 0 or more.";
+    }
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
-    setItems((prev) => [
-      ...prev,
-      { id: Date.now(), medicine: med, dosage: "", frequency: "", duration: "", instruction: "" },
-    ]);
-    setMedSearch("");
-    setMedResults([]);
-  };
 
-  const updateItem = (id: number, patch: Partial<RecItem>) => {
-    setItems((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-  };
-
-  const removeItem = (id: number) => {
-    setItems((prev) => prev.filter((r) => r.id !== id));
+    setSaving(true);
+    try {
+      const optional = (value: string) => value.trim() || undefined;
+      await medicineApi.create({
+        genericName: form.genericName.trim(),
+        medicineCode: form.medicineCode.trim(),
+        brandName: optional(form.brandName),
+        barcode: optional(form.barcode),
+        manufacturer: optional(form.manufacturer),
+        reorderLevel,
+      });
+      notify("success", "Medicine added to the database.");
+      setModalOpen(false);
+      setPage(1);
+      setReloadKey((key) => key + 1);
+    } catch (err) {
+      notify("error", errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -81,132 +141,247 @@ export function MedicineRecommendationPage({ onBack }: { onBack?: () => void }) 
       {onBack && (
         <button
           onClick={onBack}
-          className="text-xs font-bold text-[var(--primary)] hover:text-[var(--primary-dark)] cursor-pointer"
+          className="text-xs font-bold text-[var(--primary)] hover:text-[var(--primary-dark)] cursor-pointer print:hidden"
         >
           ← Back to Prescription Management
         </button>
       )}
+
       <div className="card p-5 rounded-2xl border border-[var(--border)] shadow-sm">
         <span className="text-[10px] uppercase font-extrabold tracking-widest text-[var(--muted)]">
           Prescription Management
         </span>
-        <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">Medicine Recommendation</h3>
+        <h3 className="font-black text-xl text-[var(--primary-dark)] mt-0.5">Medicine</h3>
         <p className="text-xs text-[var(--muted)] mt-1.5">
-          Build a recommended medicine list for a diagnosis. Search medicines from the database.
+          All medicines saved in the database. Add a new medicine from here.
         </p>
       </div>
 
-      <div className="card p-6 rounded-2xl border border-[var(--border)] shadow-sm space-y-4 max-w-4xl mx-auto">
-        <div>
-          <label className="text-xs font-bold text-[var(--muted)] block mb-1.5">Diagnosis / Illness</label>
-          <select
-            value={selectedIllness}
-            onChange={(e) => setSelectedIllness(e.target.value)}
-            className={`${INPUT} max-w-md`}
-          >
-            <option value="">— Select diagnosis —</option>
-            {ILLNESSES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {selectedIllness && (
-          <p className="text-xs text-[var(--muted)]">
-            Recommended medicines for: <span className="font-bold text-[var(--text)]">{selectedIllness}</span>
-          </p>
-        )}
-
-        <div>
-          <label className="text-xs font-bold text-[var(--muted)] block mb-1.5">Search & add medicines</label>
-          <div className="relative mb-3">
+      <div className="card p-5 rounded-2xl border border-[var(--border)] shadow-sm space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[12rem] max-w-md">
             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)] w-3.5 h-3.5" />
             <input
-              value={medSearch}
-              onChange={(e) => setMedSearch(e.target.value)}
-              placeholder="Search medicine by name..."
-              className="pl-9 w-full max-w-md h-10 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              placeholder="Search name, code, brand or barcode..."
+              className="pl-9 w-full h-10 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--primary)]"
             />
-            {medSearching && (
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-[var(--muted)]">Searching…</span>
-            )}
-            {medResults.length > 0 && (
-              <div className="absolute z-10 mt-1 w-full max-h-48 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-lg">
-                {medResults.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => addMedicine(m)}
-                    className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--primary-soft)]/20 cursor-pointer border-b border-[var(--border)] last:border-0"
-                  >
-                    <span className="font-bold text-[var(--primary-dark)]">{m.genericName}</span>
-                    {m.brandName && <span className="text-[var(--muted)]"> ({m.brandName})</span>}
-                    <span className="text-[10px] text-[var(--muted)] ml-2">{m.medicineCode}</span>
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
+          <button
+            type="button"
+            onClick={() => setReloadKey((key) => key + 1)}
+            className="h-10 w-10 rounded-xl border border-[var(--border)] text-[var(--muted)] cursor-pointer hover:bg-[var(--primary-soft)]/30"
+            title="Refresh"
+          >
+            <FiRefreshCcw className="mx-auto w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={openModal}
+            className="h-10 inline-flex items-center gap-2 px-4 rounded-xl text-xs font-bold text-white cursor-pointer"
+            style={{ background: "var(--primary)" }}
+          >
+            <FiPlus className="w-3.5 h-3.5" />
+            Add Medicine
+          </button>
+        </div>
 
-          {items.length === 0 ? (
-            <p className="text-sm text-[var(--muted)] py-2">No medicines added. Search above to add.</p>
-          ) : (
+        {error && <p className="text-sm alert-error">{error}</p>}
+
+        {loading ? (
+          <p className="text-xs text-[var(--muted)] py-4">Loading medicines…</p>
+        ) : medicines.length === 0 ? (
+          <p className="text-xs text-[var(--muted)] py-4">
+            {appliedSearch ? "No medicines match this search." : "No medicines in the database yet. Use “Add Medicine” to create one."}
+          </p>
+        ) : (
+          <>
             <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="bg-[var(--bg)] text-[var(--muted)]">
-                    <th className="text-left py-2.5 px-3">#</th>
-                    <th className="text-left py-2.5 px-3">Medicine</th>
-                    <th className="text-left py-2.5 px-3">Dosage</th>
-                    <th className="text-left py-2.5 px-3">Frequency</th>
-                    <th className="text-left py-2.5 px-3">Duration</th>
-                    <th className="text-left py-2.5 px-3">Instruction</th>
-                    <th className="text-left py-2.5 px-3"></th>
+                    <th className="text-left py-2.5 px-3">Code</th>
+                    <th className="text-left py-2.5 px-3">Generic name</th>
+                    <th className="text-left py-2.5 px-3">Brand</th>
+                    <th className="text-left py-2.5 px-3">Manufacturer</th>
+                    <th className="text-left py-2.5 px-3">Barcode</th>
+                    <th className="text-left py-2.5 px-3">Reorder level</th>
+                    <th className="text-left py-2.5 px-3">Stock</th>
+                    <th className="text-left py-2.5 px-3">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((item, idx) => (
-                    <tr key={item.id} className="border-t border-[var(--border)]">
-                      <td className="py-2 px-3 text-[var(--muted)]">{idx + 1}</td>
+                  {medicines.map((medicine) => (
+                    <tr key={medicine.id} className="border-t border-[var(--border)]">
+                      <td className="py-2 px-3 font-bold text-[var(--primary-dark)]">{medicine.medicineCode}</td>
+                      <td className="py-2 px-3 font-semibold text-[var(--text)]">{medicine.genericName}</td>
+                      <td className="py-2 px-3 text-[var(--muted)]">{medicine.brandName ?? "—"}</td>
+                      <td className="py-2 px-3 text-[var(--muted)]">{medicine.manufacturer ?? "—"}</td>
+                      <td className="py-2 px-3 text-[var(--muted)]">{medicine.barcode ?? "—"}</td>
+                      <td className="py-2 px-3 text-[var(--muted)]">{medicine.reorderLevel}</td>
                       <td className="py-2 px-3">
-                        <span className="font-bold text-[var(--primary-dark)]">{item.medicine.genericName}</span>
-                        {item.medicine.brandName && (
-                          <span className="block text-[10px] text-[var(--muted)]">{item.medicine.brandName}</span>
-                        )}
+                        <span className={medicine.isLowStock ? "text-rose-600 font-bold" : "text-[var(--text)]"}>
+                          {typeof medicine.totalStock === "number" ? medicine.totalStock : "—"}
+                          {medicine.isLowStock && " · Low"}
+                        </span>
                       </td>
                       <td className="py-2 px-3">
-                        <input value={item.dosage} onChange={(e) => updateItem(item.id, { dosage: e.target.value })} placeholder="500mg" className={INPUT} />
-                      </td>
-                      <td className="py-2 px-3">
-                        <input value={item.frequency} onChange={(e) => updateItem(item.id, { frequency: e.target.value })} placeholder="1+0+1" className={INPUT} />
-                      </td>
-                      <td className="py-2 px-3">
-                        <input value={item.duration} onChange={(e) => updateItem(item.id, { duration: e.target.value })} placeholder="7 days" className={INPUT} />
-                      </td>
-                      <td className="py-2 px-3">
-                        <input value={item.instruction} onChange={(e) => updateItem(item.id, { instruction: e.target.value })} placeholder="after food" className={INPUT} />
-                      </td>
-                      <td className="py-2 px-3">
-                        <button
-                          type="button"
-                          onClick={() => removeItem(item.id)}
-                          className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors"
-                        >
-                          <FiTrash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${medicine.status === "active" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+                          {medicine.status}
+                        </span>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          )}
-        </div>
+            {pagination.totalPages > 1 && (
+              <div className="flex items-center justify-between pt-2 text-[11px] text-[var(--muted)]">
+                <span>
+                  Page {pagination.page} of {pagination.totalPages} · {pagination.total} medicines
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={page <= 1}
+                    onClick={() => setPage((value) => Math.max(1, value - 1))}
+                    className="px-3 py-1.5 rounded-lg border border-[var(--border)] cursor-pointer disabled:opacity-40"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    disabled={page >= pagination.totalPages}
+                    onClick={() => setPage((value) => value + 1)}
+                    className="px-3 py-1.5 rounded-lg border border-[var(--border)] cursor-pointer disabled:opacity-40"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
-      <ToastViewport toasts={toasts} onDismiss={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} />
+      {modalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 print:hidden"
+          onClick={closeModal}
+        >
+          <div
+            className="w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl bg-[var(--card)] p-5 shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] pb-3">
+              <div>
+                <h4 className="font-black text-lg text-[var(--primary-dark)]">Add Medicine</h4>
+                <p className="text-xs text-[var(--muted)]">Saves the medicine to this branch&apos;s database.</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeModal}
+                className="p-1.5 rounded-lg text-[var(--muted)] hover:bg-[var(--bg)] cursor-pointer"
+                aria-label="Close"
+              >
+                <FiX className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={submit} className="mt-4 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
+                <div>
+                  <label className="text-xs font-bold text-[var(--muted)] block mb-1.5">Generic name *</label>
+                  <input
+                    value={form.genericName}
+                    onChange={(event) => setField("genericName", event.target.value)}
+                    placeholder="e.g. Paracetamol"
+                    className={INPUT}
+                  />
+                  {fieldErrors.genericName && <p className="text-[10px] font-bold text-rose-500 mt-1">{fieldErrors.genericName}</p>}
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-[var(--muted)] block mb-1.5">Medicine code *</label>
+                  <input
+                    value={form.medicineCode}
+                    onChange={(event) => setField("medicineCode", event.target.value)}
+                    placeholder="e.g. MED-000001"
+                    className={INPUT}
+                  />
+                  {fieldErrors.medicineCode && <p className="text-[10px] font-bold text-rose-500 mt-1">{fieldErrors.medicineCode}</p>}
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-[var(--muted)] block mb-1.5">Brand name</label>
+                  <input
+                    value={form.brandName}
+                    onChange={(event) => setField("brandName", event.target.value)}
+                    placeholder="Optional"
+                    className={INPUT}
+                  />
+                  {fieldErrors.brandName && <p className="text-[10px] font-bold text-rose-500 mt-1">{fieldErrors.brandName}</p>}
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-[var(--muted)] block mb-1.5">Manufacturer</label>
+                  <input
+                    value={form.manufacturer}
+                    onChange={(event) => setField("manufacturer", event.target.value)}
+                    placeholder="Optional"
+                    className={INPUT}
+                  />
+                  {fieldErrors.manufacturer && <p className="text-[10px] font-bold text-rose-500 mt-1">{fieldErrors.manufacturer}</p>}
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-[var(--muted)] block mb-1.5">Barcode</label>
+                  <input
+                    value={form.barcode}
+                    onChange={(event) => setField("barcode", event.target.value)}
+                    placeholder="Optional"
+                    className={INPUT}
+                  />
+                  {fieldErrors.barcode && <p className="text-[10px] font-bold text-rose-500 mt-1">{fieldErrors.barcode}</p>}
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-[var(--muted)] block mb-1.5">Reorder level</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={form.reorderLevel}
+                    onChange={(event) => setField("reorderLevel", event.target.value)}
+                    className={INPUT}
+                  />
+                  {fieldErrors.reorderLevel && <p className="text-[10px] font-bold text-rose-500 mt-1">{fieldErrors.reorderLevel}</p>}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 border-t border-[var(--border)] pt-4">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  disabled={saving}
+                  className="h-10 px-4 rounded-xl border border-[var(--border)] text-xs font-bold text-[var(--muted)] cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="h-10 px-5 rounded-xl text-xs font-bold text-white cursor-pointer disabled:opacity-50"
+                  style={{ background: "var(--primary)" }}
+                >
+                  {saving ? "Saving…" : "Save Medicine"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <ToastViewport toasts={toasts} onDismiss={(id) => setToasts((prev) => prev.filter((item) => item.id !== id))} />
     </div>
   );
 }

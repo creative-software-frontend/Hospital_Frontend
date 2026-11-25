@@ -6,9 +6,12 @@ import {
   doctorApi,
   medicineApi,
   patientApi,
+  settingsApi,
+  errorMessage,
   type DoctorRecord,
   type MedicineRecord,
   type PatientListRecord,
+  type PrescriptionOptionsByCategory,
 } from "@/app/lib/api";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
 
@@ -22,18 +25,19 @@ interface RxItem {
   instruction: string;
 }
 
-const ILLNESSES = ["Fever", "Cold", "Cough", "Headache", "Body ache", "Stomach pain", "Diarrhea", "Vomiting", "Allergy", "Skin rash", "Joint pain", "Chest pain", "Breathing difficulty", "Weakness", "Dizziness", "Diabetes", "Hypertension", "Asthma", "Anemia", "Migraine"];
-
-const BP_OPTIONS = ["90/60", "100/60", "100/70", "110/70", "120/80", "130/80", "130/90", "140/90", "150/90", "160/100"];
-const TEMP_OPTIONS = ["97°F", "98°F", "98.6°F", "99°F", "100°F", "101°F", "102°F", "103°F", "104°F"];
-const PULSE_OPTIONS = ["60", "65", "70", "72", "75", "80", "85", "90", "95", "100", "110", "120"];
-const RESP_OPTIONS = ["12", "14", "16", "18", "20", "22", "24"];
-const SPO2_OPTIONS = ["90%", "92%", "94%", "95%", "96%", "97%", "98%", "99%", "100%"];
-const WEIGHT_OPTIONS = ["40 kg", "45 kg", "50 kg", "55 kg", "60 kg", "65 kg", "70 kg", "75 kg", "80 kg", "85 kg", "90 kg", "95 kg", "100 kg"];
-const DURATION_OPTIONS = ["1 day", "2 days", "3 days", "5 days", "7 days", "10 days", "14 days", "2-3 times", "1 week", "2 weeks"];
-const FREQ_OPTIONS = ["1+0+0", "0+1+0", "0+0+1", "1+0+1", "1+1+0", "0+1+1", "1+1+1", "1+1+1+1"];
-const INSTRUCTION_OPTIONS = ["Before food", "After food", "With food", "Empty stomach", "As directed"];
-const ADVICE_OPTIONS = ["Drink plenty of water", "Take rest", "Avoid spicy food", "Avoid oily food", "Complete the full course", "Follow up if no improvement", "Avoid heavy work", "Maintain hygiene"];
+const EMPTY_OPTIONS: PrescriptionOptionsByCategory = {
+  ILLNESS: [],
+  DURATION: [],
+  BP: [],
+  TEMPERATURE: [],
+  PULSE: [],
+  RESPIRATION: [],
+  SPO2: [],
+  WEIGHT: [],
+  FREQUENCY: [],
+  INSTRUCTION: [],
+  ADVICE: [],
+};
 
 const LEFT_SECTIONS = ["Activity Level", "Complaints", "On Examination", "Past History", "Drug History", "Investigations", "Diagnosis", "Treatment Plan", "Operation Notes"];
 const RIGHT_SECTIONS = ["Physiotherapy", "Advices", "Next Plans", "Hospitalizations"];
@@ -61,6 +65,9 @@ export function DigitalPrescriptionPage({ onBack }: { onBack?: () => void }) {
   const [medSearching, setMedSearching] = useState(false);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const toastId = useRef(0);
+
+  // Option lists loaded from Settings → Prescription Options (branch-scoped).
+  const [options, setOptions] = useState<PrescriptionOptionsByCategory>(EMPTY_OPTIONS);
 
   // Patient search
   const [patientSearch, setPatientSearch] = useState("");
@@ -113,6 +120,32 @@ export function DigitalPrescriptionPage({ onBack }: { onBack?: () => void }) {
       .then((r) => setDoctors(r.data))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      try {
+        const result = await settingsApi.prescriptionOptions.list();
+        setOptions(result.options);
+      } catch (err) {
+        notify("error", errorMessage(err));
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [notify]);
+
+  const labels = (category: keyof PrescriptionOptionsByCategory) =>
+    options[category].map((option) => option.label);
+  const ILLNESSES = labels("ILLNESS");
+  const DURATION_OPTIONS = labels("DURATION");
+  const BP_OPTIONS = labels("BP");
+  const TEMP_OPTIONS = labels("TEMPERATURE");
+  const PULSE_OPTIONS = labels("PULSE");
+  const RESP_OPTIONS = labels("RESPIRATION");
+  const SPO2_OPTIONS = labels("SPO2");
+  const WEIGHT_OPTIONS = labels("WEIGHT");
+  const FREQ_OPTIONS = labels("FREQUENCY");
+  const INSTRUCTION_OPTIONS = labels("INSTRUCTION");
+  const ADVICE_OPTIONS = labels("ADVICE");
 
   // Patient search debounce
   useEffect(() => {
@@ -264,7 +297,7 @@ export function DigitalPrescriptionPage({ onBack }: { onBack?: () => void }) {
   };
 
   return (
-    <div className="space-y-4 max-w-5xl mx-auto">
+    <div className="space-y-4 w-full">
       {onBack && (
         <button onClick={onBack} className="text-sm font-bold text-[var(--primary)] hover:text-[var(--primary-dark)] cursor-pointer print:hidden">
           ← Back to Prescription Management
@@ -918,7 +951,11 @@ export function DigitalPrescriptionPage({ onBack }: { onBack?: () => void }) {
                 ))}
                 {filteredComplaints.length === 0 && (
                   <span className="text-[13px] text-gray-400 italic">
-                    {illnessSearch.trim() ? "No matching illness found." : "All illnesses added."}
+                    {illnessSearch.trim()
+                      ? "No matching illness found."
+                      : ILLNESSES.length === 0
+                        ? "No complaints configured in settings yet."
+                        : "All illnesses added."}
                   </span>
                 )}
               </div>

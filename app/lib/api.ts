@@ -158,11 +158,25 @@ export interface MedicineListQuery {
   limit?: number;
 }
 
+export interface CreateMedicineInput {
+  genericName: string;
+  medicineCode: string;
+  brandName?: string | null;
+  barcode?: string | null;
+  manufacturer?: string | null;
+  reorderLevel?: number;
+}
+
 export const medicineApi = {
   list: (query: MedicineListQuery = {}) =>
     rawRequest<MedicineListResult>(
       `/pharmacy/medicines${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
     ),
+  create: (input: CreateMedicineInput) =>
+    request<MedicineRecord>("/pharmacy/medicines", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 };
 
 export interface PatientListResult {
@@ -1417,6 +1431,38 @@ export interface PrescriptionSetting {
   status: "active" | "inactive";
 }
 
+export const PRESCRIPTION_OPTION_CATEGORIES = [
+  "ILLNESS",
+  "DURATION",
+  "BP",
+  "TEMPERATURE",
+  "PULSE",
+  "RESPIRATION",
+  "SPO2",
+  "WEIGHT",
+  "FREQUENCY",
+  "INSTRUCTION",
+  "ADVICE",
+] as const;
+
+export type PrescriptionOptionCategory = (typeof PRESCRIPTION_OPTION_CATEGORIES)[number];
+
+export interface PrescriptionOptionRecord {
+  id: number;
+  label: string;
+}
+
+export type PrescriptionOptionsByCategory = Record<
+  PrescriptionOptionCategory,
+  PrescriptionOptionRecord[]
+>;
+
+export interface CreatePrescriptionOptionInput {
+  category: PrescriptionOptionCategory;
+  label: string;
+  sortOrder?: number;
+}
+
 export type UpdatePrescriptionSettingInput = {
   showPatientHistory?: boolean;
   showDiagnosis?: boolean;
@@ -2113,6 +2159,27 @@ export const settingsApi = {
       request<{ prescriptionSetting: PrescriptionSetting }>("/settings/prescription", {
         method: "PATCH",
         body: JSON.stringify(input),
+      }),
+  },
+  prescriptionOptions: {
+    list: () =>
+      request<{
+        options: PrescriptionOptionsByCategory;
+        categories: PrescriptionOptionCategory[];
+      }>("/settings/prescription-options"),
+    create: (input: CreatePrescriptionOptionInput) =>
+      request<{
+        option: PrescriptionOptionRecord & {
+          category: PrescriptionOptionCategory;
+          sortOrder: number;
+        };
+      }>("/settings/prescription-options", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    remove: (id: number) =>
+      request<{ message: string }>(`/settings/prescription-options/${id}`, {
+        method: "DELETE",
       }),
   },
   pharmacy: {

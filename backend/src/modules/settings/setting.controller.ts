@@ -75,6 +75,21 @@ export const updatePrescriptionSetting = asyncHandler(async (req: Request, res: 
   success(res, { prescriptionSetting });
 });
 
+export const listPrescriptionOptions = asyncHandler(async (req: Request, res: Response) => {
+  const result = await settingService.listPrescriptionOptions(req.user!);
+  success(res, result);
+});
+
+export const createPrescriptionOption = asyncHandler(async (req: Request, res: Response) => {
+  const option = await settingService.createPrescriptionOption(req.user!, req.body);
+  success(res, { option });
+});
+
+export const deletePrescriptionOption = asyncHandler(async (req: Request, res: Response) => {
+  await settingService.deletePrescriptionOption(req.user!, Number(req.params.id));
+  success(res, { message: "Prescription option removed" });
+});
+
 export const getPharmacySetting = asyncHandler(async (req: Request, res: Response) => {
   const pharmacySetting = await settingService.getPharmacySetting(req.user!);
   success(res, { pharmacySetting });

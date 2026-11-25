@@ -128,6 +128,22 @@ enum PrescriptionStatus {
   CANCELLED
 }
 
+/// Option lists that power the Digital Prescription pickers. Each branch owns
+/// its own rows so an admin can add illnesses, durations, advice, etc.
+enum PrescriptionOptionCategory {
+  ILLNESS
+  DURATION
+  BP
+  TEMPERATURE
+  PULSE
+  RESPIRATION
+  SPO2
+  WEIGHT
+  FREQUENCY
+  INSTRUCTION
+  ADVICE
+}
+
 /// Outcome of a nursing medication round for one prescribed medicine.
 enum MedicationAdministrationStatus {
   GIVEN
@@ -221,6 +237,7 @@ model Branch {
   ipdSettings               IpdSetting[]
   patientSettings           PatientSetting[]
   prescriptionSettings      PrescriptionSetting[]
+  prescriptionOptions       PrescriptionOption[]
   pharmacySettings          PharmacySetting[]
   labSettings               LabSetting[]
   billingSettings           BillingSetting[]
@@ -1724,6 +1741,24 @@ model PrescriptionSetting {
   branch Branch? @relation(fields: [branchId], references: [id])
 
   @@index([branchId])
+}
+
+/// A single configurable option in a Digital Prescription picker.
+model PrescriptionOption {
+  id        Int                        @id @default(autoincrement())
+  branchId  Int
+  category  PrescriptionOptionCategory
+  label     String                     @db.VarChar(255)
+  sortOrder Int                        @default(0)
+  status    String                     @default("active")
+  deletedAt DateTime?
+  createdAt DateTime                   @default(now())
+  updatedAt DateTime                   @updatedAt
+
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@unique([branchId, category, label])
+  @@index([branchId, category, deletedAt])
 }
 
 model PharmacySetting {

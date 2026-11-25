@@ -36,6 +36,8 @@ import {
 } from "../../lib/lookupDelegate";
 import type { LookupRow } from "../../lib/lookupDelegate";
 import type { AuthUser } from "../../types/auth";
+import { PRESCRIPTION_OPTION_CATEGORIES } from "./setting.validation";
+import type { CreatePrescriptionOptionInput } from "./setting.validation";
 import type {
   CreateIntegrationInput,
   CreateMasterDataInput,
@@ -565,6 +567,110 @@ export async function updatePrescriptionSetting(
     branchId: actor.branchId,
   });
   return updated;
+}
+
+/* ---------------------------------------------------------------------------
+ * Prescription option lists
+ * ------------------------------------------------------------------------- */
+
+export type PrescriptionOptionCategory = (typeof PRESCRIPTION_OPTION_CATEGORIES)[number];
+export interface PrescriptionOptionRow {
+  id: number;
+  label: string;
+}
+export type PrescriptionOptionsByCategory = Record<PrescriptionOptionCategory, PrescriptionOptionRow[]>;
+
+export async function listPrescriptionOptions(actor: AuthUser) {
+  const rows = await prisma.prescriptionOption.findMany({
+    where: { branchId: actor.branchId, deletedAt: null, status: "active" },
+    orderBy: [{ category: "asc" }, { sortOrder: "asc" }, { id: "asc" }],
+    select: { id: true, category: true, label: true },
+  });
+
+  const options = Object.fromEntries(
+    PRESCRIPTION_OPTION_CATEGORIES.map((category) => [category, []]),
+  ) as unknown as PrescriptionOptionsByCategory;
+  for (const row of rows) {
+    options[row.category].push({ id: row.id, label: row.label });
+  }
+  return { options, categories: PRESCRIPTION_OPTION_CATEGORIES };
+}
+
+export async function createPrescriptionOption(
+  actor: AuthUser,
+  input: CreatePrescriptionOptionInput,
+) {
+  // The unique key covers (branch, category, label), so a soft-deleted row still
+  // occupies the label. Re-adding it restores that row instead of hitting a
+  // duplicate-key error.
+  const existing = await prisma.prescriptionOption.findFirst({
+    where: {
+      branchId: actor.branchId,
+      category: input.category,
+      label: input.label,
+    },
+    select: { id: true, deletedAt: true },
+  });
+  if (existing && !existing.deletedAt) {
+    throw new BusinessRuleError(`"${input.label}" already exists in this list`);
+  }
+
+  const last = await prisma.prescriptionOption.findFirst({
+    where: { branchId: actor.branchId, category: input.category, deletedAt: null },
+    orderBy: { sortOrder: "desc" },
+    select: { sortOrder: true },
+  });
+  const sortOrder = input.sortOrder ?? (last?.sortOrder ?? 0) + 1;
+
+  const option = existing
+    ? await prisma.prescriptionOption.update({
+        where: { id: existing.id },
+        data: { deletedAt: null, sortOrder },
+        select: { id: true, category: true, label: true, sortOrder: true },
+      })
+    : await prisma.prescriptionOption.create({
+        data: {
+          branchId: actor.branchId,
+          category: input.category,
+          label: input.label,
+          sortOrder,
+        },
+        select: { id: true, category: true, label: true, sortOrder: true },
+      });
+
+  await writeAuditLog({
+    module: "prescriptionSetting",
+    action: "create",
+    tableName: "PrescriptionOption",
+    recordId: String(option.id),
+    newValues: { category: option.category, label: option.label, sortOrder: option.sortOrder },
+    user: actor,
+    branchId: actor.branchId,
+  });
+  return option;
+}
+
+export async function deletePrescriptionOption(actor: AuthUser, id: number) {
+  const option = await prisma.prescriptionOption.findFirst({
+    where: { id, branchId: actor.branchId, deletedAt: null },
+    select: { id: true, category: true, label: true },
+  });
+  if (!option) throw new NotFoundError("Prescription option not found");
+
+  await prisma.prescriptionOption.update({
+    where: { id },
+    data: { deletedAt: new Date() },
+  });
+  await writeAuditLog({
+    module: "prescriptionSetting",
+    action: "delete",
+    tableName: "PrescriptionOption",
+    recordId: String(option.id),
+    oldValues: { category: option.category, label: option.label },
+    user: actor,
+    branchId: actor.branchId,
+  });
+  return option;
 }
 
 /* ---------------------------------------------------------------------------

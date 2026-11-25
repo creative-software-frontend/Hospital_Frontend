@@ -30,6 +30,7 @@ import doctorScheduleRoutes from "../modules/doctor-schedules/doctor-schedule.ro
 import nursingNoteRoutes from "../modules/nursing-notes/nursing-note.routes";
 import patientVitalRoutes from "../modules/patient-vitals/patient-vital.routes";
 import medicationAdministrationRoutes from "../modules/medication-administrations/medication-administration.routes";
+import prescriptionRoutes from "../modules/prescriptions/prescription.routes";
 import shiftTypeRoutes from "../modules/shift-types/shift-type.routes";
 import supplierRoutes from "../modules/suppliers/supplier.routes";
 
@@ -67,6 +68,7 @@ router.use("/doctor-schedules", doctorScheduleRoutes);
 router.use("/nursing-notes", nursingNoteRoutes);
 router.use("/patient-vitals", patientVitalRoutes);
 router.use("/medication-administrations", medicationAdministrationRoutes);
+router.use("/prescriptions", prescriptionRoutes);
 router.use("/shift-types", shiftTypeRoutes);
 router.use("/suppliers", supplierRoutes);
 

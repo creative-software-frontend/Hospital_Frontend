@@ -25,6 +25,8 @@ import {
   updatePatientSettingSchema,
   updatePharmacySettingSchema,
   updatePrescriptionSettingSchema,
+  createPrescriptionOptionSchema,
+  prescriptionOptionIdSchema,
   updatePrintTemplateSchema,
   updateReportSettingSchema,
   updateSecuritySettingSchema,
@@ -135,6 +137,27 @@ router.patch(
   validate({ body: updatePrescriptionSettingSchema }),
   requirePermission("prescriptionSetting", "update"),
   settingController.updatePrescriptionSetting,
+);
+
+// Branch-scoped option lists used by the Digital Prescription pickers
+router.get(
+  "/prescription-options",
+  requirePermission("prescriptionSetting", "read"),
+  settingController.listPrescriptionOptions,
+);
+
+router.post(
+  "/prescription-options",
+  validate({ body: createPrescriptionOptionSchema }),
+  requirePermission("prescriptionSetting", "update"),
+  settingController.createPrescriptionOption,
+);
+
+router.delete(
+  "/prescription-options/:id",
+  validate({ params: prescriptionOptionIdSchema }),
+  requirePermission("prescriptionSetting", "update"),
+  settingController.deletePrescriptionOption,
 );
 
 // Pharmacy settings
