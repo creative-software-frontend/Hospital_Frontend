@@ -6,14 +6,17 @@ import {
   doctorApi,
   medicineApi,
   patientApi,
+  prescriptionApi,
   settingsApi,
   errorMessage,
   type DoctorRecord,
   type MedicineRecord,
   type PatientListRecord,
+  type PrescriptionOptionCategory,
   type PrescriptionOptionsByCategory,
 } from "@/app/lib/api";
 import { ToastViewport, type ToastItem, type ToastKind } from "@/app/patients/Toast";
+import { buildPrescriptionHtml, openPrintWindow, type PrintModel } from "./printPrescriptionHtml";
 
 interface RxItem {
   id: number;
@@ -37,10 +40,34 @@ const EMPTY_OPTIONS: PrescriptionOptionsByCategory = {
   FREQUENCY: [],
   INSTRUCTION: [],
   ADVICE: [],
+  ACTIVITY_LEVEL: [],
+  PAST_HISTORY: [],
+  DRUG_HISTORY: [],
+  INVESTIGATIONS: [],
+  DIAGNOSIS: [],
+  TREATMENT_PLAN: [],
+  OPERATION_NOTES: [],
+  PHYSIOTHERAPY: [],
+  NEXT_PLANS: [],
+  HOSPITALIZATIONS: [],
 };
 
 const LEFT_SECTIONS = ["Activity Level", "Complaints", "On Examination", "Past History", "Drug History", "Investigations", "Diagnosis", "Treatment Plan", "Operation Notes"];
 const RIGHT_SECTIONS = ["Physiotherapy", "Advices", "Next Plans", "Hospitalizations"];
+
+/** Maps a Digital Prescription sidebar section to its Prescription Option category. */
+const SECTION_CATEGORY: Record<string, PrescriptionOptionCategory> = {
+  "Activity Level": "ACTIVITY_LEVEL",
+  "Past History": "PAST_HISTORY",
+  "Drug History": "DRUG_HISTORY",
+  "Investigations": "INVESTIGATIONS",
+  "Diagnosis": "DIAGNOSIS",
+  "Treatment Plan": "TREATMENT_PLAN",
+  "Operation Notes": "OPERATION_NOTES",
+  "Physiotherapy": "PHYSIOTHERAPY",
+  "Next Plans": "NEXT_PLANS",
+  "Hospitalizations": "HOSPITALIZATIONS",
+};
 
 export function DigitalPrescriptionPage({ onBack }: { onBack?: () => void }) {
   const [selectedPatient, setSelectedPatient] = useState<PatientListRecord | null>(null);
@@ -65,6 +92,8 @@ export function DigitalPrescriptionPage({ onBack }: { onBack?: () => void }) {
   const [medSearching, setMedSearching] = useState(false);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const toastId = useRef(0);
+  const [saving, setSaving] = useState(false);
+  const [savedNumber, setSavedNumber] = useState<string | null>(null);
 
   // Option lists loaded from Settings → Prescription Options (branch-scoped).
   const [options, setOptions] = useState<PrescriptionOptionsByCategory>(EMPTY_OPTIONS);
@@ -85,8 +114,12 @@ export function DigitalPrescriptionPage({ onBack }: { onBack?: () => void }) {
     "On Examination": true,
   });
 
-  // Placeholder section text (local UI state only)
-  const [placeholderText, setPlaceholderText] = useState<Record<string, string>>({});
+  // Selected values for the configurable clinical sections (keyed by section label)
+  const [sectionValues, setSectionValues] = useState<Record<string, string[]>>({});
+  // Section picker modal
+  const [sectionModal, setSectionModal] = useState<string | null>(null);
+  const [sectionSearch, setSectionSearch] = useState("");
+  const [sectionCustom, setSectionCustom] = useState("");
 
   // Medicine search toggle
   const [showRxSearch, setShowRxSearch] = useState(false);
@@ -248,6 +281,133 @@ export function DigitalPrescriptionPage({ onBack }: { onBack?: () => void }) {
     document.title = prevTitle;
   };
 
+  const buildLocalModel = (rxNo: string): PrintModel | null => {
+    if (!selectedPatient || !selectedDoctor) return null;
+    const vitals = [
+      { label: "Temperature", value: temp },
+      { label: "Blood Pressure", value: bp ? `${bp}mmHg` : "" },
+      { label: "Pulse", value: pulse },
+      { label: "Respiration", value: resp },
+      { label: "SpO2", value: spo2 },
+      { label: "Weight", value: weight },
+    ].filter((v) => v.value);
+
+    const followUpText = [followUpDate || followUp, followUpAfter ? `After: ${followUpAfter} ${followUpUnit}` : ""]
+      .filter(Boolean)
+      .join(" · ");
+
+    return {
+      doctor: {
+        name: selectedDoctor.name,
+        qualification: selectedDoctor.qualification,
+        specialization: selectedDoctor.specialization,
+        bmdc: selectedDoctor.bmdcRegistrationNo,
+        phone: selectedDoctor.phone,
+        email: selectedDoctor.email,
+        signature: selectedDoctor.signature,
+      },
+      patient: {
+        name: selectedPatient.name,
+        age: selectedPatient.dateOfBirth ? calcAge(selectedPatient.dateOfBirth) : "—",
+        gender: selectedPatient.gender
+          ? selectedPatient.gender.charAt(0) + selectedPatient.gender.slice(1).toLowerCase()
+          : "—",
+        code: selectedPatient.patientCode ?? "—",
+      },
+      date: new Date().toLocaleDateString("en-GB").replace(/\//g, "-"),
+      rxNo,
+      complaints: complaints.map((c) => ({ name: c.name, duration: c.duration || undefined })),
+      vitals,
+      items: rxItems.map((item) => ({
+        title: item.medicine.brandName || item.medicine.genericName,
+        generic: item.medicine.brandName ? item.medicine.genericName : "",
+        frequency: item.frequency,
+        dosage: item.dosage,
+        duration: item.duration,
+        instruction: item.instruction,
+      })),
+      advice: advice || undefined,
+      followUp: followUpText || undefined,
+      referTo: referTo || undefined,
+      leftSections: LEFT_SECTIONS.filter((l) => SECTION_CATEGORY[l])
+        .map((l) => ({ title: l, values: sectionValues[l] ?? [] }))
+        .filter((s) => s.values.length > 0),
+      rightSections: RIGHT_SECTIONS.filter((l) => SECTION_CATEGORY[l])
+        .map((l) => ({ title: l, values: sectionValues[l] ?? [] }))
+        .filter((s) => s.values.length > 0),
+    };
+  };
+
+  const saveAndPrint = async () => {
+    if (!selectedPatient) {
+      notify("error", "Select a patient first.");
+      return;
+    }
+    if (!selectedDoctor) {
+      notify("error", "Select a doctor first.");
+      return;
+    }
+    if (rxItems.length === 0) {
+      notify("error", "Add at least one medicine before saving.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const vitals = [
+        { label: "Temperature", value: temp },
+        { label: "Blood Pressure", value: bp ? `${bp}mmHg` : "" },
+        { label: "Pulse", value: pulse },
+        { label: "Respiration", value: resp },
+        { label: "SpO2", value: spo2 },
+        { label: "Weight", value: weight },
+      ].filter((v) => v.value);
+      const followUpText = [
+        followUpDate || followUp,
+        followUpAfter ? `After: ${followUpAfter} ${followUpUnit}` : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+
+      const created = await prescriptionApi.create({
+        patientId: selectedPatient.id,
+        doctorId: selectedDoctor.id,
+        details: {
+          complaints: complaints.map((c) => ({ name: c.name, duration: c.duration || null })),
+          vitals,
+          advice: advice || null,
+          followUp: followUpText || null,
+          referTo: referTo || null,
+          ACTIVITY_LEVEL: sectionValues["Activity Level"] ?? [],
+          PAST_HISTORY: sectionValues["Past History"] ?? [],
+          DRUG_HISTORY: sectionValues["Drug History"] ?? [],
+          INVESTIGATIONS: sectionValues["Investigations"] ?? [],
+          DIAGNOSIS: sectionValues["Diagnosis"] ?? [],
+          TREATMENT_PLAN: sectionValues["Treatment Plan"] ?? [],
+          OPERATION_NOTES: sectionValues["Operation Notes"] ?? [],
+          PHYSIOTHERAPY: sectionValues["Physiotherapy"] ?? [],
+          NEXT_PLANS: sectionValues["Next Plans"] ?? [],
+          HOSPITALIZATIONS: sectionValues["Hospitalizations"] ?? [],
+        },
+        items: rxItems.map((item) => ({
+          medicineId: item.medicine.id,
+          dosage: item.dosage || null,
+          frequency: item.frequency || null,
+          duration: item.duration || null,
+          instruction: item.instruction || null,
+        })),
+      });
+      setSavedNumber(created.prescriptionNumber);
+      notify("success", `Prescription ${created.prescriptionNumber} saved.`);
+      const model = buildLocalModel(created.prescriptionNumber);
+      const opened = model ? openPrintWindow(buildPrescriptionHtml(model)) : false;
+      if (!opened) setTimeout(() => print(), 200);
+    } catch (err) {
+      notify("error", errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const reset = () => {
     setSelectedPatient(null);
     setPatientSearch("");
@@ -268,9 +428,11 @@ export function DigitalPrescriptionPage({ onBack }: { onBack?: () => void }) {
     setReferTo("");
     setMedSearch("");
     setMedResults([]);
-    setPlaceholderText({});
+    setSectionValues({});
+    setSectionModal(null);
     setShowRxSearch(false);
     setOpenRightSections({});
+    setSavedNumber(null);
   };
 
   const toggleSection = (name: string) => {
@@ -279,6 +441,34 @@ export function DigitalPrescriptionPage({ onBack }: { onBack?: () => void }) {
 
   const toggleRightSection = (name: string) => {
     setOpenRightSections((prev) => ({ ...prev, [name]: !prev[name] }));
+  };
+
+  const toggleSectionValue = (sec: string, value: string) => {
+    setSectionValues((prev) => {
+      const current = prev[sec] ?? [];
+      const next = current.includes(value)
+        ? current.filter((v) => v !== value)
+        : [...current, value];
+      return { ...prev, [sec]: next };
+    });
+  };
+
+  const removeSectionValue = (sec: string, value: string) => {
+    setSectionValues((prev) => ({
+      ...prev,
+      [sec]: (prev[sec] ?? []).filter((v) => v !== value),
+    }));
+  };
+
+  const addSectionCustom = (sec: string) => {
+    const value = sectionCustom.trim();
+    if (!value) return;
+    setSectionValues((prev) => {
+      const current = prev[sec] ?? [];
+      if (current.includes(value)) return prev;
+      return { ...prev, [sec]: [...current, value] };
+    });
+    setSectionCustom("");
   };
 
   const handlePickPatient = (p: PatientListRecord) => {
@@ -401,6 +591,8 @@ export function DigitalPrescriptionPage({ onBack }: { onBack?: () => void }) {
                       setDraftBp(bp); setDraftTemp(temp); setDraftPulse(pulse);
                       setDraftResp(resp); setDraftSpo2(spo2); setDraftWeight(weight);
                       setExpandedVital(null); setVitalSearch(""); setExamModalOpen(true);
+                    } else if (SECTION_CATEGORY[sec]) {
+                      setSectionSearch(""); setSectionCustom(""); setSectionModal(sec);
                     } else {
                       toggleSection(sec);
                     }
@@ -455,15 +647,14 @@ export function DigitalPrescriptionPage({ onBack }: { onBack?: () => void }) {
                     )}
                   </div>
                 )}
-                {openSections[sec] && !["Complaints", "On Examination"].includes(sec) && (
-                  <div className="mt-1 ml-1">
-                    <input
-                      type="text"
-                      value={placeholderText[sec] ?? ""}
-                      onChange={(e) => setPlaceholderText((prev) => ({ ...prev, [sec]: e.target.value }))}
-                      placeholder={`${sec}...`}
-                      className="w-full h-7 rounded border border-gray-300 px-2 text-[13px] outline-none focus:border-teal-600"
-                    />
+                {SECTION_CATEGORY[sec] && (sectionValues[sec]?.length ?? 0) > 0 && (
+                  <div className="mt-1 ml-1 flex flex-wrap gap-1">
+                    {sectionValues[sec].map((v) => (
+                      <span key={v} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-teal-200 bg-teal-50 text-[12px] font-semibold text-gray-800">
+                        {v}
+                        <button type="button" onClick={() => removeSectionValue(sec, v)} className="text-gray-400 hover:text-rose-500 cursor-pointer ml-0.5">×</button>
+                      </span>
+                    ))}
                   </div>
                 )}
               </div>
@@ -565,7 +756,13 @@ export function DigitalPrescriptionPage({ onBack }: { onBack?: () => void }) {
                 <div key={sec}>
                   <button
                     type="button"
-                    onClick={() => toggleRightSection(sec)}
+                    onClick={() => {
+                      if (SECTION_CATEGORY[sec]) {
+                        setSectionSearch(""); setSectionCustom(""); setSectionModal(sec);
+                      } else {
+                        toggleRightSection(sec);
+                      }
+                    }}
                     className="text-sm font-semibold text-gray-600 hover:text-teal-700 hover:underline cursor-pointer flex items-center gap-1"
                   >
                     {sec}
@@ -603,15 +800,14 @@ export function DigitalPrescriptionPage({ onBack }: { onBack?: () => void }) {
                       />
                     </div>
                   )}
-                  {openRightSections[sec] && sec !== "Advices" && (
-                    <div className="mt-1 ml-1">
-                      <input
-                        type="text"
-                        value={placeholderText[sec] ?? ""}
-                        onChange={(e) => setPlaceholderText((prev) => ({ ...prev, [sec]: e.target.value }))}
-                        placeholder={`${sec}...`}
-                        className="w-full h-7 rounded border border-gray-300 px-2 text-[13px] outline-none focus:border-teal-600"
-                      />
+                  {SECTION_CATEGORY[sec] && (sectionValues[sec]?.length ?? 0) > 0 && (
+                    <div className="mt-1 ml-1 flex flex-wrap gap-1">
+                      {sectionValues[sec].map((v) => (
+                        <span key={v} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-teal-200 bg-teal-50 text-[12px] font-semibold text-gray-800">
+                          {v}
+                          <button type="button" onClick={() => removeSectionValue(sec, v)} className="text-gray-400 hover:text-rose-500 cursor-pointer ml-0.5">×</button>
+                        </span>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -678,12 +874,13 @@ export function DigitalPrescriptionPage({ onBack }: { onBack?: () => void }) {
 
               <div className="flex items-center gap-3 pt-3 border-t border-gray-200 mt-4">
                 <button
-                  onClick={print}
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-md text-sm font-bold text-white cursor-pointer"
+                  onClick={saveAndPrint}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-md text-sm font-bold text-white cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                   style={{ background: "#2f7d5b" }}
                 >
                   <FiPrinter className="w-3.5 h-3.5" />
-                  Print Prescription
+                  {saving ? "Saving…" : "Save and Print"}
                 </button>
                 <button
                   onClick={reset}
@@ -751,6 +948,9 @@ export function DigitalPrescriptionPage({ onBack }: { onBack?: () => void }) {
               {` | `}
               <span className="font-bold">ID:</span>{" "}
               {selectedPatient?.patientCode ?? "—"}
+              {` | `}
+              <span className="font-bold">Rx No:</span>{" "}
+              {savedNumber ?? "—"}
             </div>
 
             {/* Body */}
@@ -1103,6 +1303,93 @@ export function DigitalPrescriptionPage({ onBack }: { onBack?: () => void }) {
                   style={{ background: "#2f7d5b" }}
                 >
                   Save
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Section option picker modal */}
+        {sectionModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 print:hidden" onClick={() => setSectionModal(null)}>
+            <div className="bg-white rounded-lg shadow-xl w-[90%] max-w-md p-4" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-base font-bold text-gray-800 mb-2">{sectionModal}</h3>
+              <div className="relative mb-2">
+                <FiSearch className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  value={sectionSearch}
+                  onChange={(e) => setSectionSearch(e.target.value)}
+                  placeholder="Search options..."
+                  className="w-full h-8 rounded border border-gray-300 pl-8 pr-2 text-[13px] outline-none focus:border-teal-600"
+                />
+              </div>
+              <div className="flex flex-wrap gap-1.5 mb-3 max-h-40 overflow-y-auto">
+                {options[SECTION_CATEGORY[sectionModal]]
+                  .map((o) => o.label)
+                  .filter((label) => label.toLowerCase().includes(sectionSearch.trim().toLowerCase()))
+                  .map((label) => {
+                    const selected = (sectionValues[sectionModal] ?? []).includes(label);
+                    return (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => toggleSectionValue(sectionModal, label)}
+                        className={`px-2 py-1 rounded border text-[13px] cursor-pointer ${selected ? "border-teal-500 bg-teal-50 text-teal-700 font-bold" : "border-gray-200 bg-gray-50 text-gray-700 hover:bg-teal-50"}`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                {options[SECTION_CATEGORY[sectionModal]].length === 0 && (
+                  <span className="text-[13px] text-gray-400 italic">
+                    No options configured in Prescription Options yet. Add one below.
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 mb-3">
+                <input
+                  value={sectionCustom}
+                  onChange={(e) => setSectionCustom(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addSectionCustom(sectionModal);
+                    }
+                  }}
+                  placeholder="Type a custom value..."
+                  className="min-w-0 flex-1 h-8 rounded border border-gray-300 px-2 text-[13px] outline-none focus:border-teal-600"
+                />
+                <button
+                  type="button"
+                  onClick={() => addSectionCustom(sectionModal)}
+                  disabled={!sectionCustom.trim()}
+                  className="px-3 py-1.5 rounded text-sm font-bold text-white cursor-pointer disabled:opacity-50"
+                  style={{ background: "#2f7d5b" }}
+                >
+                  Add
+                </button>
+              </div>
+              {(sectionValues[sectionModal]?.length ?? 0) > 0 && (
+                <div className="mb-3">
+                  <p className="text-[13px] text-gray-500 mb-1">Selected:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {sectionValues[sectionModal].map((v) => (
+                      <span key={v} className="inline-flex items-center gap-0.5 px-2 py-1 rounded border border-teal-300 bg-teal-50 text-[12px] font-semibold text-teal-700">
+                        {v}
+                        <button type="button" onClick={() => removeSectionValue(sectionModal, v)} className="text-gray-400 hover:text-rose-500 cursor-pointer ml-0.5">×</button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setSectionModal(null)}
+                  className="px-4 py-1.5 rounded text-sm font-bold text-white cursor-pointer"
+                  style={{ background: "#2f7d5b" }}
+                >
+                  Done
                 </button>
               </div>
             </div>

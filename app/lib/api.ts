@@ -1443,6 +1443,16 @@ export const PRESCRIPTION_OPTION_CATEGORIES = [
   "FREQUENCY",
   "INSTRUCTION",
   "ADVICE",
+  "ACTIVITY_LEVEL",
+  "PAST_HISTORY",
+  "DRUG_HISTORY",
+  "INVESTIGATIONS",
+  "DIAGNOSIS",
+  "TREATMENT_PLAN",
+  "OPERATION_NOTES",
+  "PHYSIOTHERAPY",
+  "NEXT_PLANS",
+  "HOSPITALIZATIONS",
 ] as const;
 
 export type PrescriptionOptionCategory = (typeof PRESCRIPTION_OPTION_CATEGORIES)[number];
@@ -3998,6 +4008,176 @@ export const supplierApi = {
     request<{ id: number; name: string; message: string }>(`/suppliers/${id}`, {
       method: "DELETE",
     }),
+};
+
+/* ---------------------------------------------------------------------------
+ * Prescriptions (Prescription Management)
+ * ------------------------------------------------------------------------- */
+
+/** Mirrors backend `PrescriptionStatus`. */
+export type PrescriptionStatus =
+  | "ACTIVE"
+  | "PARTIALLY_DISPENSED"
+  | "DISPENSED"
+  | "CANCELLED";
+
+export interface PrescriptionItemRecord {
+  id: number;
+  medicineId: number;
+  dosage: string | null;
+  frequency: string | null;
+  duration: string | null;
+  instruction: string | null;
+  quantity: number | null;
+  route: string | null;
+  medicine: {
+    id: number;
+    medicineCode: string;
+    genericName: string;
+    brandName: string | null;
+    barcode?: string | null;
+  };
+}
+
+export interface PrescriptionDetailComplaint {
+  name: string;
+  duration?: string | null;
+}
+
+export interface PrescriptionDetailVital {
+  label: string;
+  value: string;
+}
+
+export interface PrescriptionDetails {
+  complaints?: PrescriptionDetailComplaint[] | null;
+  vitals?: PrescriptionDetailVital[] | null;
+  advice?: string | null;
+  followUp?: string | null;
+  referTo?: string | null;
+  ACTIVITY_LEVEL?: string[] | null;
+  PAST_HISTORY?: string[] | null;
+  DRUG_HISTORY?: string[] | null;
+  INVESTIGATIONS?: string[] | null;
+  DIAGNOSIS?: string[] | null;
+  TREATMENT_PLAN?: string[] | null;
+  OPERATION_NOTES?: string[] | null;
+  PHYSIOTHERAPY?: string[] | null;
+  NEXT_PLANS?: string[] | null;
+  HOSPITALIZATIONS?: string[] | null;
+}
+
+export interface PrescriptionRecord {
+  id: number;
+  branchId: number;
+  patientId: number;
+  doctorId: number;
+  medicalRecordId: number | null;
+  prescriptionNumber: string;
+  status: PrescriptionStatus;
+  notes: string | null;
+  details?: PrescriptionDetails | null;
+  createdById: number | null;
+  createdAt: string;
+  updatedAt: string;
+  patient: {
+    id: number;
+    patientCode: string;
+    name: string;
+    gender: string | null;
+    dateOfBirth: string | null;
+    phone: string | null;
+    email?: string | null;
+  };
+  doctor: {
+    id: number;
+    doctorCode: string;
+    name: string;
+    specialization: string | null;
+    qualification?: string | null;
+    bmdcRegistrationNo?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    signature: string | null;
+  };
+  medicalRecord?: {
+    id: number;
+    visitNumber: string;
+    visitType: string;
+    chiefComplaint: string | null;
+    examination: string | null;
+    vitals: unknown;
+    createdAt: string;
+  } | null;
+  items: PrescriptionItemRecord[];
+}
+
+export interface PrescriptionListRow {
+  id: number;
+  prescriptionNumber: string;
+  status: PrescriptionStatus;
+  createdAt: string;
+  updatedAt: string;
+  patient: { id: number; patientCode: string; name: string; email?: string | null };
+  doctor: { id: number; name: string };
+  items: {
+    id: number;
+    medicineId: number;
+    medicine: {
+      id: number;
+      medicineCode: string;
+      genericName: string;
+      brandName: string | null;
+    };
+  }[];
+}
+
+export interface PrescriptionListResult {
+  data: PrescriptionListRow[];
+  pagination: PaginationMeta;
+}
+
+export interface PrescriptionListQuery {
+  page?: number;
+  limit?: number;
+  patientId?: number;
+  doctorId?: number;
+  status?: PrescriptionStatus;
+  search?: string;
+}
+
+export interface CreatePrescriptionItemInput {
+  medicineId: number;
+  dosage?: string | null;
+  frequency?: string | null;
+  duration?: string | null;
+  instruction?: string | null;
+  quantity?: number | null;
+  route?: string | null;
+}
+
+export interface CreatePrescriptionInput {
+  patientId: number;
+  doctorId: number;
+  medicalRecordId?: number | null;
+  notes?: string | null;
+  details?: PrescriptionDetails | null;
+  items: CreatePrescriptionItemInput[];
+}
+
+export const prescriptionApi = {
+  list: (query: PrescriptionListQuery = {}) =>
+    rawRequest<PrescriptionListResult>(
+      `/prescriptions${qs({ ...query } as Record<string, string | number | boolean | null | undefined>)}`,
+    ),
+  get: (id: number) => request<PrescriptionRecord>(`/prescriptions/${id}`),
+  create: (input: CreatePrescriptionInput) =>
+    request<PrescriptionRecord>("/prescriptions", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  cancel: (id: number) =>
+    request<PrescriptionRecord>(`/prescriptions/${id}/cancel`, { method: "PATCH" }),
 };
 
 /* ---------------------------------------------------------------------------

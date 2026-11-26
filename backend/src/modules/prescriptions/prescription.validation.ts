@@ -39,11 +39,54 @@ export const createPrescriptionItemSchema = prescriptionItemFieldsSchema.extend(
   medicineId: positiveId,
 });
 
+const detailComplaintSchema = z.object({
+  name: z.string().trim().max(191),
+  duration: optionalText(191),
+});
+
+const detailVitalSchema = z.object({
+  label: z.string().trim().max(64),
+  value: z.string().trim().max(64),
+});
+
+/** A list of free-text / picked values for one clinical section. */
+const detailStringList = z
+  .array(z.string().trim().min(1).max(255))
+  .max(50)
+  .optional();
+
+/**
+ * Extra clinical context captured by the Digital Prescription composer that is
+ * not part of the medicine items: complaints, examination vitals, advice and
+ * follow-up. Stored as JSON so a saved prescription can be reprinted in full.
+ */
+export const prescriptionDetailsSchema = z
+  .object({
+    complaints: z.array(detailComplaintSchema).max(50).optional(),
+    vitals: z.array(detailVitalSchema).max(20).optional(),
+    advice: z.string().trim().max(2000).optional().nullable(),
+    followUp: optionalText(191),
+    referTo: optionalText(191),
+    ACTIVITY_LEVEL: detailStringList,
+    PAST_HISTORY: detailStringList,
+    DRUG_HISTORY: detailStringList,
+    INVESTIGATIONS: detailStringList,
+    DIAGNOSIS: detailStringList,
+    TREATMENT_PLAN: detailStringList,
+    OPERATION_NOTES: detailStringList,
+    PHYSIOTHERAPY: detailStringList,
+    NEXT_PLANS: detailStringList,
+    HOSPITALIZATIONS: detailStringList,
+  })
+  .optional()
+  .nullable();
+
 export const createPrescriptionSchema = z.object({
   patientId: positiveId,
   doctorId: positiveId,
   medicalRecordId: positiveId.optional().nullable(),
   notes: optionalText(191),
+  details: prescriptionDetailsSchema,
   items: z
     .array(createPrescriptionItemSchema)
     .min(1, "At least one medicine is required")
@@ -66,6 +109,7 @@ export const updatePrescriptionSchema = z
     doctorId: positiveId.optional(),
     medicalRecordId: positiveId.optional().nullable(),
     notes: optionalText(191),
+    details: prescriptionDetailsSchema,
     items: z
       .array(updatePrescriptionItemSchema)
       .min(1, "Provide at least one item to update")
@@ -76,7 +120,8 @@ export const updatePrescriptionSchema = z
     const hasScalarChange =
       value.doctorId !== undefined ||
       value.medicalRecordId !== undefined ||
-      value.notes !== undefined;
+      value.notes !== undefined ||
+      value.details !== undefined;
     if (!hasScalarChange && value.items === undefined) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

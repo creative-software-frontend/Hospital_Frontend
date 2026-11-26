@@ -205,6 +205,16 @@ export const PRESCRIPTION_OPTION_CATEGORIES = [
   "FREQUENCY",
   "INSTRUCTION",
   "ADVICE",
+  "ACTIVITY_LEVEL",
+  "PAST_HISTORY",
+  "DRUG_HISTORY",
+  "INVESTIGATIONS",
+  "DIAGNOSIS",
+  "TREATMENT_PLAN",
+  "OPERATION_NOTES",
+  "PHYSIOTHERAPY",
+  "NEXT_PLANS",
+  "HOSPITALIZATIONS",
 ] as const;
 
 export const createPrescriptionOptionSchema = z.object({

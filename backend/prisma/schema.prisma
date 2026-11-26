@@ -142,6 +142,16 @@ enum PrescriptionOptionCategory {
   FREQUENCY
   INSTRUCTION
   ADVICE
+  ACTIVITY_LEVEL
+  PAST_HISTORY
+  DRUG_HISTORY
+  INVESTIGATIONS
+  DIAGNOSIS
+  TREATMENT_PLAN
+  OPERATION_NOTES
+  PHYSIOTHERAPY
+  NEXT_PLANS
+  HOSPITALIZATIONS
 }
 
 /// Outcome of a nursing medication round for one prescribed medicine.
@@ -1151,10 +1161,11 @@ model Prescription {
   patientId          Int
   doctorId           Int?
   medicalRecordId    Int?
-  prescriptionNumber String
-  status             PrescriptionStatus @default(ACTIVE)
-  notes              String?
-  createdById        Int?
+    prescriptionNumber String
+    status             PrescriptionStatus @default(ACTIVE)
+    notes              String?
+    details            Json?
+    createdById        Int?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 

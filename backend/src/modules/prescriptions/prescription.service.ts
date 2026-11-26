@@ -28,6 +28,7 @@ const PRESCRIPTION_DETAIL_SELECT: Prisma.PrescriptionSelect = {
   prescriptionNumber: true,
   status: true,
   notes: true,
+  details: true,
   createdById: true,
   createdAt: true,
   updatedAt: true,
@@ -39,6 +40,7 @@ const PRESCRIPTION_DETAIL_SELECT: Prisma.PrescriptionSelect = {
       gender: true,
       dateOfBirth: true,
       phone: true,
+      email: true,
     },
   },
   doctor: {
@@ -47,6 +49,10 @@ const PRESCRIPTION_DETAIL_SELECT: Prisma.PrescriptionSelect = {
       doctorCode: true,
       name: true,
       specialization: true,
+      qualification: true,
+      bmdcRegistrationNo: true,
+      phone: true,
+      email: true,
       signature: true,
     },
   },
@@ -100,6 +106,7 @@ const PRESCRIPTION_LIST_SELECT: Prisma.PrescriptionSelect = {
       id: true,
       patientCode: true,
       name: true,
+      email: true,
     },
   },
   doctor: {
@@ -314,6 +321,7 @@ export async function createPrescription(actor: AuthUser, input: CreatePrescript
         prescriptionNumber,
         status: "ACTIVE",
         notes: input.notes ?? null,
+        details: input.details ?? Prisma.JsonNull,
         createdById: actor.id,
         items: { create: input.items.map(itemCreateData) },
       },
@@ -424,6 +432,9 @@ export async function updatePrescription(
   if (input.doctorId !== undefined) scalarData.doctorId = input.doctorId;
   if (input.medicalRecordId !== undefined) scalarData.medicalRecordId = input.medicalRecordId;
   if (input.notes !== undefined) scalarData.notes = input.notes ?? null;
+  if (input.details !== undefined) {
+    scalarData.details = (input.details ?? Prisma.JsonNull) as Prisma.InputJsonValue;
+  }
 
   const updated = await prisma.$transaction(async (tx) => {
     // Claim the row with a conditional update. The affected-row check closes

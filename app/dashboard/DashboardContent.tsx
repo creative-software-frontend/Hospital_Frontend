@@ -43,6 +43,8 @@ import { DigitalPrescriptionPage } from "@/app/prescriptions/DigitalPrescription
 import { DoctorSignaturePage } from "@/app/prescriptions/DoctorSignaturePage";
 import { MedicinePage } from "@/app/prescriptions/MedicinePage";
 import { PrescriptionOptionsPage } from "@/app/prescriptions/PrescriptionOptionsPage";
+import { PrintPrescriptionPage } from "@/app/prescriptions/PrintPrescriptionPage";
+import { EmailPrescriptionPage } from "@/app/prescriptions/EmailPrescriptionPage";
 import { SupplierManagementPage } from "@/app/pharmacy/SupplierManagementPage";
 import { CabinManagementPage } from "@/app/bedward/CabinManagementPage";
 import { WardStatusMonitoringPage } from "@/app/bedward/WardStatusMonitoringPage";
@@ -635,6 +637,10 @@ ${tbody}
               <MedicinePage onBack={() => setSelectedSubFeatureId(null)} />
             ) : selectedFeature.id === 8 && selectedSubFeatureId === "prescription-options" ? (
               <PrescriptionOptionsPage onBack={() => setSelectedSubFeatureId(null)} />
+            ) : selectedFeature.id === 8 && selectedSubFeatureId === "print-prescription" ? (
+              <PrintPrescriptionPage onBack={() => setSelectedSubFeatureId(null)} />
+            ) : selectedFeature.id === 8 && selectedSubFeatureId === "email-prescription" ? (
+              <EmailPrescriptionPage onBack={() => setSelectedSubFeatureId(null)} />
             ) : selectedFeature.id === 9 && selectedSubFeatureId === "supplier-management" ? (
               <SupplierManagementPage onBack={() => setSelectedSubFeatureId(null)} />
             ) : (

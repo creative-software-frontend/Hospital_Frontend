@@ -30,6 +30,16 @@ const CATEGORIES: {
   { category: "FREQUENCY", title: "Medicine Frequency", hint: "Shown on each prescribed medicine", placeholder: "e.g. 1+1+1" },
   { category: "INSTRUCTION", title: "Medicine Instructions", hint: "Shown on each prescribed medicine", placeholder: "e.g. After food" },
   { category: "ADVICE", title: "Advices", hint: "Shown in the Advices section", placeholder: "e.g. Take rest" },
+  { category: "ACTIVITY_LEVEL", title: "Activity Level", hint: "Shown in the Activity Level section", placeholder: "e.g. Bed rest" },
+  { category: "PAST_HISTORY", title: "Past History", hint: "Shown in the Past History section", placeholder: "e.g. Diabetes" },
+  { category: "DRUG_HISTORY", title: "Drug History", hint: "Shown in the Drug History section", placeholder: "e.g. Penicillin allergy" },
+  { category: "INVESTIGATIONS", title: "Investigations", hint: "Shown in the Investigations section", placeholder: "e.g. CBC" },
+  { category: "DIAGNOSIS", title: "Diagnosis", hint: "Shown in the Diagnosis section", placeholder: "e.g. Type 2 Diabetes" },
+  { category: "TREATMENT_PLAN", title: "Treatment Plan", hint: "Shown in the Treatment Plan section", placeholder: "e.g. Insulin" },
+  { category: "OPERATION_NOTES", title: "Operation Notes", hint: "Shown in the Operation Notes section", placeholder: "e.g. Appendectomy" },
+  { category: "PHYSIOTHERAPY", title: "Physiotherapy", hint: "Shown in the Physiotherapy section", placeholder: "e.g. Chest PT" },
+  { category: "NEXT_PLANS", title: "Next Plans", hint: "Shown in the Next Plans section", placeholder: "e.g. Review after 1 week" },
+  { category: "HOSPITALIZATIONS", title: "Hospitalizations", hint: "Shown in the Hospitalizations section", placeholder: "e.g. Admitted 2024" },
 ];
 
 const emptyDrafts = (): Record<PrescriptionOptionCategory, string> =>

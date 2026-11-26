@@ -159,8 +159,8 @@ export const keyFeatures: Feature[] = [
             { label: "Doctor Signature", icon: FiCheckSquare, id: "doctor-signature" },
             { label: "Medicine", icon: FiBriefcase, id: "medicine" },
             { label: "Prescription Options", icon: FiList, id: "prescription-options" },
-            { label: "Print Prescription", icon: FiPrinter },
-            { label: "Email Prescription", icon: FiMail },
+              { label: "Print Prescription", icon: FiPrinter, id: "print-prescription" },
+                          { label: "Email Prescription", icon: FiMail, id: "email-prescription" },
         ]
     },
     {
